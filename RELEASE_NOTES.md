@@ -1,3 +1,10 @@
+## Gouache Studio 0.98.12
+
+- Drop pictures onto a material's Converted or Mesh map channel; send any converted or baked map as a layer.
+- Paint on 3D models wraps to the rim at full strength, like Painter.
+- Lights: new Orbit / Free switch, with cones and arrows showing where lights point.
+- Smoother soft brushes; no Material brush in 3D Paint; smaller undo steps; start-up in 3D Paint waits for the window.
+
 ## Gouache Studio 0.98.11
 
 - Lights in the viewport get gizmos: the studio sun can be grabbed and turned, and a selected light shows Reach, Cone and Softness handles.

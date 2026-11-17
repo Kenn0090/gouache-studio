@@ -238,7 +238,10 @@ void main(){ vec2 size=vec2(textureSize(uSrc,0)); vec2 uv=gl_FragCoord.xy/size;
   if(uLockAlpha==1){ vec3 c=r.a>1e-6?r.rgb/r.a:vec3(0.0); r=vec4(c*dst.a,dst.a); }
   o=r; }`;
 const FS_MERGE=CH_STROKE+`uniform sampler2D uSrc; uniform sampler2D uStrokeTex; uniform ivec2 uSrcOrigin;
-void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; o=applyStroke(texelFetch(uSrc,p-uSrcOrigin,0),selCov(p,st.a)); }`;
+void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 st=texelFetch(uStrokeTex,p,0); gSC=uStrokeTint==1?st.rgb:uStrokeColor; float cv=selCov(p,st.a); vec4 r=applyStroke(texelFetch(uSrc,p-uSrcOrigin,0),cv);
+  /* (0.98.11, Kenn: banding in soft brushes) a hair of noise on the soft part of the stroke, under one step of an 8-bit picture, so a smooth falloff does not show its steps */
+  if(cv>0.002&&cv<0.998&&r.a>0.0){ float n=fract(sin(dot(vec2(p),vec2(12.9898,78.233)))*43758.5453)+fract(sin(dot(vec2(p),vec2(39.346,11.135)))*43758.5453)-1.0; r=vec4(max(r.rgb+n*0.5/255.0*r.a,vec3(0.0)),clamp(r.a+n*0.5/255.0,0.0,1.0)); }
+  o=r; }`;
 const FS_COMP=CH_STROKE+`
 uniform sampler2D uBase; uniform sampler2D uLayer; uniform sampler2D uStrokeTex; uniform sampler2D uMask; uniform sampler2D uMask2; uniform sampler2D uLMask;
 uniform int uMode; uniform int uUseMask; uniform int uUseMask2; uniform int uUseLMask; uniform float uOpacity;

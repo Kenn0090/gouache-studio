@@ -89,6 +89,11 @@ function lgzActive(){const R=bakeCfg&&bakeCfg.rig;return (ui.mode==='bake'||ui.m
 const SGZ={rig:{lights:[],sel:'__sun'},L:null};
 function sunGzOn(){if(ui.mode!=='p3d'||!v3.on||lightWin.open)return false;const s=v3s();if(s.rigLive||s.sunGizmo===false)return false;return (typeof envOf==='function'&&envOf(s)==='none')?(s.sunI||0)>0:(s.envSun||0)>0;}
 function sunGzRig(){const s=v3s();SGZ.rig.lights=[Object.assign(SGZ.L||(SGZ.L={id:'__sun',type:'sun',name:'Sun',on:true}),{col:(s.lightColor||[1,1,1]).slice(0,3),el:s.sunEl||0,turn:s.sunAz||0})];return SGZ.rig;}
+/* (0.98.11, Kenn) two ways to move lights in 3D Paint: Orbit (the light turns round the model) and Free (like Marmoset: move it along X/Y/Z or across the screen, and see where it points) */
+function lgzFree(){if(ui.mode!=='p3d')return false;const s=v3s();if(s.lightFree!==undefined)return !!s.lightFree;try{return localStorage.getItem('gs.lightFree')==='1';}catch(e){return false;}}
+function lgzSetFree(v){v3s().lightFree=!!v;try{localStorage.setItem('gs.lightFree',v?'1':'0');}catch(e){}v3.dirty=true;requestRender&&requestRender(true);lgzDraw();}
+const lgzDirToAngles=d=>({el:clamp(Math.asin(clamp(d[1],-1,1))*180/Math.PI,-89,89),turn:Math.atan2(d[0],d[2])*180/Math.PI});
+function lgzPos0(L,G){if(L.type==='sun'&&G&&G.free){const it=G.items.find(o=>o.L===L);if(it)return it.at.slice();}return (L.pos||[0,0,0]).slice();}
 function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sunGzRig();if(!R||!hit)return null;const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return null;
   const {VP}=v3ViewProj(w,h),b=lightBox();
   const pr=p=>{const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],ww=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];if(ww<=1e-5)return null;return [(x/ww*.5+.5)*w,(1-(y/ww*.5+.5))*h];};
@@ -97,12 +102,12 @@ function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sun
     if(!p){const c=pr(b.c)||[w/2,h/2];p=[w-c[0],h-c[1]];out=true;}
     const m=18;if(p[0]<m||p[0]>w-m||p[1]<m||p[1]>h-m){out=true;p=[clamp(p[0],m,w-m),clamp(p[1],m,h-m)];}return {L,at,p,out};});
   /* the selected light's gizmo: move arrows (bulb, spot) and a turn ring (sun, spot) */
-  const S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
-  if(S){gz={it:S,ax:[],ring:S.L.type!=='point'?34:0};if(S.L.type!=='sun'){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=S.L.type!=='point'?34:0,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
+  const free=lgzFree(),S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
+  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free)?0:34};if(S.L.type!=='sun'||free){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
     if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}
     /* size handles (squares): reach of a bulb or spot, the cone of a spot, the shadow softness of a sun */
     gz.sz=[];if(!isSun){const t=S.L.type,R0=(gz.ring||14)+34;if(t==='sun')gz.sz.push({id:'soft',at:[S.p[0]+R0,S.p[1]],label:'Softness'});else{gz.sz.push({id:'reach',at:[S.p[0]+R0,S.p[1]],label:'Reach'});if(t==='spot')gz.sz.push({id:'cone',at:[S.p[0],S.p[1]+R0],label:'Cone'});}}}
-  return {R,w,h,pr,b,items,c:pr(b.c),gz,sun:isSun};}
+  return {R,w,h,pr,b,items,c:pr(b.c),gz,sun:isSun,free};}
 function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const G=lgzGeom(hit);
   if(!G){if(c)c.hidden=true;return;}
   if(!c||!c.isConnected){c=lgz.el=el('canvas',{class:'v3gz v3lgz','aria-hidden':'true'});hit.parentNode.insertBefore(c,hit.nextSibling);}
@@ -118,6 +123,7 @@ function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const
     if(L.type==='sun'){x.strokeStyle=col;x.lineWidth=2;for(let i=0;i<8;i++){const a=i*Math.PI/4;x.beginPath();x.moveTo(p[0]+Math.cos(a)*12,p[1]+Math.sin(a)*12);x.lineTo(p[0]+Math.cos(a)*16,p[1]+Math.sin(a)*16);x.stroke();}}
     if(L.type==='spot'){x.strokeStyle=col;x.lineWidth=2;x.beginPath();x.arc(p[0],p[1],12,0,7);x.stroke();}
     x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(L.name,p[0]+14,p[1]-10);x.globalAlpha=1;}
+  if(G.free)lgzBeams(x,G);
   const z=G.gz;if(z){const p=z.it.p,AX=['#ff5a5a','#5ad46a','#5a9bff'];
     for(const a of z.ax){const hot=lgz.hot==='ax'+a.k;x.strokeStyle=AX[a.k];x.fillStyle=AX[a.k];x.lineWidth=hot?5:3.5;const r0=z.ring?z.ring+5:14,s0=[p[0]+a.u[0]*r0,p[1]+a.u[1]*r0];x.beginPath();x.moveTo(s0[0],s0[1]);x.lineTo(a.end[0],a.end[1]);x.stroke();
       const n=[-a.u[1],a.u[0]];x.beginPath();x.moveTo(a.end[0]+a.u[0]*13,a.end[1]+a.u[1]*13);x.lineTo(a.end[0]+n[0]*7,a.end[1]+n[1]*7);x.lineTo(a.end[0]-n[0]*7,a.end[1]-n[1]*7);x.fill();}
@@ -126,6 +132,16 @@ function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const
       x.fillStyle=hot?'#ffd24a':'#fff';x.strokeStyle='#111';x.lineWidth=1.5;const h=hot?7:5.5;x.fillRect(q.at[0]-h,q.at[1]-h,h*2,h*2);x.strokeRect(q.at[0]-h,q.at[1]-h,h*2,h*2);
       if(hot){const L=z.it.L,v=q.id==='reach'?(L.range||0).toPrecision(3):q.id==='cone'?Math.round(L.cone??35)+'°':(+L.soft||0).toPrecision(2);x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(q.label+' '+v,q.at[0]+11,q.at[1]+4);}}
     if(z.aim){x.strokeStyle='#ffd24a';x.lineWidth=2;x.setLineDash([2,3]);x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(z.aim[0],z.aim[1]);x.stroke();x.setLineDash([]);x.beginPath();x.arc(z.aim[0],z.aim[1],3,0,7);x.fillStyle='#ffd24a';x.fill();}}}
+/* where each light points: a spot shows its cone, a sun shows arrows running toward the model */
+function lgzBeams(x,G){const b=G.b;for(const {L,at,p,out} of G.items){if(out||L.on===false||L.type==='point')continue;const sel=G.R.sel===L.id,col=sel?'#ffd24a':'rgba(255,255,255,.7)',d=lightAim(L);
+    const dist=Math.max(b.r*.8,Math.hypot(at[0]-b.c[0],at[1]-b.c[1],at[2]-b.c[2]));
+    const ref=Math.abs(d[1])>.9?[1,0,0]:[0,1,0],u=lightNorm([d[1]*ref[2]-d[2]*ref[1],d[2]*ref[0]-d[0]*ref[2],d[0]*ref[1]-d[1]*ref[0]]),v=[d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]];
+    x.save();x.strokeStyle=col;x.fillStyle=sel?'rgba(255,210,74,.12)':'rgba(255,255,255,.06)';x.lineWidth=sel?2:1.3;
+    if(L.type==='spot'){const len=dist,half=clamp((L.cone??35),5,170)*Math.PI/360,rad=len*Math.tan(Math.min(half,1.45)),pts=[];for(let i=0;i<32;i++){const a=i/32*Math.PI*2,q=at.map((w,k)=>w+d[k]*len+(u[k]*Math.cos(a)+v[k]*Math.sin(a))*rad),e=G.pr(q);if(e)pts.push(e);}
+      if(pts.length>8){x.beginPath();pts.forEach((e,i)=>i?x.lineTo(e[0],e[1]):x.moveTo(e[0],e[1]));x.closePath();x.fill();x.stroke();for(let i=0;i<pts.length;i+=Math.max(1,Math.floor(pts.length/4))){x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(pts[i][0],pts[i][1]);x.stroke();}}}
+    else{/* sun: parallel lines and an arrow toward the model */const off=Math.min(b.r*.18,dist*.2);for(const [a,c] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const o=at.map((w,k)=>w+(u[k]*a+v[k]*c)*off),e=G.pr(o),f=G.pr(o.map((w,k)=>w+d[k]*dist));if(!e||!f)continue;x.setLineDash(a||c?[5,4]:[]);x.beginPath();x.moveTo(e[0],e[1]);x.lineTo(f[0],f[1]);x.stroke();
+        if(!a&&!c){const ang=Math.atan2(f[1]-e[1],f[0]-e[0]);x.setLineDash([]);x.fillStyle=col;x.beginPath();x.moveTo(f[0],f[1]);x.lineTo(f[0]-Math.cos(ang-.4)*14,f[1]-Math.sin(ang-.4)*14);x.lineTo(f[0]-Math.cos(ang+.4)*14,f[1]-Math.sin(ang+.4)*14);x.fill();}}}
+    x.restore();}}
 const lgzMouse=(hit,e)=>{const r=hit.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
 /* which gizmo part is under the pointer: 'ax0'..'ax2' (move along X/Y/Z) or 'ring' (turn) */
 function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;
@@ -138,9 +154,9 @@ function lgzHover(hit,e){const G=lgzGeom(hit),m=G?lgzMouse(hit,e):null;let h=G&&
   if(!h&&G&&!lgz.drag&&G.items.some(it=>Math.hypot(m[0]-it.p[0],m[1]-it.p[1])<LGZ_GRAB.light))h='light';
   if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'?'grab':h&&h.startsWith('sz:')?'ew-resize':'move';return !!h;}
 function lgzDown(hit,e){const G=lgzGeom(hit);if(!G)return false;const m=lgzMouse(hit,e);let best=null;
-  const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:(L.pos||[0,0,0]).slice(),aim0:lightAim(L),G,part,shift:e.shiftKey};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
+  const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:lgzPos0(L,G),aim0:lightAim(L),G,part,shift:e.shiftKey};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
   for(const it of G.items){const d=Math.hypot(m[0]-it.p[0],m[1]-it.p[1]);if(d<LGZ_GRAB.light&&(!best||d<best.d))best={it,d};}
-  if(!best){lgz.picked=false;return false;}const L=best.it.L;G.R.sel=L.id;lgz.picked=true;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:(L.pos||[0,0,0]).slice(),G,shift:e.shiftKey};
+  if(!best){lgz.picked=false;return false;}const L=best.it.L;G.R.sel=L.id;lgz.picked=true;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:lgzPos0(L,G),G,shift:e.shiftKey};
   try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();if(lightPageRedraw)lightPageRedraw();else lightTabSync();return true;}
 function lgzMove(hit,e){const D=lgz.drag;if(!D)return;D.m=lgzMouse(hit,e);D.shift=e.shiftKey;if(lgz.raf)return;lgz.raf=requestAnimationFrame(()=>{lgz.raf=0;lgzApply();});}
 function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-D.m0[0],dy=D.m[1]-D.m0[1];
@@ -150,11 +166,12 @@ function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-
   else if(D.part==='ring'&&L.type==='spot'){/* turn the spot: across = around the up axis, up/down = tilt */const a0=D.aim0,yaw=-dx*.6*Math.PI/180,pit=-dy*.6*Math.PI/180;
     let v=[a0[0]*Math.cos(yaw)+a0[2]*Math.sin(yaw),a0[1],-a0[0]*Math.sin(yaw)+a0[2]*Math.cos(yaw)];const hz=Math.hypot(v[0],v[2])||1e-6,el=Math.asin(clamp(v[1],-1,1))+pit,ce=Math.cos(clamp(el,-1.55,1.55));
     v=[v[0]/hz*ce,Math.sin(clamp(el,-1.55,1.55)),v[2]/hz*ce];L.aim=v;}
-  else if(L.type==='sun'){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
+  else if(L.type==='sun'&&!G.free){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
   else{/* across the screen: screen pixels → model units, measured at the light; Shift: nearer or further from the view */
     const p0=G.pr(D.pos0),eye=v3Eye(),f=lightNorm(D.pos0.map((v,k)=>v-eye[k])),rt=lightNorm([-f[2],0,f[0]]),up=[f[1]*rt[2]-f[2]*rt[1],f[2]*rt[0]-f[0]*rt[2],f[0]*rt[1]-f[1]*rt[0]].map(v=>-v),
       px=G.pr(D.pos0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;
     L.pos=D.shift?D.pos0.map((v,k)=>v-f[k]*dy/u):D.pos0.map((v,k)=>v+rt[k]*dx/u-up[k]*dy/u);}
+  if(L.type==='sun'&&G.free&&L.pos){const c=G.b.c,a=lgzDirToAngles(lightNorm(L.pos.map((v,k)=>v-c[k])));L.el=a.el;L.turn=a.turn;delete L.pos;}
   if(G.sun){const s=v3s();s.sunAz=((L.turn%360)+360)%360;s.sunEl=clamp(L.el,0,90);for(const [id,v] of [['v3Az',s.sunAz],['v3El',s.sunEl]]){const i=document.getElementById(id);if(i)i.value=v;}}
   v3.dirty=true;requestRender&&requestRender();lightTabSync();}
 function lgzUp(){if(!lgz.drag)return;if(lgz.raf){cancelAnimationFrame(lgz.raf);lgz.raf=0;lgzApply();}lgz.drag=null;if(lightHist)lightHist.commit();lgzDraw();}
