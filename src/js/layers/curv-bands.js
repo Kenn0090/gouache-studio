@@ -20,7 +20,8 @@ function cbRadii(o,W,H){const s=Math.max(W,H),k=o&&o.scale!=null?o.scale:1;retur
 /* a new doc-size target with the bands mixed (the caller releases it: pooled) */
 function curvBands(src,o,depth){if(!src||!src.tex)return null;if(!P_CBAND)P_CBAND=program(FS_CBAND);const w=cbOf(o),W=doc.w,H=doc.h,d=depth||16;
   const c=acquireD(16),a=acquireD(16),b=acquireD(16),out=acquireD(d);
-  try{copyScaled(src,c);const [r1,r2]=cbRadii(o,W,H);gaussian(c,a,r1);gaussian(c,b,r2);
+  try{copyScaled(src,c);const [r1,r2]=cbRadii(o,W,H);/* (0.98.10, Georgian: the blurs did not go over the UVs) on a model the blur walks across the seams */
+    const bl=(from,to,r)=>{if(!(typeof meshConnectedBlur==='function'&&meshConnectedBlur(from,to,r/2.2*1.0,r/2.2*1.0,false)))gaussian(from,to,r);};bl(c,a,r1);bl(c,b,r2);
     run(P_CBAND,out,{uC:c.tex,uA:a.tex,uB:b.tex,uW:[w.big,w.med,w.small],uSz:[W,H]});out.ver=(out.ver||0)+1;/* a new picture for anything that remembers per picture */}
   finally{release(c);release(a);release(b);}
   return out;}

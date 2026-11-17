@@ -1,0 +1,17 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1500,height:1700}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>__gs.newDoc(64,64,8,[1,1,1],'ap',false,'pbr'));await p.waitForTimeout(400);
+ await p.evaluate(()=>{const g=__gs;g.cmdAddLayer();window.__A=g.doc.active;__A.name='Layer A';g.cmdAddLayer();window.__B=g.doc.active;__B.name='Layer B';g.selectOnly(__A);g.ui.msSel=null;g.msAdd(__A,'noise');__A.editMask=true;g.renderLayers();});
+ await p.waitForTimeout(600);
+ const rowBox=await p.locator('.msrow').first().boundingBox();const lrow=await p.locator('.lrow',{hasText:'Layer B'}).first().boundingBox();
+ console.log(JSON.stringify([rowBox,lrow]));ok(!!rowBox&&!!lrow,'a mask row and the other layer are on screen');
+ await p.mouse.move(rowBox.x+60,rowBox.y+rowBox.height/2);await p.mouse.down();await p.mouse.move(lrow.x+80,lrow.y+lrow.height/2,{steps:12});await p.waitForTimeout(150);
+ console.log(JSON.stringify(await p.evaluate(([x,y])=>{const t=document.elementFromPoint(x,y),lr=t&&t.closest('.lrow');return {t:t&&(t.className||t.tagName),lr:!!lr,node:!!(lr&&lr._node),name:lr&&lr._node&&lr._node.name,isA:lr&&lr._node===__A};},[lrow.x+80,lrow.y+lrow.height/2])));
+ ok(await p.evaluate(()=>!!document.querySelector('.lrow.rowdrop')),'the layer under the row lights up');
+ await p.mouse.up();await p.waitForTimeout(500);
+ const r=await p.evaluate(()=>({a:__A.mask&&__A.mask.stack?__A.mask.stack.filter(x=>x.kind==='noise').length:0,b:__B.mask&&__B.mask.stack?__B.mask.stack.filter(x=>x.kind==='noise').length:0}));
+ ok(r.b===1&&r.a===0,'dropping it on Layer B moves the row there '+JSON.stringify(r));
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,300));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();

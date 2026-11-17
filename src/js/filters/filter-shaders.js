@@ -217,7 +217,7 @@ void main(){ vec2 per=vec2(max(1.0,floor(uScale+0.5))); vec2 p=gl_FragCoord.xy/u
 };
 /* heavy filters are drawn in tiles, so no single GPU job runs long enough for Windows to reset the driver */
 const HEAVY=new Set(['box','radial','lens','surface','kuwa','akuwa','vote','motion','quant','pal']);
-function runTiled(prog,target,u){const T=512;gl.enable(gl.SCISSOR_TEST);
-  for(let y=0;y<target.h;y+=T)for(let x=0;x<target.w;x+=T){gl.scissor(x,y,Math.min(T,target.w-x),Math.min(T,target.h-y));run(prog,target,u);gl.flush();}
-  gl.disable(gl.SCISSOR_TEST);}
+function runTiled(prog,target,u,opts){const T=512,R=typeof scissorNow!=='undefined'&&scissorNow?scissorNow:[0,0,target.w,target.h],keep=typeof scissorNow!=='undefined'?scissorNow:null;gl.enable(gl.SCISSOR_TEST);
+  for(let y=R[1];y<R[1]+R[3];y+=T)for(let x=R[0];x<R[0]+R[2];x+=T){gl.scissor(x,y,Math.min(T,R[0]+R[2]-x),Math.min(T,R[1]+R[3]-y));run(prog,target,u,opts);gl.flush();}
+  if(keep)gl.scissor(keep[0],keep[1],keep[2],keep[3]);else gl.disable(gl.SCISSOR_TEST);}
 Object.assign(P,Object.fromEntries(Object.entries(FILTER_FS).map(([k,fs])=>{const pr=program(fs);if(HEAVY.has(k))pr.tiled=true;return ['f_'+k,pr];})));

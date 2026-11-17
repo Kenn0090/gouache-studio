@@ -314,7 +314,7 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
   pop.style.left=Math.max(4,Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY+4,window.innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)&&!flyEl.contains(ev.target)){pop.hidden=true;flyHide();document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)&&!n.fx,grp=n.type==='group',anim=ui.mode==='anim';
-  if(n.mask&&!n.fx&&ui.mode!=='anim'&&(isLayer(n)||n.type==='group')&&e.target&&e.target.closest&&e.target.closest('.mthumb')&&typeof msAdd==='function'){maskMenu(e,n);return;}
+  if(n.mask&&ui.mode!=='anim'&&(isLayer(n)||n.type==='group')&&e.target&&e.target.closest&&e.target.closest('.mthumb')&&typeof msAdd==='function'){maskMenu(e,n);return;}
   const it=(t,f,key,dis)=>{const b=el('button',{class:'mi',role:'menuitem',disabled:!!dis,onclick:()=>{pop.hidden=true;flyHide();f();}},el('span'),el('span',{text:t}),el('span',{text:key||''}));return b;};
   const head=t=>el('div',{class:'mh',text:t});const sep=()=>el('div',{class:'msep'});
   const items=[];

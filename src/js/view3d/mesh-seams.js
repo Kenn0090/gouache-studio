@@ -141,7 +141,10 @@ if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  /* Preserve atlas pixels outside the mesh. In-place filters borrow their source. */
  let read=src,tmp=null,mid=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
  const draw=(from,to,rx,ry,taps,dither)=>{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:from.tex,uSize:[src.w,src.h],uRadius:box?[rx,ry]:[rx*3,ry*3],uBox:{int:box?1:0},uTaps:{int:taps},uDither:dither},!!to.packed);
-  bindTarget(to);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);};
+  bindTarget(to);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);
+  /* (0.98.10) a big picture is drawn in tiles so the card is never kept busy for long */
+  if(to.w*to.h>12582912){const Tn=1024;gl.enable(gl.SCISSOR_TEST);for(let ty=0;ty<to.h;ty+=Tn)for(let tx=0;tx<to.w;tx+=Tn){gl.scissor(tx,ty,Math.min(Tn,to.w-tx),Math.min(Tn,to.h-ty));gl.drawArrays(gl.TRIANGLES,0,C.count*3);gl.flush();}gl.disable(gl.SCISSOR_TEST);}
+  else gl.drawArrays(gl.TRIANGLES,0,C.count*3);};
  try{const big=(Math.max(x,y)>10||low)&&canFloat&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono,dith=0,taps=low?48:Math.min(48,Math.round(20+Math.min(x||1,y||1)*1.1));/* (0.98.8) the shrunken pass always uses two half-float passes and plenty of taps: it is small, so it is cheap, and it must not leave a pattern */
   if(big){/* two softer passes (each sigma/1.41) in half float: the noise of one pass is averaged by the other, and nothing is rounded to 8 bits in between */
    mid=makeTarget(src.w,src.h,16,false);draw(read,mid,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),0);draw(mid,dst,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),dith);}

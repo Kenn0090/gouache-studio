@@ -32,17 +32,21 @@ function msModeMenu(e,n,r,btn){const pop=$('#menuPop');closeMenu();const cur=r.m
   pop.hidden=false;pop.style.left=Math.max(4,Math.min(b.left,window.innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(b.bottom+2,window.innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
 /* click selects; a drag moves the row among the rows of the same layer and kind */
-function msRowDown(e,row){if(e.button!==0)return;e.stopPropagation();const {L,where,id}=row._ms,y0=e.clientY;let moved=false;
-  const mv=ev=>{if(Math.abs(ev.clientY-y0)>5)moved=true;if(!moved)return;row.classList.add('drag');};
-  const up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);row.classList.remove('drag');
+function msRowDown(e,row){if(e.button!==0)return;e.stopPropagation();const {L,where,id}=row._ms,y0=e.clientY;let moved=false,hot=null;
+  /* (0.98.10, Georgian: "still no drag and drop") a row can be dragged onto another layer in the list: it moves there with everything inside it */
+  const layerAt=ev=>{const t=document.elementFromPoint(ev.clientX,ev.clientY),lr=t&&t.closest?t.closest('.lrow'):null;return lr&&lr._node&&lr._node!==L&&(isLayer(lr._node)||lr._node.type==='group')?lr:null;};
+  const mark=lr=>{if(hot===lr)return;if(hot)hot.classList.remove('rowdrop');hot=lr;if(hot)hot.classList.add('rowdrop');};
+  const mv=ev=>{if(Math.abs(ev.clientY-y0)>5)moved=true;if(!moved)return;row.classList.add('drag');mark(layerAt(ev));};
+  const up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);row.classList.remove('drag');const lr=layerAt(ev);mark(null);
     if(!moved){msSelect(L,where,id);return;}
+    if(lr){msMoveRowToLayer(L,where,id,lr._node);return;}
     const t=document.elementFromPoint(ev.clientX,ev.clientY),o=t&&t.closest('.msrow');if(!o||!o._ms||o._ms.L!==L||o._ms.where!==where||o._ms.id===id)return;
     if(where==='m'){msDropRow(L,id,o._ms.id);return;}const S=L.cfx,to=S.findIndex(r=>r.id===o._ms.id);msMove(L,where,id,to);};
   window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);}
 
 /* ---- FX ▾ ---- */
-function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')||L.fx){toast('Select a layer first.');return;}if(ui.mode==='anim'){toast('Masks with rows are for Paint and 3D Paint.');return;}
-  const toMask=!!(L.editMask||!isLayer(L)),pop=$('#menuPop');closeMenu();
+function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')){toast('Select a layer first.');return;}if(ui.mode==='anim'){toast('Masks with rows are for Paint and 3D Paint.');return;}
+  const toMask=!!(L.editMask||!isLayer(L)||L.fx),pop=$('#menuPop');closeMenu();
   const it=(t,f,sub)=>el('button',{class:'mi',role:'menuitem',onclick:ev=>{ev.stopPropagation();if(!sub)pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span',{text:sub?'▸':''}));
   const head=t=>el('div',{class:'mh',text:t}),sep=()=>el('div',{class:'msep'});
   const page=items=>{pop.replaceChildren(...items);pop.hidden=false;place();};
@@ -356,7 +360,7 @@ function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:
   return box;}
 
 /* (0.98.4, Georgian) with a mask selected, the layer buttons work on the mask: paint, fill and filter rows go into it; with the layer selected they make new layers as before */
-{const inMask=()=>{const n=doc.active;return !!(n&&n.mask&&n.editMask&&(isLayer(n)||n.type==='group')&&!n.fx&&ui.mode!=='anim');};
+{const inMask=()=>{const n=doc.active;return !!(n&&n.mask&&n.editMask&&(isLayer(n)||n.type==='group')&&ui.mode!=='anim');};
   const hook=(id,f)=>{const b=document.getElementById(id);if(b)b.addEventListener('click',e=>{if(!inMask())return;e.stopImmediatePropagation();e.preventDefault();f(e);},true);};
   hook('lAdd',()=>{msAdd(doc.active,'paint');renderLayers();});
   hook('lFill',()=>{msAdd(doc.active,'fill');renderLayers();});
