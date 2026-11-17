@@ -91,6 +91,18 @@ setTimeout(pxWebpExactCheck,3000);
 function pxDataURL(c,key){if(pxSmall()&&PX_LOSSY.has(key)&&pxWebpOk!==false){const u=c.toDataURL('image/webp',.92);if(u.startsWith('data:image/webp'))return u;pxWebpOk=false;}
   if(pxWebpExact&&c.width<=16383&&c.height<=16383){const u=c.toDataURL('image/webp',1);if(u.startsWith('data:image/webp'))return u;}
   return c.toDataURL('image/png');}
+/* (0.98.3, Kenn: smaller normal maps in saved files) a .gmat normal map as TWO grey pictures side by side (red | green) in one lossy
+   WebP at .97, the blue rebuilt from them (unit length). About 6x smaller than the lossless picture for an error of 4-5 in 255.
+   Only with Smaller files on, and only for fully opaque pictures; the image record carries n2:1. */
+function pxNormalURL(c){if(!pxSmall()||pxWebpOk===false)return null;const w=c.width,h=c.height;if(w*2>16383||h>16383)return null;
+  const x=c.getContext('2d',{willReadFrequently:true}),d=x.getImageData(0,0,w,h).data;for(let i=3;i<d.length;i+=4)if(d[i]!==255)return null;
+  const o=document.createElement('canvas');o.width=w*2;o.height=h;const ox=o.getContext('2d',{willReadFrequently:true}),id=ox.createImageData(w*2,h),e=id.data;
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){const s=(y*w+X)*4,a=(y*w*2+X)*4,b=(y*w*2+w+X)*4;e[a]=e[a+1]=e[a+2]=d[s];e[a+3]=255;e[b]=e[b+1]=e[b+2]=d[s+1];e[b+3]=255;}
+  ox.putImageData(id,0,0);const u=o.toDataURL('image/webp',.97);return u.startsWith('data:image/webp')?u:null;}
+/* the two grey halves back to a normal map (premultiplied, opaque) */
+function pxNormalRead(img,w,h){const c=document.createElement('canvas');c.width=w*2;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0);const d=x.getImageData(0,0,w*2,h).data,out=new Uint8Array(w*h*4);
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){const a=(y*w*2+X)*4,b=(y*w*2+w+X)*4,o=(y*w+X)*4,nx=d[a]/127.5-1,ny=d[b]/127.5-1,nz=Math.sqrt(Math.max(0,1-nx*nx-ny*ny));out[o]=d[a];out[o+1]=d[b];out[o+2]=Math.round((nz*.5+.5)*255);out[o+3]=255;}
+  return out;}
 /* .gmat files are gzipped JSON (older ones are plain JSON: both open) */
 async function gmatBlob(obj){return new Blob([await streamThrough(new TextEncoder().encode(JSON.stringify(obj)),'gzip')],{type:'application/octet-stream'});}
 async function gmatParse(src){let b=src instanceof Uint8Array?src:new Uint8Array(await (src.arrayBuffer?src.arrayBuffer():new Response(src).arrayBuffer()));

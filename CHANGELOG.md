@@ -1,5 +1,8 @@
 ## 0.98.2
 
+- **Smaller normal maps in .gmat files.** With Smaller files on, a saved normal map (materials and smart materials you export) is stored as two small grey pictures (red and green, the blue is rebuilt), about four to six times smaller than before for a difference of 4 to 5 out of 255. Older versions of the app cannot open these particular pictures; turn Smaller files off in Preferences to export the old way.
+- **The Painting report window is bigger, can be resized and no longer clips the text**, and the report now lists what the graphics memory is made of.
+- **Undo kept in memory is capped at 3 GB by default.** A Painting report from a 6144 px document showed 6 GB of undo in memory and page pauses of about 2 seconds (memory clean-up) while painting; undo beyond the cap now goes to the disk cache sooner.
 - **Timelapse export fixed.** A finished video is now written to the "completed TL's" folder first and shown in Explorer, so a full timelapse list can no longer lose it; if the normal video encoder fails (as on a third video in a row), Gouache retries with the software encoder, and the encoder is always released after an error. If the list in the program cannot take another video, the file is still saved and you are told.
 - **Cleaner timelapse settings window** with groups (Recording, Video, your timelapses), a tooltip on every control, cards for unfinished and finished timelapses (Show file, Save a copy, Delete) and a close button.
 
