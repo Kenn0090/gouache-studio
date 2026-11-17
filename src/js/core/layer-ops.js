@@ -39,7 +39,25 @@ function cmdClearLayer(){if(stroke||preview||selLive){toast('Finish the current 
   const current=doc.map,others=keys.filter(k=>k!==current).map(k=>({k,apply:T=>clearTarget(T)}));fullRecord(n,'Clear layer',()=>clearTarget(n.target),rect,others);}
 function chanLimit(et){if(et.isMask||!chanRestricted())return;run(P.chmerge,scratchT,{uOld:et.target.tex,uNew:previewT.tex,uChan:chan.edit});blit(scratchT,previewT,0,0,doc.w,doc.h,0,0);}
 function applyPreview(label){const et=preview.et;fullRecord(et.L,label,()=>blit(previewT,et.target,0,0,doc.w,doc.h,0,0),selRect(et));preview=null;requestRender(true);}
+/* (0.98.7, Kenn: "Gaussian blur is laggy while blurring; give it another pass on quality") a wide blur does not need a tap per pixel: the picture is
+   shrunk (in half-float, so nothing bands), blurred small, brought back up and smoothed once at full size so the enlarged
+   steps cannot show. Cost no longer grows with the radius. */
+function gaussianPyr(src,dst,sigma){let f=1;while(sigma/f>5&&f<64)f*=2;if(f<2)return false;
+  const dp=canFloat?16:src.depth,mk=(a,b)=>makeTarget(a,b,dp,false),made=[],w=Math.max(8,Math.round(src.w/f)),h=Math.max(8,Math.round(src.h/f));
+  try{let cur=src,cw=src.w,ch=src.h;
+    while(cw>w||ch>h){const nw=Math.max(w,Math.round(cw/4)),nh=Math.max(h,Math.round(ch/4)),t=mk(nw,nh);made.push(t);
+      run(P.resample,t,{uSrc:cur.tex,uOffset:[0,0],uScale:[cw/nw,ch/nh],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(Math.max(cw/nw,ch/nh))))}});cur=t;cw=nw;ch=nh;}
+    const s=Math.max(.3,sigma*cw/src.w),R=Math.min(48,Math.ceil(s*3)),tmp=mk(cw,ch),out=mk(cw,ch);made.push(tmp,out);
+    run(P.blur,tmp,{uSrc:cur.tex,uDir:[1,0],uSigma:s,uRadius:{int:R}});run(P.blur,out,{uSrc:tmp.tex,uDir:[0,1],uSigma:s,uRadius:{int:R}});
+    /* back up in steps of two, with one light smoothing at each size: the enlargement leaves no creases, and the work stays small */
+    let up=out,uw=cw,uh=ch;
+    while(uw<src.w||uh<src.h){const nw=Math.min(src.w,uw*2),nh=Math.min(src.h,uh*2),last=nw>=src.w&&nh>=src.h;
+      if(last){copyScaled(up,dst);run(P.blur,scratchT,{uSrc:dst.tex,uDir:[1,0],uSigma:1.1,uRadius:{int:4}});run(P.blur,dst,{uSrc:scratchT.tex,uDir:[0,1],uSigma:1.1,uRadius:{int:4}});break;}
+      const t=mk(nw,nh),t2=mk(nw,nh);made.push(t,t2);copyScaled(up,t);run(P.blur,t2,{uSrc:t.tex,uDir:[1,0],uSigma:1.1,uRadius:{int:4}});run(P.blur,t,{uSrc:t2.tex,uDir:[0,1],uSigma:1.1,uRadius:{int:4}});up=t;uw=nw;uh=nh;}
+    return true;}
+  finally{for(const t of made)disposeTarget(t);}}
 function gaussian(src,dst,radius){const sigma=Math.max(.3,radius/2.2),R=Math.min(128,Math.ceil(sigma*3));
+  if(sigma>8&&!uvWrapScope&&src.w===doc.w&&src.h===doc.h&&dst.w===src.w&&dst.h===src.h&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono&&src.w>=256&&gaussianPyr(src,dst,sigma))return;
   if(uvWrapScope)uvWrapTarget(scratchT);
   run(P.blur,scratchT,{uSrc:src.tex,uDir:[1,0],uSigma:sigma,uRadius:{int:R}});run(P.blur,dst,{uSrc:scratchT.tex,uDir:[0,1],uSigma:sigma,uRadius:{int:R}});}
 function invert(){const et=needTarget();if(!et)return;preview={L:et.node,isMask:et.isMask,et};run(P.invert,previewT,{uSrc:et.target.tex});chanLimit(et);selLimit(et);applyPreview(et.isMask?'Invert mask':'Invert');}

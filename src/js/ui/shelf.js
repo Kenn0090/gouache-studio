@@ -33,7 +33,7 @@ function shBar(cat,acts){
   const sizes=el('div',{class:'seg shsize','aria-label':'Tile size'},...[['s','S'],['m','M'],['l','L']].map(([k,l])=>el('button',{type:'button',class:'segb shsz','data-k':k,id:'shsz_'+k+'_'+cat,title:'Tile size '+l,text:l,onclick:()=>{shS.size=k;shS.list=false;shSave();shSyncBars();shResize();}})));
   const view=el('div',{class:'seg shview','aria-label':'View'},...[[false,'grid','Tiles'],[true,'list','List']].map(([v,ico,l])=>{const b=el('button',{type:'button',class:'segb shvw','data-v':String(v),id:'shvw_'+(v?'list':'grid')+'_'+cat,title:l+' view'});b.append(shSvg(SH_ICO[ico]));b.onclick=()=>{shS.list=v;shSave();shSyncBars();shResize();};return b;}));
   const bar=el('div',{class:'shbar',id:'shbar_'+cat},q,tog('fav',SH_ICO.star,'Favourites only (click the star on a tile)'),tog('recent',SH_ICO.clock,'Recently used only'),sizes,view,el('span',{class:'shgrow'}),...(acts||[]).filter(Boolean));
-  bar._cat=cat;return bar;}
+  bar._cat=cat;try{const v=typeof optExportMode==='function'&&optExportMode()==='shelf'?JSON.parse(localStorage.getItem('gs.optExport')||'null'):null;if(v&&v.cat===cat&&typeof optExportBtn==='function'){const b=optExportBtn();b.classList.add('sm');bar.append(b);}}catch(e){}return bar;}
 function shSyncBars(){for(const b of document.querySelectorAll('.shbar')){
   b.querySelectorAll('.shbtn').forEach(x=>{const k=x.id.split('_')[1];x.setAttribute('aria-pressed',String(!!shS[k]));x.classList.toggle('on',!!shS[k]);});
   b.querySelectorAll('.shsz').forEach(x=>{const on=!shS.list&&shS.size===x.dataset.k;x.setAttribute('aria-pressed',String(on));});

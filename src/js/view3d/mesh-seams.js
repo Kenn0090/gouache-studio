@@ -120,8 +120,18 @@ function seamBlurPadding(C,dst,region){if(!seamPadPrograms)seamPadPrograms={
   }finally{disposeTarget(tmp);}}
  const r=region||[0,0,dst.w,dst.h],tmp=makeTarget(r[2],r[3],dst.depth,false,dst.packed,dst.mono);
  try{run(seamPadPrograms.apply,tmp,{uOwners:C.pad.tex,uSrc:dst.tex,uOffset:r.slice(0,2)});blit(tmp,dst,0,0,r[2],r[3],r[0],r[1]);}finally{disposeTarget(tmp);}}
-function meshConnectedBlur(src,dst,x,y,box){if(ui.mode!=='p3d'||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||!v3.mesh)return false;
- const C=seamBlurMesh();if(!C)return false;if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
+function meshConnectedBlur(src,dst,x,y,box,low){if(ui.mode!=='p3d'||(!low&&(src.w!==doc.w||src.h!==doc.h))||dst.w!==src.w||dst.h!==src.h||!v3.mesh)return false;
+ const C=seamBlurMesh();if(!C)return false;
+ /* (0.98.7, Kenn: "the wide option is really laggy") a wide blur is done on a smaller copy of the picture (the mesh is drawn in UV space, so it is the same
+    walk across the seams) and brought back up: the cost no longer grows with the radius */
+ if(!low&&Math.max(x,y)>14&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono&&src.w>=512){let f=1;while(Math.max(x,y)/f>9&&f<16)f*=2;
+  const w=Math.max(64,Math.round(src.w/f)),h=Math.max(64,Math.round(src.h/f)),dp=canFloat?16:src.depth,s1=makeTarget(w,h,dp,false),d1=makeTarget(w,h,dp,false);let ok=false;
+  try{run(P.resample,s1,{uSrc:src.tex,uOffset:[0,0],uScale:[src.w/w,src.h/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(src.w/w)))}});
+   ok=meshConnectedBlur(s1,d1,x/f,y/f,box,true);
+   if(ok){copyScaled(d1,dst);seamBlurPadding(C,dst);}}
+  finally{disposeTarget(s1);disposeTarget(d1);gl.bindVertexArray(vao);}
+  if(ok)return true;}
+if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  /* Preserve atlas pixels outside the mesh. In-place filters borrow their source. */
  let read=src,tmp=null,mid=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
  const draw=(from,to,rx,ry,taps,dither)=>{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:from.tex,uSize:[src.w,src.h],uRadius:box?[rx,ry]:[rx*3,ry*3],uBox:{int:box?1:0},uTaps:{int:taps},uDither:dither},!!to.packed);
