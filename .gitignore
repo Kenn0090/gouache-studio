@@ -8,3 +8,4 @@ src-tauri/gen/schemas/
 .claude/settings.local.json
 out/
 tests/e2e/_*.cjs
+*.whl

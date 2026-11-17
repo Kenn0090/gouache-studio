@@ -15,6 +15,8 @@ Drag the lower-right corner of Preferences to resize the window. Tabs, settings 
 - **Largest brush size:** 5000 px by default; 10000 or 20000 px for very big canvases (big brushes paint slowly on large documents).
 - **Live previews:** filters, adjustments, Select menu changes and hover previews (blend modes, fonts) show on the canvas as you adjust them. Turn this off for very large documents or slower machines. Each dialog also has its own **Preview** checkbox.
 
+- **Alt + click picks the colour on the model** (3D Paint): off by default. Holding Z and clicking always picks. **Sample size** sets how many pixels are averaged.
+
 ## Autosave and backups
 - **Autosave every:** Off, 1, 2, 5 (the default), 10, 15 or 30 minutes. When the painting (or, in 3D Paint, the project) has changed, a **recovery copy** is saved: in the desktop app in an *Autosave* folder beside the app's settings, in the browser in its own storage. It is removed when you save. If the app closes without saving, or crashes, the welcome screen offers it back.
 - **Countdown first:** a small popup counts down (3, 5 or 10 seconds, or no warning) before each autosave, so you know the short pause is coming. **Not now** puts it off for a minute; **Save now** saves straight away. It waits for you to finish a stroke.
@@ -22,6 +24,8 @@ Drag the lower-right corner of Preferences to resize the window. Tabs, settings 
 - **Keep a backup of the previous save** (desktop app, on by default): before saving over a file, the previous version is kept beside it as *name.backup.gouache* (or *.backup.gouache3d*).
 
 ## Memory and disk
+The graphics-memory limit is **Automatic** by default: Gouache reads your card's name and uses its memory (the drop-down shows the detected size). Choose a size yourself if the guess is wrong. Very large pictures and masks are drawn in tiles so the card is never kept busy for long.
+
 Like Photoshop's memory and scratch disk settings.
 - **Use up to:** the memory limit. The app shows how much memory your computer has and how much is free. Undo history and loaded models (the 3D view and the Bake tab) share this memory. Past it, the desktop app moves older undo steps to the **disk cache** and reads them back if you undo that far; the browser version drops the oldest steps. It starts at half your memory. Leave room for Windows and other apps: half to three quarters works well.
 - **Undo steps:** how many steps the history keeps (10 to 1000). The default is **50** in the desktop app and **30** in the browser: long histories of big documents used a lot of memory and could slow the app down or crash it.

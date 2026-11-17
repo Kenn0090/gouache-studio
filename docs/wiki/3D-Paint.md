@@ -68,7 +68,8 @@ These follow Substance Painter's own shortcuts (Preferences › Painting › *Su
 - **[** and **]** change the size, **Shift + right drag** turns the sky, **F** frames the model.
 
 ## Picking colours and shades
-- **Hold Alt over the model** (without clicking) to pick its colour there. The colour changes the moment you press the key and follows the pointer with no delay. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. Release it to return to painting. Alt + drag still turns the model.
+- **Hold Z over the model** and a small swatch beside the pointer shows the colour a click would pick; **click** to pick it. Change **3D Paint: pick colour (hold)** in **Edit › Keyboard shortcuts › Brush and colour** to use another key. On a mask it picks the mask's grey. The **Eyedropper** tool picks on the model too, and **Preferences** has a **sample size** (a point, or an average over 3×3 up to 31×31 pixels).
+- **Alt only turns the model.** If you would rather have it pick too, tick **Alt + click picks the colour on the model** in Preferences (off by default; Alt + drag still turns the model, and there is no picker icon).
 - **Left / Right arrow keys** step through the shade strip in the Color panel while you paint. Clicking a shade still works, and the strip stays put while you step.
 
 ## Which way is up
@@ -84,6 +85,9 @@ Tick **Use UV tile workflow** in the New 3D Paint Project window for a model who
 - **One texture set per material, its tiles inside.** The texture set list shows each set's tiles under its name; click a tile to see it on the flat canvas.
 - The tiles of a material sit side by side on **one canvas** in their grid places, so **one layer stack** covers them all: a brush stroke, a fill or a blur carries across a tile border with no seam.
 - **Texture size** is per tile: a material on two tiles across at 2048 gets a 4096 × 2048 canvas (kept under what the graphics card can hold).
+- **Tile buttons.** The strip at the bottom of the viewport (3D · Split · 2D) has one button per tile; click one to frame that tile in the flat view.
+- **Texture on one tile.** A picture channel in a material has a **Tiles** row: **All**, or tick the tiles it covers; the others stay empty.
+- **Tile sizes** are set tile by tile in the tile list.
 - **Exporting** writes one picture per tile, named the usual way (`Name_BaseColor.1001.png`, `.1002`…), and an OBJ/FBX model keeps the file's UDIM UVs. A **.glb** model has no tiles, so it gets the tiles' canvas as one picture per map, with matching UVs.
 - **Bake mesh maps** bakes into the tiles' canvas too.
 - Projects made with an older version, with one texture set per tile, still open and work as before.
@@ -304,6 +308,12 @@ It arrives as a **sticker**: a material layer whose pictures are projected onto 
 
 ## Editing a layer in the Paint canvas
 Right-click a layer › **Edit in the Paint canvas** sends its content (every map) to the Paint tab as a linked layer, so you can use every Paint tool on it. When you're done, right-click it there › **Send back to 3D Paint**: it replaces the original layer's content and keeps its name, mask, opacity and blend mode. Its effects and styles become part of the pixels, and a material layer becomes a plain paint layer. One undo step in 3D Paint takes it back.
+
+## When the model changes
+- **The model file changed on disk** (you saved it again in Blender or ZBrush): Gouache asks to update it. If the UVs or the triangles changed, your **paint is moved onto the new layout** by surface position, so nothing is lost; the mesh maps are moved too, and you are offered a fresh bake for exact ones.
+- **File › Import › Replace the model, keep my paint…** swaps in another model file the same way, for example a retopologised version.
+- **File › Import › Transfer paint from another project…** reads another saved 3D Paint project, without opening it, and projects the maps you tick onto the current model as a new layer in each texture set you choose. Works for UDIM projects too (not for the older one-set-per-tile projects).
+- Re-projection clears the undo history of the sets it touches. It cannot move paint that is not on the surface (for example, a fill layer's UV-projected picture is redrawn from its own settings).
 
 ## Saving and exporting
 - **Ctrl + S** in the 3D Paint tab (or **Save project**) saves a **.gouache3d** project: the model with its materials, every texture set with its layers, the camera and the mirror settings. Open it with **File › Open** or **Open project…**.
