@@ -98,12 +98,15 @@ function prReport(){const dur=(performance.now()-pr.t0)/1000,F=pr.frames,S=pr.se
   out.push('','THE APP’S OWN STEPS (times each ran · usual · longest · total)');
   for(const [k,t] of [...tot].sort((x,y)=>y[1][1]-x[1][1]).slice(0,18))out.push('· '+k+': '+t[0]+' × · '+prMs(t[1]/t[0])+' · '+prMs(t[2])+' · '+(t[1]>=1000?(t[1]/1000).toFixed(2)+' s':prMs(t[1])));
   if(pr.long.length){const l=pr.long.map(x=>x[1]);out.push('','Long pauses of the page (over 50 ms): '+l.length+' · longest '+prMs(Math.max(...l)));}
-  try{const G=gpuMemory();out.push('','Textures in use: '+fmtBytes(G.bytes)+' · spare '+fmtBytes(G.spare)+' · undo '+fmtBytes(hist.undo.reduce((s,r)=>s+recBytes(r),0)));}catch(e){}
+  try{const G=gpuMemory();out.push('','Textures in use: '+fmtBytes(G.bytes)+' · spare '+fmtBytes(G.spare)+' · undo '+fmtBytes(hist.undo.reduce((s,r)=>s+recBytes(r),0)));
+    /* (0.98.3) what the textures are made of, biggest first: where the graphics memory goes */
+    const by=new Map();for(const t of gpuLiveTargets()){const k=t.w+'×'+t.h+' '+(t.mono?'one channel ':'')+(t.packed?'packed ':'')+t.depth+'-bit'+(t.pool&&t.pool.free.includes(t)?' (spare)':'');const o=by.get(k)||[0,0];o[0]++;o[1]+=gpuBytes(t);by.set(k,o);}
+    for(const [k,o] of [...by].sort((x,y)=>y[1][1]-x[1][1]).slice(0,6))out.push('  · '+o[0]+' × '+k+' = '+fmtBytes(o[1]));}catch(e){}
   return out.join('\n');}
 function prShow(){const ta=el('textarea',{id:'prText',class:'prtext',readonly:true,rows:22,'aria-label':'Painting report'});ta.value=pr.text||'';
   const copy=el('button',{class:'btn',type:'button',id:'prCopy',text:'Copy the report',onclick:async()=>{let ok=false;try{await navigator.clipboard.writeText(ta.value);ok=true;}catch(e){try{ta.select();ok=document.execCommand('copy');}catch(e2){}}toast(ok?'Report copied. Paste it into the chat.':'Could not copy: select the text and press Ctrl+C.');}});
   openDialog({title:'Painting report',body:el('div',{class:'dlg-grid'},el('p',{class:'note',text:'This says how evenly the screen refreshed while you painted, and what the app was doing at each stutter. It holds no pictures and no file names. Copy it and paste it into the chat.'}),ta,el('div',{class:'chips'},copy,
-    el('button',{class:'btn',type:'button',id:'prAgain',text:'Record again',onclick:()=>{const c=$('#dlgCancel');if(c)c.click();setTimeout(prStart,150);}}))),okLabel:'Close',onOk(){}});}
+    el('button',{class:'btn',type:'button',id:'prAgain',text:'Record again',onclick:()=>{const c=$('#dlgCancel');if(c)c.click();setTimeout(prStart,150);}}))),okLabel:'Close',onOk(){},resizable:true});}
 function dlgPaintReport(){if(pr.on){prStop();prShow();return;}
   openDialog({title:'Painting report',body:el('div',{class:'dlg-grid'},
     el('p',{text:'This measures how smoothly painting runs on this computer, and finds what causes a stutter.'}),

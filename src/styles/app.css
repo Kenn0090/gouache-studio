@@ -1854,7 +1854,7 @@ body.sharp .hbchip{border-radius:0}
 
 /* (0.98) Painting report */
 .prchip{left:50%;right:auto;transform:translateX(-50%)}
-.prtext{width:100%;min-width:min(640px,80vw);font:11px/1.45 var(--mono,ui-monospace,monospace);white-space:pre;background:var(--bg-2,#151515);color:inherit;border:1px solid var(--line,#444);border-radius:6px;padding:8px;resize:vertical}
+.prtext{width:100%;min-width:0;box-sizing:border-box;height:min(56vh,540px);font:11px/1.45 var(--mono,ui-monospace,monospace);white-space:pre-wrap;word-break:break-word;background:var(--bg-2,#151515);color:inherit;border:1px solid var(--line,#444);border-radius:6px;padding:8px;resize:vertical}
 
 /* (0.98.1, Kenn's screenshot) a drop-down with a see-through background opened as a white list with pale text (the UV tile sizes looked greyed out): the list always gets the panel's own colours */
 select option,select optgroup{background:var(--panel);color:var(--text)}
@@ -1891,3 +1891,18 @@ select option:disabled{color:var(--muted)}
 .xweng:hover{border-color:var(--line-2);background:var(--ground)}.xweng.on{border-color:var(--accent);background:var(--accent-soft)}.xweng.on svg{color:var(--accent)}
 .xwengset{gap:8px}
 body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.sharp .xwbadge{border-radius:0}
+
+/* (0.97.24) timelapse settings: grouped, with cards for the lists */
+.tlpop{width:360px;padding:0;overflow:auto}
+.tlhead{display:flex;align-items:baseline;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel,#222);z-index:1}.tlhead b{font-size:14px}.tlsub{color:var(--muted);font-size:11px;flex:1}
+.tlx{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 4px}.tlx:hover{color:var(--text)}
+.tlsec{padding:10px 14px;border-bottom:1px solid var(--line);display:grid;gap:8px}.tlsec:last-child{border-bottom:0}
+.tlsh{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tlf{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;align-items:center}.tlf>label{color:var(--muted);font-size:12px}.tlf select{width:100%;min-width:0}
+.tlf:has(.srow){display:block}.tlf .srow{grid-template-columns:104px minmax(0,1fr) 44px;margin:0}.tlf .srow label{color:var(--muted);font-size:12px}.tlnote{margin:0;font-size:11px;color:var(--muted);line-height:1.4}
+.tlcard{display:grid;gap:4px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 85%,#000)}
+.tlname{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tlmeta{font-size:11px;color:var(--muted)}.tlbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+
+#modal:has(.prtext) .dialog.resizable{width:min(920px,96vw);height:min(86vh,820px)}
+#modal:has(.prtext) .prtext{height:calc(100% - 12px);min-height:240px}
+#modal:has(.prtext) #dlgBody>.dlg-grid{height:100%;grid-template-rows:auto minmax(0,1fr) auto}

@@ -64,12 +64,13 @@ async function matExport(rec){if(rec.kind==='smart'||rec.kind==='smask'){const b
     const blob=await gmatBlob(Object.assign({app:'Gouache Studio',kind:rec.kind,v:1,name:rec.name},body));const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,rec.kind==='smart'?'Smart material':'Smart mask'));return;}
   const imgs={};for(const k in rec.imgs||{}){const im=rec.imgs[k],c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d'),id=x.createImageData(im.w,im.h),d=im.data;
     for(let i=0;i<d.length;i+=4){const a=d[i+3]||1;id.data[i]=Math.min(255,d[i]*255/a);id.data[i+1]=Math.min(255,d[i+1]*255/a);id.data[i+2]=Math.min(255,d[i+2]*255/a);id.data[i+3]=d[i+3];}
-    x.putImageData(id,0,0);imgs[k]={w:im.w,h:im.h,png:pxDataURL(c,k)};}
+    x.putImageData(id,0,0);const nu=k==='normal'?pxNormalURL(c):null;imgs[k]=nu?{w:im.w,h:im.h,png:nu,n2:1}:{w:im.w,h:im.h,png:pxDataURL(c,k)};}
   const blob=await gmatBlob({app:'Gouache Studio',kind:'material',v:1,name:rec.name,fill:rec.fill,imgs,op:rec.op,mapOpacities:rec.mapOpacities});
   const r=await deliver(slug(rec.name)+'.gmat',blob);toast(deliveredText(r,'Material'));}
 /* a .gmat's pictures (PNG or WebP data URLs) back to premultiplied pixels */
 async function gmatImgs(j){const imgs={};
   for(const k in j.imgs||{}){const im=j.imgs[k],img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('bad image'));i.src=im.png;});
+    if(im.n2){imgs[k]={w:im.w,h:im.h,data:pxNormalRead(img,im.w,im.h)};continue;}
     const c=document.createElement('canvas');c.width=im.w;c.height=im.h;const x=c.getContext('2d',{willReadFrequently:true});/* read straight from memory, not back from the graphics card */x.drawImage(img,0,0);const d=x.getImageData(0,0,im.w,im.h).data,out=new Uint8Array(d.length);
     for(let i=0;i<d.length;i+=4){const a=d[i+3];out[i]=d[i]*a/255;out[i+1]=d[i+1]*a/255;out[i+2]=d[i+2]*a/255;out[i+3]=a;}imgs[k]={w:im.w,h:im.h,data:out};}
   return imgs;}
