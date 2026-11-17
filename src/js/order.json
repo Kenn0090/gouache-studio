@@ -155,6 +155,7 @@
     "ui/mask-rows",
     "ui/mask-sections",
     "layers/edge-shape",
+    "layers/edge-painter",
     "layers/mat-convert",
     "layers/smart",
     "layers/smart-workshop",
