@@ -109,10 +109,10 @@ float brushMask(vec2 pix){
      The lean comes from how the distance to the camera changes across the screen at the dab (zero when the surface faces the pixel's ray). */
   if(uTiltK>0.0){ ivec2 tc=ivec2(uCenter), ts=textureSize(uTiltD,0); float d0=texelFetch(uTiltD,clamp(tc,ivec2(0),ts-1),0).r;
     /* the lean is measured over a third of the brush, not a few pixels, so a crease or a bump does not turn each dab a different way */
-    int k=int(clamp(uRadius*0.33,3.0,28.0)); ivec2 ex=ivec2(k,0), ey=ivec2(0,k);
+    int k=int(clamp(uRadius*0.6,4.0,48.0)); ivec2 ex=ivec2(k,0), ey=ivec2(0,k);
     if(d0>0.0){ float a=texelFetch(uTiltD,clamp(tc+ex,ivec2(0),ts-1),0).r, b=texelFetch(uTiltD,clamp(tc-ex,ivec2(0),ts-1),0).r, c=texelFetch(uTiltD,clamp(tc+ey,ivec2(0),ts-1),0).r, e=texelFetch(uTiltD,clamp(tc-ey,ivec2(0),ts-1),0).r;
       if(a>0.0&&b>0.0&&c>0.0&&e>0.0&&abs(a-b)<0.5*d0&&abs(c-e)<0.5*d0){ vec2 g=vec2(a-b,c-e)/(2.0*float(k)); float gl=length(g);
-        if(gl>1e-7){ float tn=gl/(d0*uTiltK), co=max(inversesqrt(1.0+tn*tn),0.3); vec2 u=g/gl, w=vec2(-u.y,u.x); dv=u*(dot(dv,u)/co)+w*dot(dv,w); } } } }
+        if(gl>1e-7){ float tn=gl/(d0*uTiltK), co=max(inversesqrt(1.0+tn*tn),0.4); vec2 u=g/gl, w=vec2(-u.y,u.x); dv=u*(dot(dv,u)/co)+w*dot(dv,w); } } } }
   float ca=cos(uAngle), sa=sin(uAngle);
   vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; q.y/=max(uRound,0.02);
   float m;
