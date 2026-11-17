@@ -95,7 +95,7 @@ function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
   pg.append(...lightTabBody().filter(Boolean));return pg;}
 
 /* ---- the lights in the 3D view of the Bake tab: drag a sun to turn it, a bulb or spot to move it ---- */
-const lgz={el:null,drag:null,raf:0};
+const lgz={el:null,drag:null,raf:0,mode:'move'};/* mode: 'move' (arrows), 'rotate' (three rings) or 'off': W and R switch them */
 /* (0.97.27) how close the pointer must be, in pixels, to grab the ring, an arrow or a light */
 const LGZ_GRAB={ring:11,axis:12,light:24};
 let lightPageRedraw=null,lightHist=null;
@@ -103,7 +103,7 @@ const lightWin={open:false};
 function lgzActive(){const R=bakeCfg&&bakeCfg.rig;return (ui.mode==='bake'||ui.mode==='p3d'&&(v3s().rigLive||lightWin.open))&&v3.on&&R&&R.show!==false&&R.lights&&R.lights.some(L=>L.type!=='sky')?R:null;}
 /* (0.98.11, Kenn: gizmos for the lights in the viewport) the studio sun of the 3D view gets the same handles, as one pseudo light */
 const SGZ={rig:{lights:[],sel:'__sun'},L:null};
-function sunGzOn(){if(ui.mode!=='p3d'||!v3.on||lightWin.open)return false;const s=v3s();if(s.rigLive||s.sunGizmo===false)return false;return (typeof envOf==='function'&&envOf(s)==='none')?(s.sunI||0)>0:(s.envSun||0)>0;}
+function sunGzOn(){if(ui.mode!=='p3d'||!v3.on||lightWin.open)return false;const s=v3s();if(s.rigLive||s.sunGizmo===false)return false;if(s.sunGizmo!==true&&!(typeof panelShown==='function'&&panelShown('v3lights')))return false;/* (0.98.13, Kenn) the sun handle stays hidden until the Lights panel is open */return (typeof envOf==='function'&&envOf(s)==='none')?(s.sunI||0)>0:(s.envSun||0)>0;}
 function sunGzRig(){const s=v3s();SGZ.rig.lights=[Object.assign(SGZ.L||(SGZ.L={id:'__sun',type:'sun',name:'Sun',on:true}),{col:(s.lightColor||[1,1,1]).slice(0,3),el:s.sunEl||0,turn:s.sunAz||0})];return SGZ.rig;}
 /* (0.98.11, Kenn) two ways to move lights in 3D Paint: Orbit (the light turns round the model) and Free (like Marmoset: move it along X/Y/Z or across the screen, and see where it points) */
 function lgzFree(){if(ui.mode!=='p3d')return false;const s=v3s();if(s.lightFree!==undefined)return !!s.lightFree;try{return localStorage.getItem('gs.lightFree')==='1';}catch(e){return false;}}
@@ -119,7 +119,8 @@ function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sun
     const m=18;if(p[0]<m||p[0]>w-m||p[1]<m||p[1]>h-m){out=true;p=[clamp(p[0],m,w-m),clamp(p[1],m,h-m)];}return {L,at,p,out};});
   /* the selected light's gizmo: move arrows (bulb, spot) and a turn ring (sun, spot) */
   const free=lgzFree(),S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
-  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free&&!lgz.rot)?0:34};if((S.L.type!=='sun'||free)&&!(free&&lgz.rot&&S.L.type!=='point')){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
+  if(S){gz={it:S,ax:[],ring:free?0:(S.L.type==='point'?0:34)};if(free&&lgz.mode==='rotate'&&S.L.type!=='point')gz.rings=lgzRings(S,pr,b);
+    if((S.L.type!=='sun'||free)&&!(free&&lgz.mode!=='move')){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
     if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}
     /* size handles (squares): reach of a bulb or spot, the cone of a spot, the shadow softness of a sun */
     gz.sz=[];if(!isSun){const t=S.L.type,R0=(gz.ring||14)+34;if(t==='sun')gz.sz.push({id:'soft',at:[S.p[0]+R0,S.p[1]],label:'Softness'});else{gz.sz.push({id:'reach',at:[S.p[0]+R0,S.p[1]],label:'Reach'});if(t==='spot')gz.sz.push({id:'cone',at:[S.p[0],S.p[1]+R0],label:'Cone'});}}}
@@ -143,6 +144,7 @@ function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const
   const z=G.gz;if(z){const p=z.it.p,AX=['#ff5a5a','#5ad46a','#5a9bff'];
     for(const a of z.ax){const hot=lgz.hot==='ax'+a.k;x.strokeStyle=AX[a.k];x.fillStyle=AX[a.k];x.lineWidth=hot?5:3.5;const r0=z.ring?z.ring+5:14,s0=[p[0]+a.u[0]*r0,p[1]+a.u[1]*r0];x.beginPath();x.moveTo(s0[0],s0[1]);x.lineTo(a.end[0],a.end[1]);x.stroke();
       const n=[-a.u[1],a.u[0]];x.beginPath();x.moveTo(a.end[0]+a.u[0]*13,a.end[1]+a.u[1]*13);x.lineTo(a.end[0]+n[0]*7,a.end[1]+n[1]*7);x.lineTo(a.end[0]-n[0]*7,a.end[1]-n[1]*7);x.fill();}
+    if(z.rings)for(const r of z.rings){const hot=lgz.hot==='rot'+r.k||lgz.drag&&lgz.drag.part==='rot'+r.k;x.strokeStyle=AX[r.k];x.lineWidth=hot?5:3;x.globalAlpha=hot?1:.85;x.beginPath();let go=false;for(const q of r.pts){if(!q){go=false;continue;}if(!go){x.moveTo(q[0],q[1]);go=true;}else x.lineTo(q[0],q[1]);}x.stroke();x.globalAlpha=1;}
     if(z.ring){x.strokeStyle=lgz.hot==='ring'?'#ffd24a':'rgba(255,210,74,.75)';x.lineWidth=lgz.hot==='ring'?5:3.5;x.beginPath();x.arc(p[0],p[1],z.ring,0,7);x.stroke();}
     for(const q of z.sz||[]){const hot=lgz.hot==='sz:'+q.id||lgz.drag&&lgz.drag.part==='sz:'+q.id;x.strokeStyle='rgba(255,210,74,.5)';x.lineWidth=1;x.setLineDash([2,3]);x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(q.at[0],q.at[1]);x.stroke();x.setLineDash([]);
       x.fillStyle=hot?'#ffd24a':'#fff';x.strokeStyle='#111';x.lineWidth=1.5;const h=hot?7:5.5;x.fillRect(q.at[0]-h,q.at[1]-h,h*2,h*2);x.strokeRect(q.at[0]-h,q.at[1]-h,h*2,h*2);
@@ -158,9 +160,13 @@ function lgzBeams(x,G){const b=G.b;for(const {L,at,p,out} of G.items){if(out||L.
     else{/* sun: parallel lines and an arrow toward the model */const off=Math.min(b.r*.18,dist*.2);for(const [a,c] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){const o=at.map((w,k)=>w+(u[k]*a+v[k]*c)*off),e=G.pr(o),f=G.pr(o.map((w,k)=>w+d[k]*dist));if(!e||!f)continue;x.setLineDash(a||c?[5,4]:[]);x.beginPath();x.moveTo(e[0],e[1]);x.lineTo(f[0],f[1]);x.stroke();
         if(!a&&!c){const ang=Math.atan2(f[1]-e[1],f[0]-e[0]);x.setLineDash([]);x.fillStyle=col;x.beginPath();x.moveTo(f[0],f[1]);x.lineTo(f[0]-Math.cos(ang-.4)*14,f[1]-Math.sin(ang-.4)*14);x.lineTo(f[0]-Math.cos(ang+.4)*14,f[1]-Math.sin(ang+.4)*14);x.fill();}}}
     x.restore();}}
+/* three rings (X red, Y green, Z blue) around a light, as screen polylines */
+function lgzRings(S,pr,b){const R=b.r*.26,rings=[];for(let k=0;k<3;k++){const u=[0,0,0],v=[0,0,0];u[(k+1)%3]=1;v[(k+2)%3]=1;/* u × v is the axis, so a growing angle turns the right-handed way */
+    const pts=[];for(let i=0;i<=48;i++){const t=i/48*Math.PI*2;pts.push(pr(S.at.map((c,j)=>c+R*(u[j]*Math.cos(t)+v[j]*Math.sin(t)))));}rings.push({k,pts,u,v,R});}return rings;}
 const lgzMouse=(hit,e)=>{const r=hit.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
 /* which gizmo part is under the pointer: 'ax0'..'ax2' (move along X/Y/Z) or 'ring' (turn) */
-function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;
+function lgzRingHit(z,m){if(!z.rings)return null;let best=null;for(const r of z.rings){for(let i=0;i<r.pts.length-1;i++){const a=r.pts[i],c=r.pts[i+1];if(!a||!c)continue;const vx=c[0]-a[0],vy=c[1]-a[1],l2=vx*vx+vy*vy||1e-6,t=clamp(((m[0]-a[0])*vx+(m[1]-a[1])*vy)/l2,0,1),d=Math.hypot(m[0]-(a[0]+vx*t),m[1]-(a[1]+vy*t));if(d<LGZ_GRAB.ring&&(!best||d<best.d))best={d,k:r.k,tan:[vx/Math.sqrt(l2),vy/Math.sqrt(l2)],ang:(i+t)/(r.pts.length-1)*Math.PI*2};}}return best;}
+function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;const rh=lgzRingHit(z,m);if(rh)return 'rot'+rh.k;
   for(const q of z.sz||[])if(Math.abs(m[0]-q.at[0])<10&&Math.abs(m[1]-q.at[1])<10)return 'sz:'+q.id;
   if(z.ring&&Math.abs(Math.hypot(m[0]-p[0],m[1]-p[1])-z.ring)<LGZ_GRAB.ring)return 'ring';const a0=z.ring?z.ring+4:10;
   for(const a of z.ax){const t=(m[0]-p[0])*a.u[0]+(m[1]-p[1])*a.u[1],L=Math.hypot(a.end[0]-p[0],a.end[1]-p[1])+14;if(t>a0&&t<L){const d=Math.abs((m[0]-p[0])*a.u[1]-(m[1]-p[1])*a.u[0]);if(d<LGZ_GRAB.axis)return 'ax'+a.k;}}
@@ -168,9 +174,9 @@ function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;
 function lgzHover(hit,e){const G=lgzGeom(hit),m=G?lgzMouse(hit,e):null;let h=G&&!lgz.drag?lgzPart(G,m):null;
   /* (0.97.27, Kenn: "lights are a little hard to move around") a light under the pointer shows it can be grabbed too */
   if(!h&&G&&!lgz.drag&&G.items.some(it=>Math.hypot(m[0]-it.p[0],m[1]-it.p[1])<LGZ_GRAB.light))h='light';
-  if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'?'grab':h&&h.startsWith('sz:')?'ew-resize':'move';return !!h;}
+  if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'||(h&&h.startsWith('rot'))?'grab':h&&h.startsWith('sz:')?'ew-resize':'move';return !!h;}
 function lgzDown(hit,e){const G=lgzGeom(hit);if(!G)return false;const m=lgzMouse(hit,e);let best=null;
-  const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:lgzPos0(L,G),aim0:lightAim(L),G,part,shift:e.shiftKey};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
+  const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:lgzPos0(L,G),aim0:lightAim(L),G,part,shift:e.shiftKey,rot:part.startsWith('rot')?lgzRingHit(G.gz,m):null};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
   for(const it of G.items){const d=Math.hypot(m[0]-it.p[0],m[1]-it.p[1]);if(d<LGZ_GRAB.light&&(!best||d<best.d))best={it,d};}
   if(!best){lgz.picked=false;return false;}const L=best.it.L;G.R.sel=L.id;lgz.picked=true;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:lgzPos0(L,G),G,shift:e.shiftKey};
   try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();if(lightPageRedraw)lightPageRedraw();else lightTabSync();return true;}
@@ -178,6 +184,11 @@ function lgzMove(hit,e){const D=lgz.drag;if(!D)return;D.m=lgzMouse(hit,e);D.shif
 function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-D.m0[0],dy=D.m[1]-D.m0[1];
   if(D.part&&D.part.startsWith('sz:')){const k=D.part.slice(3),f=Math.exp(dx/150);D.r0=D.r0||{range:L.range,soft:L.soft,cone:L.cone??35};
     if(k==='reach')L.range=Math.max(1e-3,D.r0.range*f);else if(k==='soft')L.soft=Math.max(0,(D.r0.soft||.5)*f);else if(k==='cone')L.cone=clamp(D.r0.cone+dy*.5,5,170);}
+  else if(D.part&&D.part.startsWith('rot')){const k=+D.part[3],ring=G.gz&&G.gz.rings&&G.gz.rings.find(o=>o.k===k);
+    if(ring&&D.rot){const px=Math.max(20,Math.hypot((ring.pts[0]||[0,0])[0]-G.gz.it.p[0],(ring.pts[0]||[0,0])[1]-G.gz.it.p[1])),th=(dx*D.rot.tan[0]+dy*D.rot.tan[1])/px,ax=[0,0,0];ax[k]=1;
+      const rotv=(v,a,t)=>{const c=Math.cos(t),sn=Math.sin(t),d=a[0]*v[0]+a[1]*v[1]+a[2]*v[2],cr=[a[1]*v[2]-a[2]*v[1],a[2]*v[0]-a[0]*v[2],a[0]*v[1]-a[1]*v[0]];return [0,1,2].map(i=>v[i]*c+cr[i]*sn+a[i]*d*(1-c));};
+      const a1=rotv(D.aim0,ax,th);
+      if(L.type==='spot'){L.aim=lightNorm(a1);}else if(L.type==='sun'){const f=a1.map(v=>-v),an=lgzDirToAngles(lightNorm(f));L.el=an.el;L.turn=an.turn;delete L.pos;}}}
   else if(D.part&&D.part.startsWith('ax')){const k=+D.part[2],a=G.gz&&G.gz.ax.find(o=>o.k===k);if(a){const t=(dx*a.u[0]+dy*a.u[1])/a.ppu;L.pos=D.pos0.slice();L.pos[k]+=t;}}
   else if(D.part==='ring'&&L.type==='spot'){/* turn the spot: across = around the up axis, up/down = tilt */const a0=D.aim0,yaw=-dx*.6*Math.PI/180,pit=-dy*.6*Math.PI/180;
     let v=[a0[0]*Math.cos(yaw)+a0[2]*Math.sin(yaw),a0[1],-a0[0]*Math.sin(yaw)+a0[2]*Math.cos(yaw)];const hz=Math.hypot(v[0],v[2])||1e-6,el=Math.asin(clamp(v[1],-1,1))+pit,ce=Math.cos(clamp(el,-1.55,1.55));
@@ -282,10 +293,11 @@ async function lightPreviewStop(){if(lp.prog)lp.prog.cancelled=true;clearTimeout
 
 /* (0.95.8, Kenn) Delete removes the selected light, while the lights are being worked on (Bake tab's Lighting page, the Lights
    window, or right after a light was clicked in the view) */
-/* (0.98.13, Kenn) R switches the selected light's gizmo between Move (arrows) and Rotate (ring) in Free mode */
-function lightKeyRotate(e){if(e.key!=='r'&&e.key!=='R')return false;if(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||isTypingTarget(e.target)||ui.mode!=='p3d'||!lgzFree())return false;
-  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const L=R.lights.find(x=>x.id===R.sel);if(!L||L.type==='point')return false;
-  e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return true;lgz.rot=!lgz.rot;lgzDraw();try{toast(lgz.rot?'Rotate: turn the light with the ring (R for Move).':'Move: drag the arrows (R for Rotate).');}catch(_){}return true;}
+/* (0.98.13, Kenn) in Free mode W shows the move arrows (again: hides them) and R shows the rotation rings (again: hides them) */
+function lightKeyRotate(e){const k=(e.key||'').toLowerCase();if(k!=='r'&&k!=='w')return false;if(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||isTypingTarget(e.target)||ui.mode!=='p3d'||!lgzFree())return false;
+  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const L=R.lights.find(x=>x.id===R.sel);if(!L)return false;if(k==='r'&&L.type==='point')return false;
+  e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return true;const want=k==='w'?'move':'rotate';lgz.mode=lgz.mode===want?'off':want;lgzDraw();
+  try{toast(lgz.mode==='move'?'Move gizmo (W again to hide).':lgz.mode==='rotate'?'Rotate gizmo (R again to hide).':'Gizmo hidden (W for move, R for rotate).');}catch(_){}return true;}
 function lightKeyDelete(e){if(e.key!=='Delete'&&e.key!=='Backspace')return false;if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return false;
   const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const page=ui.mode==='bake'&&!!(bakeCfg.mapOpen&&bakeCfg.mapOpen.light);/* (0.97, no tabs) the Lighting settings are always on show: its preview and lights follow the Lighting tick */if(!(page||lightWin.open||lgz.picked))return false;
   if(!modal.hidden&&!lightWin.open)return false;const L=R.lights.find(x=>x.id===R.sel);if(!L)return false;

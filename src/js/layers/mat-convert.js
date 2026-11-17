@@ -107,3 +107,8 @@ function mcSendLayer(key){const M=doc.meshMaps||{},t=M[key];if(!t){toast('That m
   copyScaled(t,ensureMapTarget(Ln,own));if(own!=='base'){Ln.blankBase=true;setMapModeOf(Ln,own,0);}
   if(key==='ao'||key==='cv:ao')Ln.mode=MODES.indexOf('Multiply');
   structOp('Send “'+nm+'” as a layer',()=>{const P0=insertPoint();insertNode(Ln,P0[0],P0[1]);});changedAll();toast('Sent “'+nm+'” as a layer.');}
+
+/* (0.98.13, Kenn) a picture dropped on a Converted channel goes to the Convert tab, as its source, so the maps can be made from it there */
+async function mcDropToConvert(file){let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return false;}
+  if(!setMode('convert',true)){disposeTarget(t);return false;}tabDocResize(t.w,t.h,'Convert');cvSetSource(t,baseName(file.name),true);cvSetKind('photo');cvAllDirty();buildConvertPanel();
+  toast('Opened “'+file.name+'” in the Convert tab. Tick the maps you want, then send them back.');return true;}

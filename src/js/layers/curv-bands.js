@@ -11,6 +11,7 @@
 /* (0.98.13, Kenn: "like Substance's Curvature generator") seven sizes, Sharp to Huge, instead of three. Same idea: the map is blurred at six growing sizes and
    each size's share (the difference between two neighbouring blurs) has its own strength; 100% each adds back up to the original, so nothing changes until a slider moves. */
 const CB_KEYS=[['sharp','Sharp'],['fine','Fine'],['soft','Soft'],['medium','Medium'],['large','Large'],['big','Big'],['huge','Huge']];
+const CB_SUBSTANCE={sharp:1,fine:.9,soft:.75,medium:.5,large:.25,big:.15,huge:.1};
 const CB_NEW=['sharp','fine','soft','medium','large','huge'];
 const FS_CBAND=`uniform sampler2D uT0; uniform sampler2D uT1; uniform sampler2D uT2; uniform sampler2D uT3; uniform sampler2D uT4; uniform sampler2D uT5; uniform sampler2D uT6; uniform vec4 uW0; uniform vec3 uW1; uniform vec2 uSz;
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; float t0=texture(uT0,uv).r,t1=texture(uT1,uv).r,t2=texture(uT2,uv).r,t3=texture(uT3,uv).r,t4=texture(uT4,uv).r,t5=texture(uT5,uv).r,t6=texture(uT6,uv).r;
@@ -35,8 +36,11 @@ function curvBands(src,o,depth){if(!src||!src.tex)return null;if(!P_CBAND)P_CBAN
   return out;}
 /* the sliders: three strengths and the size that splits them */
 function curvBandsSliders(get,set,idp){const w=cbOf(get()),o=get()||{};
-  const sl=(k,label)=>makeSlider({id:idp+k,label,min:0,max:4,step:.01,value:w[k],def:1,fmt:v=>Math.round(v*100)+'%',onInput:v=>{if(o&&(o.med!=null||o.small!=null)&&!CB_NEW.some(q=>o[q]!=null))for(const q of CB_NEW)set(q,w[q]);set(k,v);}}).el;
-  return [...CB_KEYS.map(([k,l])=>sl(k,l)),makeSlider({id:idp+'scale',label:'Shape size',min:.25,max:4,step:.01,value:o.scale!=null?o.scale:1,def:1,fmt:v=>Math.round(v*100)+'%',onInput:v=>set('scale',v)}).el,
+  const objs={},sl=(k,label)=>{const m=makeSlider({id:idp+k,label,min:0,max:4,step:.01,value:w[k],def:1,fmt:v=>Math.round(v*100)+'%',onInput:v=>{if(o&&(o.med!=null||o.small!=null)&&!CB_NEW.some(q=>o[q]!=null))for(const q of CB_NEW)set(q,w[q]);set(k,v);}});objs[k]=m;return m.el;};
+  /* (0.98.13, Kenn) Substance's own starting values for the seven sizes: 100, 90, 75, 50, 25, 15 and 10 % */
+  const subs=el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:idp+'subst',text:'Substance default',title:'The starting values of Substance\u2019s Curvature generator (100, 90, 75, 50, 25, 15, 10 %)',onclick:()=>{for(const [k,v] of Object.entries(CB_SUBSTANCE)){set(k,v);if(objs[k]&&objs[k].set)try{objs[k].set(v);}catch(e){}}}}),
+    el('button',{class:'btn sm',type:'button',id:idp+'flat',text:'All 100%',title:'Back to the map as baked',onclick:()=>{for(const [k] of CB_KEYS){set(k,1);if(objs[k]&&objs[k].set)try{objs[k].set(1);}catch(e){}}}}));
+  return [subs,...CB_KEYS.map(([k,l])=>sl(k,l)),makeSlider({id:idp+'scale',label:'Shape size',min:.25,max:4,step:.01,value:o.scale!=null?o.scale:1,def:1,fmt:v=>Math.round(v*100)+'%',onInput:v=>set('scale',v)}).el,
     el('p',{class:'note',text:'Seven sizes, from Sharp (pores, scratches, creases) to Huge (the broad forms). 100% each is the map as baked; 0% takes that size out, higher pushes it. Shape size moves all the sizes together.'})];}
 /* ---- mask generators: the curvature they read goes through the bands first (mask-stack.js msSource, once per row) ---- */
 function cbGen(curv,p,ctx){if(!curv||!p||!curvBandsOn(p.cb))return curv;const out=curvBands(curv,p.cb,16);if(!out)return curv;ctx.tmp.push(out);return out;}
