@@ -20,7 +20,9 @@ function mwSwap(old,m){m.srcPath=old.srcPath;m.srcTime=old.srcTime;
   if(v3.imported===old){v3.imported=m;v3.mesh=null;v3LoadModel(true);}
   if(typeof p3!=='undefined'&&p3.imported===old){p3.imported=m;if(ui.mode==='p3d'){v3.imported=m;if(typeof p3SyncSets==='function'){v3LoadModel(true);p3SyncSets();buildP3Panel();}}}
   if(typeof bakeCfg!=='undefined'){if(bakeCfg.low===old)bakeSetModel('low',m);if(bakeCfg.high===old)bakeSetModel('high',m);}
-  v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
+  v3.mapsDirty=true;v3.dirty=true;requestRender(true);
+  /* (0.98.6) the new model has other UVs: the paint is moved onto them */
+  if(typeof rpAfterSwap==='function'&&typeof p3!=='undefined'&&p3.imported===m)rpAfterSwap(old,m);}
 /* bake again with the last settings: 3D Paint's Bake mesh maps if it was used, else the Bake tab */
 function mwCanRebake(){return !!((ui.mode==='p3d'&&p3bk.lastArgs)||(bakeCfg.low&&Object.keys(bakeCfg.kinds||{}).some(k=>bakeCfg.kinds[k])&&(Object.keys(bk.res||{}).length||bk.byMat)));}
 async function mwRebake(){if(bk.busy)return;

@@ -131,6 +131,7 @@
     "view3d/poly-fill",
     "view3d/udim-atlas",
     "view3d/p3-instance",
+    "view3d/reproject",
     "view3d/up-axis",
     "view3d/smoothing",
     "view3d/mesh-seams",
