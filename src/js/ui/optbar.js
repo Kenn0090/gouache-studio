@@ -53,7 +53,7 @@ function buildOptBar(){const bar=$('#optBar');if(!bar)return;bar.replaceChildren
     const pm=typeof mapBrushTargets==='function'?mapBrushTargets():[],cur=(typeof MAP_DEFS!=='undefined'&&MAP_DEFS[doc.map]?MAP_DEFS[doc.map].label:'Base colour');
     bar.append(el('span',{class:'optsep'}),tg('Paints: '+cur+(pm.length?' + '+pm.length:''),pm.length>0,()=>showPanel('tool'),'Which maps the brush paints, and every other brush setting (Brush tab)'),
       /* (0.98.4, Georgian: "a big fat export button") export without hunting through three menus */
-      el('button',{class:'btn primary optexport',id:'optExport',type:'button',title:'Export the textures (Ctrl+Shift+E)',text:'Export',onclick:()=>{if(typeof dlgExportTextures==='function')dlgExportTextures();}}));return;}
+      (optExportMode()==='bar'?optExportBtn():null));return;}
   /* (0.97.10, Kenn) a short bar: size, opacity, flow and hardness stay; every other group is one small button that opens a pop-up with just that group */
   const lineTool=!tonal&&(t==='brush'||t==='erase')&&ui.mode!=='p3d';
   const pop=(id,label,title,build)=>{const b=el('button',{class:'optchip optpopbtn',id:'obp_'+id,'aria-haspopup':'true',title,text:label+' ▾',onclick:()=>optPopToggle(b,build)});bar.append(b);};
@@ -95,14 +95,37 @@ function buildXfOptBar(bar){bar.classList.add('xfoptions');
   const interp=el('select',{id:'ob_xf_interp',class:'optsel','aria-label':'Transform resampling',title:'Choose how pixels are reconstructed when the layer changes size'},...[['2','Smooth'],['1','Bilinear'],['0','Nearest']].map(([v,t])=>el('option',{value:v,text:t})));interp.value=String(ui.xfInterp);interp.onchange=()=>{ui.xfInterp=+interp.value;const e=$('#xfInterp');if(e)e.value=interp.value;xfRender(false);};
   bar.append(interp,el('button',{id:'ob_xf_apply',class:'btn sm primary',text:'Apply',title:'Apply this transform to the layer',onclick:xfCommit}),el('button',{id:'ob_xf_cancel',class:'btn sm',text:'Cancel',title:'Discard this transform',onclick:xfCancel}));xfQuickSync();}
 
-/* (0.98.5, Kenn) the Export button can be dragged anywhere; the place is remembered, right-click puts it back */
-function optExportPlace(){const b=document.getElementById('optExport');if(!b)return;let pos=null;try{pos=JSON.parse(localStorage.getItem('gs.optExport')||'null');}catch(e){}
-  const apply=()=>{if(pos){b.style.position='fixed';b.style.margin='0';b.style.zIndex='30';b.style.left=Math.min(innerWidth-b.offsetWidth-4,Math.max(4,pos.x))+'px';b.style.top=Math.min(innerHeight-b.offsetHeight-4,Math.max(4,pos.y))+'px';}else{b.style.position=b.style.left=b.style.top=b.style.margin=b.style.zIndex='';}};
-  apply();b.title='Export the textures (Ctrl+Shift+E). Drag to move this button; right-click to put it back.';
-  let drag=null,moved=false;
-  b.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=b.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top,x:e.clientX,y:e.clientY};moved=false;try{b.setPointerCapture(e.pointerId);}catch(x){}});
-  b.addEventListener('pointermove',e=>{if(!drag)return;if(!moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;moved=true;pos={x:e.clientX-drag.dx,y:e.clientY-drag.dy};apply();});
-  b.addEventListener('pointerup',()=>{if(drag&&moved){try{localStorage.setItem('gs.optExport',JSON.stringify(pos));}catch(e){}}drag=null;});
-  b.addEventListener('click',e=>{if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;}},true);
-  b.addEventListener('contextmenu',e=>{e.preventDefault();pos=null;try{localStorage.removeItem('gs.optExport');}catch(e){}apply();});}
+/* (0.98.5/0.98.7, Kenn) the Export button can be dragged and docked: in the options bar (as it comes), over the viewport (stays at that spot of the view),
+   or as a button at the end of a shelf's bar (Materials, Textures…). Right-click puts it back. */
+const oxLoad=()=>{try{const v=JSON.parse(localStorage.getItem('gs.optExport')||'null');return v&&typeof v==='object'?v:null;}catch(e){return null;}};
+const oxSave=v=>{try{if(v)localStorage.setItem('gs.optExport',JSON.stringify(v));else localStorage.removeItem('gs.optExport');}catch(e){}};
+function optExportMode(){const v=oxLoad();if(!v)return 'bar';if(v.mode==='shelf'&&v.cat)return 'shelf';if(v.mode==='viewport'||v.x!=null)return 'viewport';return 'bar';}
+let oxNode=null;
+function optExportBtn(){if(oxNode)return oxNode;const b=oxNode=el('button',{class:'btn primary optexport',id:'optExport',type:'button',title:'Export the textures (Ctrl+Shift+E). Drag to move this button onto the viewport or into a shelf bar; right-click to put it back.',text:'Export'});
+  let drag=null,moved=false,hot=null;
+  const hotSet=n=>{if(hot===n)return;if(hot)hot.classList.remove('oxdrop');hot=n;if(hot)hot.classList.add('oxdrop');};
+  const under=(x,y)=>{const prev=b.style.pointerEvents;b.style.pointerEvents='none';const t=document.elementFromPoint(x,y);b.style.pointerEvents=prev;return t;};
+  const mv=e=>{if(!drag)return;if(!moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;
+    if(!moved){moved=true;document.body.append(b);b.style.position='fixed';b.style.margin='0';b.style.zIndex='60';}
+    b.style.left=(e.clientX-drag.dx)+'px';b.style.top=(e.clientY-drag.dy)+'px';
+    const t=under(e.clientX,e.clientY);hotSet(t&&t.closest?(t.closest('.shbar')||t.closest('.optbar')):null);};
+  const up=e=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);if(!drag)return;const was=drag.mode;drag=null;if(!moved)return;hotSet(null);
+    const t=under(e.clientX,e.clientY),bar=t&&t.closest&&t.closest('.shbar'),wr=$('#work').getBoundingClientRect(),work=e.clientX>=wr.left&&e.clientX<=wr.right&&e.clientY>=wr.top&&e.clientY<=wr.bottom,ob=t&&t.closest&&t.closest('.optbar');
+    if(bar&&bar._cat)oxSave({mode:'shelf',cat:bar._cat});
+    else if(ob)oxSave(null);
+    else if(work){const bw=b.offsetWidth,bh=b.offsetHeight;oxSave({mode:'viewport',fx:clamp((e.clientX-wr.left-bw/2)/Math.max(1,wr.width-bw),0,1),fy:clamp((e.clientY-wr.top-bh/2)/Math.max(1,wr.height-bh),0,1)});}
+    else oxSave(was==='bar'?null:oxLoad());
+    optExportPlace();if(typeof buildOptBar==='function')buildOptBar();};
+  b.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=b.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top,x:e.clientX,y:e.clientY,mode:optExportMode()};moved=false;window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
+  b.addEventListener('click',e=>{if(moved){e.stopImmediatePropagation();e.preventDefault();moved=false;return;}if(typeof dlgExportTextures==='function')dlgExportTextures();},true);
+  b.addEventListener('contextmenu',e=>{e.preventDefault();oxSave(null);optExportPlace();if(typeof buildOptBar==='function')buildOptBar();});
+  return b;}
+function optExportPlace(){const b=optExportBtn(),m=optExportMode(),v=oxLoad();
+  b.style.position=b.style.left=b.style.top=b.style.margin=b.style.zIndex='';b.classList.remove('oxfloat');
+  if(m==='bar'){if(!(b.parentNode&&b.parentNode.closest&&b.parentNode.closest('.optbar')))b.remove();return;}
+  if(m==='shelf'){const bar=document.getElementById('shbar_'+v.cat);if(bar){bar.append(b);b.classList.add('sm');}else b.remove();return;}
+  const work=$('#work');if(!work)return;if(b.parentNode!==work)work.append(b);
+  const r=work.getBoundingClientRect(),bw=b.offsetWidth||70,bh=b.offsetHeight||26,fx=v.fx!=null?v.fx:1,fy=v.fy!=null?v.fy:0;
+  b.style.position='absolute';b.style.margin='0';b.style.zIndex='30';b.style.left=Math.round(fx*Math.max(0,r.width-bw))+'px';b.style.top=Math.round(fy*Math.max(0,r.height-bh))+'px';b.classList.add('oxfloat');}
 {const f=buildOptBar;buildOptBar=function(){const r=f.apply(this,arguments);try{optExportPlace();}catch(e){console.warn('export button',e);}return r;};}
+window.addEventListener('resize',()=>{if(optExportMode()==='viewport')try{optExportPlace();}catch(e){}});

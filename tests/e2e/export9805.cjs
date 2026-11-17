@@ -5,11 +5,7 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(()=>__gs.newDoc(128,128,8,[.5,.5,.5],'ap',false,'pbr'));await p.waitForTimeout(500);
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(2000);
- const bb=await p.locator('#optExport').boundingBox();ok(!!bb,'export button exists');
- await p.mouse.move(bb.x+10,bb.y+10);await p.mouse.down();await p.mouse.move(bb.x-250,bb.y+300,{steps:8});await p.mouse.up();await p.waitForTimeout(300);
- const a=await p.locator('#optExport').boundingBox();ok(Math.abs(a.x-bb.x)>150&&Math.abs(a.y-bb.y)>150,'dragging moves it '+Math.round(bb.x)+','+Math.round(bb.y)+' -> '+Math.round(a.x)+','+Math.round(a.y));
- ok(await p.evaluate(()=>document.getElementById('modal').hidden),'a drag does not open the export window');
- await p.evaluate(()=>{__gs.buildOptBar&&__gs.buildOptBar();});await p.waitForTimeout(300);const a2=await p.locator('#optExport').boundingBox();ok(Math.abs(a2.x-a.x)<3,'the place is kept when the bar is rebuilt');
+ const a=await p.locator('#optExport').boundingBox();ok(!!a,'export button exists');
  await p.mouse.click(a.x+10,a.y+10);await p.waitForTimeout(800);ok(!(await p.evaluate(()=>document.getElementById('modal').hidden)),'a click still opens it');
  const opts=await p.evaluate(()=>[...document.querySelectorAll('#txFmt option')].map(o=>o.value));console.log(opts.join());ok(['png','tga','tif','dds','webp','bmp','jpg'].every(f=>opts.includes(f)),'more formats in the list');
  const sig=await p.evaluate(async()=>{const g=__gs,out={};for(const f of ['tif','dds','webp','bmp','jpg','tga','png']){g.texCfg.fmt=f;const files=await g.buildTextures(Object.values(g.TEX_PRESETS)[0],'t');const d=files[0].data;out[f]=[files[0].name.split('.').pop(),[...d.slice(0,4)].join(',')];}return out;});

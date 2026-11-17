@@ -91,7 +91,9 @@ const dk={ws:'painting',L:null,custom:{},saved:{},lock:false,flyout:null,drag:nu
     for(const n of ['texturing','paint3d'])fix(dk.saved[n]);const ml=dk.modeLayouts&&dk.modeLayouts.p3d;if(ml)for(const n of Object.keys(ml))fix(ml[n]);}}catch(e){}})();
 const dkClone=o=>JSON.parse(JSON.stringify(o));
 /* (0.53, Kenn) "drag tabs to any side of the viewport": the right dock (L.groups), the bottom shelf, and now a left and a top dock (L.edges). Each dock lays its groups out in a column or in a row (dir). */
-const DK_EDGES=['left','top'];
+/* 'rcol' (0.98.7, Kenn: "add tabs as an independent column") is a column of its own between the viewport and the usual right-hand panels */
+const DK_EDGES=['left','top','rcol'];
+const dkIsCol=k=>k==='left'||k==='rcol';
 const dkEdgeGroups=()=>DK_EDGES.flatMap(k=>dk.L&&dk.L.edges&&dk.L.edges[k]?dk.L.edges[k].groups:[]);
 const dkAllGroups=()=>[...dk.L.groups,...dkEdgeGroups()];
 const dkEdgeOn=k=>!!(dk.L&&dk.L.edges&&dk.L.edges[k]&&dk.L.edges[k].groups.some(g=>dkAvail(g).length));
@@ -168,12 +170,12 @@ function dkGrid(){const L=dk.L,app=$('#app'),F=L.fold||{},shOn=!!(L.shelf&&dkAva
   const left=L.tb.side!=='right';
   const c2=dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length)?(F.dock2?26:dk.col2.w)+'px':'0px';
   const dw=hasDock?(F.dock?26:L.w)+'px':'0px';
-  const lw=dkEdgeOn('left')?Math.round(clamp(L.edges.left.w,140,Math.max(140,window.innerWidth*.6)))+'px':'0px',th=dkEdgeOn('top')?Math.round(clamp(L.edges.top.h,90,Math.max(90,window.innerHeight*.6)))+'px':'0px';
-  app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${c2} ${ic} ${dw}`;
+  const lw=dkEdgeOn('left')?Math.round(clamp(L.edges.left.w,140,Math.max(140,window.innerWidth*.6)))+'px':'0px',th=dkEdgeOn('top')?Math.round(clamp(L.edges.top.h,90,Math.max(90,window.innerHeight*.6)))+'px':'0px',rw=dkEdgeOn('rcol')?Math.round(clamp(L.edges.rcol.w,140,Math.max(140,window.innerWidth*.6)))+'px':'0px';
+  app.style.gridTemplateColumns=left?`${tw} ${lw} minmax(0,1fr) ${rw} ${c2} ${ic} ${dw}`:`${lw} minmax(0,1fr) ${tw} ${rw} ${c2} ${ic} ${dw}`;
   app.style.gridTemplateRows=`38px ${L.opt?(F.opt?'26px':'minmax(36px,auto)'):'0px'} ${th} minmax(0,1fr) auto ${shOn?(F.shelf?26:clamp(L.shelf.h||170,90,Math.max(90,window.innerHeight*.6))):0}px 26px`;
   /* (0.38.2, Kenn) like Substance: the shelf sits under the viewport only; the right-hand panels run all the way down */
-  const sh=shOn&&dkEdgeOn('left')?(left?'"tools shelf shelf dock2 icons dock"':'"shelf shelf tools dock2 icons dock"')/* (0.97.20, Kenn) a left column stops above the shelf, which runs under it */:'"shelf shelf shelf dock2 icons dock"';
-  app.style.gridTemplateAreas=left?`"head head head head head head" "opt opt opt opt opt opt" "tools dockt dockt dock2 icons dock" "tools dockl work dock2 icons dock" "tools dockl tl dock2 icons dock" ${sh} "status status status status status status"`:`"head head head head head head" "opt opt opt opt opt opt" "dockt dockt tools dock2 icons dock" "dockl work tools dock2 icons dock" "dockl tl tools dock2 icons dock" ${sh} "status status status status status status"`;}
+  const sh=shOn&&dkEdgeOn('left')?(left?'"tools shelf shelf dockr dock2 icons dock"':'"shelf shelf tools dockr dock2 icons dock"')/* (0.97.20, Kenn) a left column stops above the shelf, which runs under it */:'"shelf shelf shelf dockr dock2 icons dock"';
+  app.style.gridTemplateAreas=left?`"head head head head head head head" "opt opt opt opt opt opt opt" "tools dockt dockt dockr dock2 icons dock" "tools dockl work dockr dock2 icons dock" "tools dockl tl dockr dock2 icons dock" ${sh} "status status status status status status status"`:`"head head head head head head head" "opt opt opt opt opt opt opt" "dockt dockt tools dockr dock2 icons dock" "dockl work tools dockr dock2 icons dock" "dockl tl tools dockr dock2 icons dock" ${sh} "status status status status status status status"`;}
 /* ---- (0.30) fold arrows on every docked bar and column, and the bottom shelf ---- */
 const DK_FOLDS=[['dock','#dock','Panels',()=>dk.L.groups.some(g=>dkAvail(g).length)&&dk.L.w>0,()=>['›','‹']],
   ['dock2','#dock2','Colour and brushes',()=>dkCol2On()&&dk.col2.groups.some(g=>dkAvail(g).length),()=>['›','‹']],
@@ -223,7 +225,7 @@ function dkRender(){brushMergeSync();const keepSc=dkScrollSave(),L=dk.L,dock=$('
   dock.replaceChildren();const gs=L.groups.filter(g=>dkAvail(g).length);dock.classList.toggle('dkrow',L.dir==='row');
   gs.forEach((g,i)=>{if(i)dock.append(dkSplit(gs[i-1],g,L.dir==='row'));dock.append(dkGroup(g));});
   /* the left and top docks */
-  for(const k of DK_EDGES){const E=L.edges[k],id=k==='left'?'dockL':'dockT';let n=dk['dock_'+k];if(!n){n=dk['dock_'+k]=el('aside',{class:'panel dkedge dkedge-'+k,id,'aria-label':k==='left'?'Panels on the left':'Panels on top'});$('#app').append(n);
+  for(const k of DK_EDGES){const E=L.edges[k],id=k==='left'?'dockL':k==='rcol'?'dockR':'dockT';let n=dk['dock_'+k];if(!n){n=dk['dock_'+k]=el('aside',{class:'panel dkedge dkedge-'+k,id,'aria-label':k==='left'?'Panels on the left':k==='rcol'?'Panels in the side column':'Panels on top'});$('#app').append(n);
       const bar=dk['bar_'+k]=dkEdgeBar(k);$('#app').append(bar);}
     const ge=E.groups.filter(g=>dkAvail(g).length);n.replaceChildren();n.hidden=!ge.length;n.classList.toggle('dkrow',E.dir==='row');dk['bar_'+k].hidden=!ge.length;
     ge.forEach((g,i)=>{if(i)n.append(dkSplit(ge[i-1],g,E.dir==='row'));n.append(dkGroup(g));});}
@@ -276,11 +278,11 @@ function dkSplit(a,b,row){const s=el('div',{class:'dksplit'+(row?' h':''),role:'
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
   return s;}
 /* the inner edge of the left or top dock: drag to make it wider / taller (double-click: back to the usual size) */
-function dkSetEdge(k,v){const E=dk.L.edges[k];if(k==='left')E.w=Math.round(clamp(v,140,stMaxW(0)));else E.h=Math.round(clamp(v,90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}if(typeof drawSV==='function')drawSV();}
-function dkEdgeBar(k){const left=k==='left',s=el('div',{class:'dkebar dkebar-'+k,role:'separator','aria-orientation':left?'vertical':'horizontal','aria-label':left?'Left dock width':'Top dock height',title:'Drag to resize (double-click: usual size)'});
+function dkSetEdge(k,v){const E=dk.L.edges[k];if(dkIsCol(k))E.w=Math.round(clamp(v,140,stMaxW(0)));else E.h=Math.round(clamp(v,90,Math.max(90,window.innerHeight*.6)));dkGrid();if(typeof resizeGL==='function'){resizeGL();fit();}if(typeof drawSV==='function')drawSV();}
+function dkEdgeBar(k){const left=dkIsCol(k),sgn=k==='rcol'?-1:1,s=el('div',{class:'dkebar dkebar-'+k,role:'separator','aria-orientation':left?'vertical':'horizontal','aria-label':k==='rcol'?'Side column width':left?'Left dock width':'Top dock height',title:'Drag to resize (double-click: usual size)'});
   s.addEventListener('dblclick',()=>{if(dk.lock)return;dkSetEdge(k,left?280:200);dkSave();});
   s.addEventListener('pointerdown',e=>{if(dk.lock||e.button!==0)return;e.preventDefault();const E=dk.L.edges[k],v0=left?E.w:E.h,p0=left?e.clientX:e.clientY;document.body.classList.add(left?'dkresizing':'stvresize');
-    const mv=ev=>dkSetEdge(k,v0+((left?ev.clientX:ev.clientY)-p0));
+    const mv=ev=>dkSetEdge(k,v0+sgn*((left?ev.clientX:ev.clientY)-p0));
     const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);document.body.classList.remove('dkresizing','stvresize');dkSave();};window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);});
   return s;}
 /* ---- floating panels (inside the window) ---- */
@@ -308,13 +310,13 @@ function dkFlyoutEl(id){const b=[...dk.icons.children].find(x=>x.title===PANELS[
   document.body.append(w);}
 document.addEventListener('pointerdown',e=>{if(dk.flyout&&!e.target.closest('.flyout,#dkIcons,#modal,.fontpop,#menuPop'))dkFlyout(null);},true);
 /* ---- the ⋯ menu of a group ---- */
-function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Dock to the left',()=>dkMove(id,{edge:'left'})],['Dock to the top',()=>dkMove(id,{edge:'top'})],['Dock to the right',()=>dkMove(id,{newGroup:dk.L.groups.length})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
+function dkMenu(e,id,where){const inShelf=dk.L.shelf.tabs.includes(id),items=[inShelf?['Back into the dock',()=>dkMove(id,{newGroup:dk.L.groups.length})]:['Move to the bottom shelf',()=>dkMove(id,{group:dk.L.shelf})],['Dock to the left',()=>dkMove(id,{edge:'left'})],['Dock to the top',()=>dkMove(id,{edge:'top'})],['Dock as a column beside the viewport',()=>dkMove(id,{edge:'rcol'})],['Dock to the right',()=>dkMove(id,{newGroup:dk.L.groups.length})],['Float “'+PANELS[id].title+'”',()=>dkMove(id,{float:{x:e.clientX-320,y:e.clientY+10}})],['Keep as an icon',()=>dkMove(id,{icons:true})],['Close',()=>dkMove(id,{hidden:true})]];
   /* (0.95, Kenn: the brush list was stuck in a small box) give a panel more room, or share the height out evenly again */
   if(where.group){const arr=dk.L.groups.includes(where.group)?dk.L.groups:(dk.col2&&dk.col2.groups.includes(where.group)?dk.col2.groups:null);
     if(arr&&arr.length>1){items.push(['Make this panel taller',()=>{const others=arr.filter(x=>x!==where.group&&!x.min).reduce((a,x)=>a+x.f,0);where.group.f=Math.max(where.group.f,others*2.5);where.group.min=false;dkRender();dkSave();}],['Share the height evenly',()=>{for(const x of arr)x.f=1;dkRender();dkSave();}]);}}
   if(where.group)items.push([where.group.min?'Unfold group':'Fold group',()=>{where.group.min=!where.group.min;dkRender();dkSave();}]);
   /* (0.53) groups of a dock side by side or stacked */
-  if(where.group){const k=dkAreaOf(where.group);if(k==='right'||k==='left'||k==='top'){const row=dkDirOf(k)==='row';items.push([row?'Stack the panel groups vertically':'Put the panel groups side by side',()=>dkSetDir(k,row?'col':'row')]);}}
+  if(where.group){const k=dkAreaOf(where.group);if(k==='right'||k==='left'||k==='top'||k==='rcol'){const row=dkDirOf(k)==='row';items.push([row?'Stack the panel groups vertically':'Put the panel groups side by side',()=>dkSetDir(k,row?'col':'row')]);}}
   const pop=$('#menuPop');closeMenu();pop.replaceChildren(...items.map(([t,f])=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span'))));
   pop.hidden=false;pop.style.left=Math.min(e.clientX,window.innerWidth-pop.offsetWidth-8)+'px';pop.style.top=(e.clientY+6)+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}
@@ -355,7 +357,7 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       else if(dk.L.dir==='row'?e.clientX>r.right-r.width*.28:e.clientY>r.bottom-r.height*.28){to={newGroup:i+1};box=dk.L.dir==='row'?{left:r.right-6,top:r.top,width:10,height:r.height}:{left:r.left,top:r.bottom-6,width:r.width,height:10};}
       else{to={group:g};box=r;}}
     else if(grs.length){const r=dock.getBoundingClientRect();to={newGroup:dk.L.groups.length};box={left:r.left,top:r.bottom-12,width:r.width,height:10};}}
-  else if(t&&t.closest('.dkedge')){const k=t.closest('.dkedge').classList.contains('dkedge-left')?'left':'top',E=dk.L.edges[k],G=E.groups,row=E.dir==='row',nEl=dk['dock_'+k],gEl=t.closest('.dkgrp');
+  else if(t&&t.closest('.dkedge')){const ce=t.closest('.dkedge'),k=ce.classList.contains('dkedge-left')?'left':ce.classList.contains('dkedge-rcol')?'rcol':'top',E=dk.L.edges[k],G=E.groups,row=E.dir==='row',nEl=dk['dock_'+k],gEl=t.closest('.dkgrp');
     if(gEl){const r=gEl.getBoundingClientRect(),g=gEl._g,i=G.indexOf(g);
       if(t.closest('.dktabs')){const T=dkTabSlot(gEl,g,d.id,e.clientX);to={group:g,index:T.index};box=T.box;}
       else if(row?e.clientX<r.left+r.width*.28:e.clientY<r.top+r.height*.28){to={edge:k,index:i};box=row?{left:r.left-4,top:r.top,width:10,height:r.height}:{left:r.left,top:r.top-4,width:r.width,height:10};}
@@ -377,10 +379,8 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       if(k==='bottom'){to={group:dk.L.shelf};box={left:r.left,top:r.bottom-8,width:r.width,height:10};}
       else if(k==='left'){to={edge:'left'};box={left:r.left,top:r.top,width:w,height:r.height};}
       else if(k==='top'){to={edge:'top'};box={left:r.left,top:r.top,width:r.width,height:h};}
-      else if(ui.mode==='paint'){to={newGroup2:dk.col2.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}
-      /* (0.98.4, Georgian: the Colour tab could not be docked at the side in 3D Paint) the hint showed the strip beside the viewport, but the tab went into the far right dock, "down there". It now joins the material column, which is what the strip points at. */
-      else if(dkCol2On()){to={newGroup2:0};box={left:r.right-w,top:r.top,width:w,height:r.height};}
-      else{to={newGroup:dk.L.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}}
+      /* (0.98.7, Kenn) the strip beside the viewport makes a column of its own */
+      else{to={edge:'rcol'};box={left:r.right-w,top:r.top,width:w,height:r.height};}}
     else to={float:{x:e.clientX-40,y:e.clientY-12}};}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}
   else{to={float:{x:e.clientX-40,y:e.clientY-12}};}
