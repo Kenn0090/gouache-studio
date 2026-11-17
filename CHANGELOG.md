@@ -1,3 +1,14 @@
+## 0.98.12
+
+- **Drop pictures into Converted and Mesh map.** Drag a picture onto a material channel set to Converted or Mesh map and it becomes that kind of map, named after the file. Every converted or baked map has a **Layer** / **Send as layer** button that puts it in the layer stack as a normal layer.
+- **Paint wraps to the rim like Painter.** On a surface seen at a low angle, strokes were fading to grey; paint now stays at full strength right up to the edge, with only a hairline of smoothing.
+- **Light movement: Orbit or Free.** The Lights panel has a **Move lights** switch. Free moves a light along X, Y and Z or across the screen, and shows where it points: a cone for spot lights, arrows for sun lights.
+- **Smoother soft brushes.** A tiny amount of noise on the soft edges stops visible banding.
+- **No Material brush in 3D Paint.** Materials are layers there. The weld, stitch and surface-detail tools still work.
+- **Smaller undo in 3D Paint.** A stroke's undo step keeps only the squares that changed, which cuts memory when strokes touch scattered parts of the texture.
+- **Start-up waits for the window.** When you start in 3D Paint, Gouache waits for the window to finish resizing, shows "Opening 3D Paint…", then switches.
+- **GitHub front page and user guide brought up to date.**
+
 ## 0.98.11
 
 - **Gizmos for the lights in the viewport.** The studio sun in the 3D view now has a handle you can grab and turn, like your own lights. Selected lights also get square **size handles**: **Reach** (how far a bulb or spot lights), **Cone** (a spot's opening) and **Softness** (a sun's shadow edge), next to the move arrows and turn ring they already had.
