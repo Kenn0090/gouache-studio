@@ -1916,3 +1916,4 @@ body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.s
 body:not(.m-p3d) #lChanLock{display:none}#lChanLock{padding:0 5px;min-width:0}#lChanLock.on{background:var(--accent,#4a7)}
 body.m-p3d .lblendrow:has(#lChanLock:not([hidden])){grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
 .mcwide{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}.mccol{display:grid;gap:8px;min-width:0}.mcmore summary{cursor:pointer;color:var(--muted)}.mcmore>.dlg-grid{margin-top:8px}.mcwide .mcprev{width:100%;height:auto;max-height:320px;object-fit:contain}@media(max-width:760px){.mcwide{grid-template-columns:minmax(0,1fr)}}
+.msrow .msrmk{background:none;border:0;color:var(--muted);cursor:pointer;padding:0 3px;font-size:13px}.msrow .msrmk.has{color:var(--text)}.msrow .msrmk.on{color:var(--accent)}

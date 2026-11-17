@@ -3,7 +3,7 @@
    its blend mode and opacity, and ✕. Click a row to change it in Properties; drag rows to reorder; ▾ on the layer
    folds them. FX ▾ adds to the mask when the mask thumbnail is selected, else to the layer's content. */
 function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFold)return out;
-  const mk=(where,S)=>{for(let i=S.length-1;i>=0;i--){const r=S[i],on=ui.msSel&&ui.msSel.L===n&&ui.msSel.id===r.id;
+  const mk=(where,S)=>{for(let i=S.length-1;i>=0;i--){const r=S[i];if(where==='m'&&msIsRowMask(r))continue;const cm=where==='m'?msRowMaskOf(S,r):null,on=ui.msSel&&ui.msSel.L===n&&(ui.msSel.id===r.id),onM=!!(cm&&ui.msSel&&ui.msSel.L===n&&ui.msSel.id===cm.id);
     const eye=el('button',{class:'eye',title:r.on!==false?'Hide':'Show','aria-label':(r.on!==false?'Hide ':'Show ')+msRowTitle(r)});eye.innerHTML=r.on!==false?eyeOn:eyeOff;
     eye.addEventListener('pointerdown',e=>e.stopPropagation());eye.addEventListener('click',e=>{e.stopPropagation();msRecord(n,(r.on!==false?'Hide ':'Show ')+msRowTitle(r).toLowerCase(),()=>{r.on=r.on===false;});});
     const del=el('button',{class:'msdel',text:'✕',title:'Delete','aria-label':'Delete '+msRowTitle(r)});del.addEventListener('pointerdown',e=>e.stopPropagation());del.addEventListener('click',e=>{e.stopPropagation();msRemove(n,where,r.id);});
@@ -11,8 +11,8 @@ function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFol
     modeBtn.addEventListener('pointerdown',e=>e.stopPropagation());modeBtn.addEventListener('click',e=>{e.stopPropagation();msModeMenu(e,n,r,modeBtn);});
     const row=el('div',{class:'msrow '+(where==='m'?'m':'c')+(on?' on':'')+(r.on===false?' hid':''),role:'option',tabindex:'0','aria-selected':String(!!on),title:where==='m'?'In the mask: click to change it in Properties, drag to reorder':'On the layer: click to change it in Properties, drag to reorder'},
       eye,el('span',{class:'mskind',text:where==='m'?'▣':'fx','aria-hidden':'true'}),el('span',{class:'lname',text:msRowTitle(r)}),
-      modeBtn,el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
-    row._ms={L:n,where,id:r.id};
+      ...(where==='m'?[rowMaskBtn(n,r,cm,onM)]:[]),modeBtn,el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
+    row._ms={L:n,where,id:r.id};row.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();rowMoveMenu(e,n,where,r);});
     row.addEventListener('pointerdown',e=>msRowDown(e,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();msSelect(n,where,r.id);}if(e.key==='Delete'){e.preventDefault();e.stopPropagation();msRemove(n,where,r.id);}});
     out.push(row);}};
@@ -344,3 +344,21 @@ function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:
   hook('lFill',()=>{msAdd(doc.active,'fill');renderLayers();});
   hook('lFx',e=>fxAddMenu(e));hook('lAdj',e=>fxAddMenu(e));
   hook('lNrm',()=>toast('A mask holds one grey picture, so a normal layer does not apply here. Select the layer itself to add one.'));}
+
+/* (0.98.6, Kenn: "any mask row can get its own mask") the small mask button on a row: add one, then click it to paint it; right-click deletes it */
+function rowMaskBtn(n,r,cm,sel){const b=el('button',{class:'msrmk'+(cm?' has':'')+(sel?' on':''),type:'button',text:cm?'◐':'◌','aria-label':cm?'Paint this row\u2019s mask':'Add a mask to this row',title:cm?'This row\u2019s own mask: click to paint it, right-click to delete it':'Add a mask to this row (so it only shows where you want)'});
+  b.addEventListener('pointerdown',e=>e.stopPropagation());
+  b.addEventListener('click',e=>{e.stopPropagation();if(cm){ui.msSel={L:n,where:'m',id:cm.id};n.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return;}
+    const pop=$('#menuPop');closeMenu();const rc=b.getBoundingClientRect();
+    pop.replaceChildren(...[['White mask (shows everywhere, paint black to hide)',false],['Black mask (hidden, paint white to show)',true]].map(([t,k])=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;msAddRowMask(n,r.id,k);}},el('span'),el('span',{text:t}),el('span'))));
+    pop.hidden=false;pop.style.left=Math.max(4,Math.min(rc.left,innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(rc.bottom+2,innerHeight-pop.offsetHeight-8))+'px';
+    const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);});
+  b.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();if(cm)msRemoveRowMask(n,r.id);});
+  return b;}
+
+/* right-click a row: move it (and its own mask) to another layer */
+function rowMoveMenu(e,n,where,r){const pop=$('#menuPop');closeMenu();
+  const layers=allNodes(doc.root).filter(x=>x!==n&&(isLayer(x)||x.type==='group')&&!x.fx).slice(0,60);
+  const items=[el('div',{class:'mh',text:'Move “'+msRowTitle(r)+'” to'}),...(layers.length?layers.map(x=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;msMoveRowToLayer(n,where,r.id,x);}},el('span'),el('span',{text:x.name||'Layer'}),el('span'))):[el('div',{class:'mh',text:'No other layers'})])];
+  pop.replaceChildren(...items);pop.hidden=false;pop.style.left=Math.max(4,Math.min(e.clientX,innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY,innerHeight-pop.offsetHeight-8))+'px';
+  const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}

@@ -53,7 +53,7 @@ const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','box
 const MS_OWN_FILTERS={grow:'Grow / shrink',warp:'Warp',slope:'Slope blur'};
 let msSeq=0;
 function msRow(kind,o){const r=Object.assign({id:'r'+(++msSeq),kind,on:true,mode:'normal',op:1,p:MS_KINDS[kind]&&MS_KINDS[kind].p?MS_KINDS[kind].p():{}},o||{});return r;}
-function msRowTitle(r){if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
+function msRowTitle(r){if(msIsRowMask(r))return r.name||'Row mask';if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
   if(r.kind==='gen')return (MS_GENS.find(g=>g[0]===r.p.g)||['','Generator'])[1];
   if(r.kind==='noise')return (MS_NOISES.find(g=>g[0]===r.p.type)||['','Noise'])[1];
   if(r.kind==='mesh')return msMeshName(r.p.k);
@@ -688,20 +688,32 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
 /* the whole stack → a picture (pooled). ov = {row, t}: that Paint row's picture while it is being painted */
 /* while a Paint row is being painted, everything under it stays the same: that part is worked out once (msPre) and each frame starts from it */
 function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
+/* a row's own mask: white where unpainted (the row shows), painted black hides it, painted white shows it */
+const FS_MSRMK=`uniform sampler2D uS; uniform sampler2D uM; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uS,p,0); vec4 m=texelFetch(uM,p,0); float cov=clamp(m.a,0.0,1.0); float v=cov>1e-5?m.r/cov:1.0; o=s*mix(1.0,clamp(v,0.0,1.0),cov); }`;
+const msIsRowMask=r=>!!(r&&r.kind==='paint'&&r.p&&r.p.forRow);
+const msRowMaskOf=(S,r)=>S.find(x=>msIsRowMask(x)&&x.p.forRow===r.id)||null;
+function msAddRowMask(L,rowId,black){if(!msHas(L))return null;let comp=null;
+  msRecord(L,'Add a mask to the row',()=>{const S=L.mask.stack,par=S.find(r=>r.id===rowId);if(!par||msRowMaskOf(S,par))return false;
+    comp=msNewPaintRow(L);comp.p={forRow:rowId};comp.name='Mask of '+msRowTitle(par);if(black)clearTarget(comp.t,[0,0,0,1]);S.splice(S.indexOf(par)+1,0,comp);L.mask._rows.add(comp);});
+  if(comp){ui.msSel={L,where:'m',id:comp.id};L.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);}return comp;}
+function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,c=S.find(r=>msIsRowMask(r)&&r.p.forRow===rowId);if(!c)return false;S.splice(S.indexOf(c),1);});}
 function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth;
   const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx():{tmp:[]};
   let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
   let from=0;
+  /* (0.98.6) a row's own mask is a companion Paint row (p.forRow = the row's id): painting it redoes its parent row */
+  const prow=ov&&ov.row&&ov.row.p&&ov.row.p.forRow?(S.find(x=>x.id===ov.row.p.forRow)||ov.row):ov&&ov.row;
   if(!ov||!ov.row)msPreFree(M);
-  else if(ov.upTo==null){const idx=S.indexOf(ov.row);
+  else if(ov.upTo==null){const idx=S.indexOf(prow);
     if(idx>1){const key=msKey(L)+'|'+idx;
       if(!M._pre||M._pre.key!==key||M._pre.t.depth!==d){msPreFree(M);const pre=msEval(L,{row:S[idx],t:null,upTo:idx},guard);M._pre={key,t:makeTarget(doc.w,doc.h,d)};blit(pre,M._pre.t,0,0,doc.w,doc.h,0,0);release(pre);}
       blit(M._pre.t,acc,0,0,doc.w,doc.h,0,0);from=idx;}}
-  try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false)continue;let s=null;
+  try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false||msIsRowMask(r))continue;let s=null;
     if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
     else if(r.kind==='gen'&&msWeatherKind(r.p.g))s=msWeatherSource(r,ctx,d,L,guard,acc);
     else s=msSource(r,ctx,d,ov,L,guard);
-    if(!s)continue;const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
+    if(!s)continue;{const cm=msRowMaskOf(S,r);if(cm&&cm.on!==false){const ct=ov&&ov.row===cm&&ov.t?ov.t:cm.t;if(ct){if(!P.rmk)P.rmk=program(FS_MSRMK);const o2=acquireD(d);run(P.rmk,o2,{uS:s.t.tex,uM:ct.tex});if(s.pooled)release(s.t);s={t:o2,pooled:true};}}}
+    const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
   finally{msCtxFree(ctx);}
   return acc;}
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
@@ -735,7 +747,7 @@ function msAdd(L,kind,o,label,initialMask){if(!isLayer(L)&&!(L&&L.type==='group'
     const S=L.mask.stack,sel=ui.msSel&&ui.msSel.L===L&&ui.msSel.where==='m'?S.findIndex(x=>x.id===ui.msSel.id):-1;S.splice(sel>=0?sel+1:S.length,0,row);
     (L.mask._rows||(L.mask._rows=new Set())).add(row);L.editMask=true;});
   if(row)msSelect(L,'m',row.id);return row;}
-function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;S.splice(i,1);});
+function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;S.splice(i,1);if(where==='m'){const j=S.findIndex(r=>msIsRowMask(r)&&r.p.forRow===id);if(j>=0)S.splice(j,1);}});
   if(ui.msSel&&ui.msSel.id===id)ui.msSel=null;renderMatEd(true);}
 function msMove(L,where,id,to){msRecord(L,'Move row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;const [r]=S.splice(i,1);S.splice(clamp(to,0,S.length),0,r);});}
 /* Flatten mask: keep the result, drop the rows */
@@ -749,7 +761,7 @@ function msSelect(L,where,id){ui.msSel={L,where,id};if(where==='m'){L.editMask=t
 function msRowOf(sel){if(!sel||!sel.L)return null;const S=sel.where==='m'?(sel.L.mask&&sel.L.mask.stack):sel.L.cfx;return S?S.find(r=>r.id===sel.id)||null:null;}
 /* where painting on a stacked mask goes: the selected Paint row, else the top Paint row, else a new one on top */
 function msPaintRow(L){const S=L.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.kind==='paint'&&ui.msSel.L===L&&S.includes(cur))return cur;
-  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false)return S[i];
+  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false&&!msIsRowMask(S[i]))return S[i];
   const r=msNewPaintRow(L);S.push(r);ui.msSel={L,where:'m',id:r.id};renderLayers();return r;}
 
 /* ---- content effects in compositing ---- */
@@ -820,3 +832,15 @@ function maskFillTo(L,v){if(!L)return;if(!L.mask){if(doc.active!==L)selectOnly(L
   if(doc.active!==L)selectOnly(L);const old=L.mask,next=makeMask(v?1:0),edit=L.editMask,view=ui.viewMask;next.enabled=old.enabled;
   const r={label:v?'Fill mask white':'Fill mask black',refs:[L],masks:[old,next],undo(){L.mask=old;L.editMask=edit;ui.viewMask=view;ui.msSel=null;},redo(){L.mask=next;L.editMask=true;ui.msSel=null;}};
   r.redo();pushUndo(r);changed(L);renderLayers();renderMatEd&&renderMatEd(true);toast(v?'Mask filled white: everything shows.':'Mask filled black: everything is hidden. Paint white to reveal.');}
+
+/* (0.98.6, Kenn: "move a mask, filter, paint or fill from one layer to another, like Marmoset") the row (and its own mask) goes to the top of
+   another layer's mask or effects: one undo step covering both layers */
+function msMoveRowToLayer(src,where,id,dst){if(!src||!dst||src===dst)return false;const S0=where==='m'?(src.mask&&src.mask.stack):src.cfx;const r=S0&&S0.find(x=>x.id===id);if(!r)return false;
+  if(where==='m'&&!isLayer(dst)&&dst.type!=='group'){toast('Pick a layer or a group.');return false;}
+  const from=hist.undo.length,comp=where==='m'?msRowMaskOf(S0,r):null;
+  const ok=msRecord(src,'Move row to another layer',()=>{const i=S0.indexOf(r);if(i<0)return false;S0.splice(i,1);if(comp){const j=S0.indexOf(comp);if(j>=0)S0.splice(j,1);}
+    if(where==='m'&&src.mask._rows){src.mask._rows.delete(r);if(comp)src.mask._rows.delete(comp);}});
+  if(!ok)return false;
+  msRecord(dst,'Move row to another layer',()=>{if(where==='m'){if(!dst.mask){dst.mask=makeMask(0);dst.mask.stack=[];dst.mask._rows=new Set();}msMakeStack(dst);dst.mask.stack.push(r);if(comp)dst.mask.stack.push(comp);(dst.mask._rows||(dst.mask._rows=new Set())).add(r);if(comp)dst.mask._rows.add(comp);dst.editMask=true;}
+    else{dst.cfx=dst.cfx||[];dst.cfx.push(r);}dst.fxFold=false;});
+  undoMerge(from,'Move row to another layer');selectOnly(dst);dst.editMask=where==='m';ui.msSel={L:dst,where,id:r.id};renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return true;}
