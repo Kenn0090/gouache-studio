@@ -120,7 +120,7 @@ function shAlphaMark(){for(const b of document.querySelectorAll('#shAlphaBody .s
 
 /* ---- Materials: the buttons sit in the quick bar ---- */
 function shMatActs(){return el('span',{class:'shacts'},el('button',{class:'btn sm',id:'matNew',text:'New material…',title:'A new material layer, with the material editor',onclick:()=>cmdNewFillLayer()}),
-  el('button',{class:'btn sm',id:'matPaint',text:'Paint material',disabled:matSel.kind!=='mat',onclick:()=>materialBrushUse(matSel.rec)}),
+  ...(ui.mode==='p3d'&&!(matSel.rec&&(matSel.rec.weldPaint||matSel.rec.stitch||matSel.rec.surfaceDetail))?[]:[el('button',{class:'btn sm',id:'matPaint',text:'Paint material',disabled:matSel.kind!=='mat',onclick:()=>materialBrushUse(matSel.rec)})]),
   el('button',{class:'btn sm',text:'Import…',title:'A .gmat file saved from Gouache Studio',onclick:matImport}),
   el('button',{class:'btn sm',id:'matFromTex',text:'From textures…',title:'Make a material from downloaded textures (a folder, images or a .zip)',onclick:()=>dlgMatFromTextures()}));}
 

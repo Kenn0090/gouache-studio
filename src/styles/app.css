@@ -943,6 +943,7 @@ body.dcdragging,body.dcdragging *{cursor:grabbing!important;user-select:none}
 #work.p3left .stage{--x:0}
 #work.v3full.p3left .stage{left:0}
 #work.p3left .hint{display:none}
+body.m-p3d:not(.p3-matspecial) .tool[data-tool=material]{display:none}
 body.m-p3d .tool:is([data-tool=cage],[data-tool=crop],[data-tool=array],[data-tool=shape],[data-tool=move],[data-tool=bucket],[data-tool=gradient],[data-tool=gbucket],[data-tool=marquee],[data-tool=lasso],[data-tool=wand],[data-tool=pen]){display:none}
 .v3bar .seg button{white-space:nowrap}
 /* 0.37.1: messages sit under the 3D bar, not on top of it */
