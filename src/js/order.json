@@ -104,6 +104,7 @@
     "filters/stylize",
     "layers/adj-layer",
     "layers/look",
+    "layers/flatten-fx",
     "layers/array",
     "layers/shapes",
     "layers/styles",

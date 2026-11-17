@@ -1,6 +1,5 @@
-## Gouache Studio 0.98.2
+## Gouache Studio 0.98.3
 
-- Timelapse videos export reliably (saved to the folder first, software-encoder fallback).
-- Cleaner timelapse settings window with tooltips.
-- Saved normal maps in .gmat files are much smaller (Smaller files).
-- Painting report window is bigger and resizable; undo in memory is capped at 3 GB to avoid pauses.
+- Blur across the model's seams and UV tiles is smooth (no contour steps) and lighter to drag.
+- Flatten effects: bake a layer's live effects, styles and Array into its pixels.
+- Material channels can read a chosen channel (red, green, blue, alpha, brightness) of their picture, for mix maps.
