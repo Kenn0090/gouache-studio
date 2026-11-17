@@ -83,11 +83,11 @@ function readRegionAsync(src,x,y,w,h){return new Promise((resolve,reject)=>{if(g
    Once both pictures of an undo step have been read back, keep only the 128-pixel tiles that differ (compact in snap.data, listed in snap.tiles). */
 function snapSparse(a,b){if(!a||!b||a.tiles||b.tiles||a.w!==b.w||a.h!==b.h||a.depth!==b.depth)return false;
   if(a._job||b._job||!a._d||!b._d||a.file||b.file||a._d.length!==a.w*a.h*4||b._d.length!==b.w*b.h*4)return false;
-  const w=a.w,h=a.h,T=128,A=a._d,B=b._d,tiles=[];let keep=0;
+  const w=a.w,h=a.h,T=64,A=a._d,B=b._d,tiles=[];let keep=0;
   for(let ty=0;ty<h;ty+=T)for(let tx=0;tx<w;tx+=T){const tw=Math.min(T,w-tx),th=Math.min(T,h-ty);let diff=false;
     for(let y=0;y<th&&!diff;y++){const o=((ty+y)*w+tx)*4,n=tw*4;for(let i=0;i<n;i++)if(A[o+i]!==B[o+i]){diff=true;break;}}
     if(diff){tiles.push({x:tx,y:ty,w:tw,h:th,off:keep});keep+=tw*th*4;}}
-  if(keep>w*h*4*.6)return false;
+  if(keep>w*h*4*.9)return false;
   for(const sn of [a,b]){const src=sn._d,out=new src.constructor(keep);for(const t of tiles)for(let y=0;y<t.h;y++){const o=((t.y+y)*w+t.x)*4;out.set(src.subarray(o,o+t.w*4),t.off+y*t.w*4);}
     sn._d=out;sn.tiles=tiles;sn.bytes=out.byteLength;}
   return true;}

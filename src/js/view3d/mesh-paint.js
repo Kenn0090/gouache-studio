@@ -32,8 +32,13 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
      the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
      from the brush size) lets paint reach just behind a raised edge, nothing further. */
-  if(uAlign==1){if(dot(n,viewDir)<-0.035||(z>0.0&&d>z*1.006+uWrapTol))discard;fadeG*=smoothstep(-0.03,0.06,dot(n,viewDir));/* (0.98.10, Georgian: it stopped dead at the edge) the paint thins out smoothly as the surface turns away, using the smooth normal, so it dies away instead of ending in a line */}
-  else if(z<=0.0||d>z*1.006+0.004)discard;
+  /* (0.98.13, Kenn: stair-steps where wrapped paint stops) the depth test is made at four spots inside each texel, so the edge where the
+     paint is hidden by another part is smoothed instead of cut square at the texel size */
+  float vis=1.0; { vec3 ex=dFdx(vP),ey=dFdy(vP); float acc=0.0; for(int i=0;i<4;i++){ vec2 o=vec2(i<2?-0.25:0.25,(i&1)==0?-0.25:0.25); vec3 qq=(uMir*vec4(vP+ex*o.x+ey*o.y,1.0)).xyz; vec4 cc=uVPm*vec4(qq,1.0); vec2 ss=cc.xy/max(cc.w,1e-6)*0.5+0.5;
+      float ok=1.0; if(cc.w<=1e-6||ss.x<0.0||ss.y<0.0||ss.x>1.0||ss.y>1.0) ok=0.0; else { float z2=texelFetch(uDepth,clamp(ivec2(ss*vec2(ds)),ivec2(0),ds-1),0).r; float d2=length(qq-uCamP); ok=uAlign==1?((z2>0.0&&d2>z2*1.006+uWrapTol)?0.0:1.0):((z2<=0.0||d2>z2*1.006+0.004)?0.0:1.0); }
+      acc+=ok; } vis=acc*0.25; }
+  if(uAlign==1){if(dot(n,viewDir)<-0.035||vis<=0.0)discard;fadeG*=vis;fadeG*=smoothstep(-0.03,0.06,dot(n,viewDir));/* (0.98.10, Georgian: it stopped dead at the edge) the paint thins out smoothly as the surface turns away, using the smooth normal, so it dies away instead of ending in a line */}
+  else{if(vis<=0.0)discard;fadeG*=vis;}
   vec4 t=texture(uStroke,s)*fadeG;
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
