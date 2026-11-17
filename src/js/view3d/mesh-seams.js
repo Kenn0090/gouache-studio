@@ -7,7 +7,7 @@ layout(location=0) in vec2 aUV; layout(location=1) in float aFace; layout(locati
 out vec2 vBary; flat out int vFace;
 void main(){vBary=aBary;vFace=int(aFace);gl_Position=vec4(aUV*2.0-1.0,0,1);}`;
 const FS_SEAMBLUR=`in vec2 vBary; flat in int vFace;
-uniform highp sampler2D uFaces; uniform sampler2D uSrc; uniform vec2 uSize; uniform vec2 uRadius; uniform int uBox;
+uniform highp sampler2D uFaces; uniform sampler2D uSrc; uniform vec2 uSize; uniform vec2 uRadius; uniform int uBox; uniform int uTaps; uniform float uDither;
 vec4 faceData(int t,int k){int i=t*5+k,w=textureSize(uFaces,0).x;return texelFetch(uFaces,ivec2(i%w,i/w),0);}
 vec3 pointAt(int t,int k){return faceData(t,k+2).xyz;}
 vec2 uvAt(int t,int k){vec4 a=faceData(t,0);return k==0?a.xy:k==1?a.zw:faceData(t,1).xy;}
@@ -42,11 +42,19 @@ vec2 walkUV(int t,vec3 anchor,vec3 b){for(int step=0;step<64;step++){
  if(longest<1e-16)break;p=a+edge*dot(p-a,edge)+normalize(nside)*distance;t=next;b=baryWorld(t,p);anchor=baryWorld(t,hit);
  }
  b=max(b,vec3(0));b/=max(dot(b,vec3(1)),1e-8);return seamReadUV(t,b);}
+/* (0.98.3, Kenn: the blur showed contour steps and lagged) the old blur read a 9 x 9 grid of taps spread over the whole radius, so a big
+   radius gave 81 ghost copies of the picture (terraces). Now: taps sampled to the Gaussian (or the box) with a different turn at every
+   pixel, so what is left is fine noise that a second pass and a little dither remove. Fewer taps than before, so also faster. */
 void main(){vec3 b=vec3(1.0-vBary.x-vBary.y,vBary);vec2 uv=uvAt(vFace,0)*b.x+uvAt(vFace,1)*b.y+uvAt(vFace,2)*b.z;
+ float ign=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))));
  vec4 acc=vec4(0);float total=0.0;
- for(int y=-4;y<=4;y++)for(int x=-4;x<=4;x++){vec2 p=vec2(x,y)/4.0;float weight=uBox==1?1.0:exp(-dot(p,p)*4.5);
- vec2 tap=walkUV(vFace,b,baryUV(vFace,uv+p*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0)*weight;total+=weight;}
- o=acc/total;}`;
+ for(int i=0;i<32;i++){if(i*2>=uTaps)break;float u=(float(i)+0.5)/float(uTaps/2);vec2 p;
+  if(uBox==1)p=fract(vec2(ign,fract(ign*7.31+0.17))+float(i)*vec2(0.7548776662,0.5698402910))*2.0-1.0;
+  else{float a=6.2831853*(ign+float(i)*0.61803399),rr=min(sqrt(-2.0*log(1.0-u*0.97))/3.0,1.0);p=rr*vec2(cos(a),sin(a));}
+  /* every tap comes with its mirror image, so a straight gradient is blurred exactly */
+  for(int k=0;k<2;k++){vec2 tap=walkUV(vFace,b,baryUV(vFace,uv+(k==0?p:-p)*uRadius/uSize));acc+=textureLod(uSrc,tap,0.0);total+=1.0;}}
+ o=acc/total;
+ if(uDither>0.0){float n=fract(52.9829189*fract(dot(gl_FragCoord.xy+vec2(17.0,31.0),vec2(0.06711056,0.00583715))));o.rgb+=(n-0.5)/255.0*uDither;}}`;
 function seamBlurDispose(){if(!seamBlurCache)return;const c=seamBlurCache;gl.deleteTexture(c.tex);gl.deleteBuffer(c.vb);gl.deleteVertexArray(c.vao);if(c.pad)disposeTarget(c.pad);if(c.safeLod)disposeTarget(c.safeLod);seamBlurCache=null;}
 function seamBlurMesh(range){const m=v3.mesh;if(!m||!v3.gpu||m.noUV||v3s().uvs!==1)return null;const R=range||p3Range();
  if(seamBlurCache?.mesh===m&&seamBlurCache.start===R.start&&seamBlurCache.count===R.count)return seamBlurCache;
@@ -115,7 +123,11 @@ function seamBlurPadding(C,dst,region){if(!seamPadPrograms)seamPadPrograms={
 function meshConnectedBlur(src,dst,x,y,box){if(ui.mode!=='p3d'||src.w!==doc.w||src.h!==doc.h||dst.w!==src.w||dst.h!==src.h||!v3.mesh)return false;
  const C=seamBlurMesh();if(!C)return false;if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  /* Preserve atlas pixels outside the mesh. In-place filters borrow their source. */
- let read=src,tmp=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
- try{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:read.tex,uSize:[src.w,src.h],uRadius:box?[x,y]:[x*3,y*3],uBox:{int:box?1:0}},!!dst.packed);
-  bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);
- }finally{gl.bindVertexArray(vao);if(tmp)disposeTarget(tmp);}seamBlurPadding(C,dst);return true;}
+ let read=src,tmp=null,mid=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
+ const draw=(from,to,rx,ry,taps,dither)=>{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:from.tex,uSize:[src.w,src.h],uRadius:box?[rx,ry]:[rx*3,ry*3],uBox:{int:box?1:0},uTaps:{int:taps},uDither:dither},!!to.packed);
+  bindTarget(to);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);};
+ try{const big=Math.max(x,y)>10&&canFloat&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono,dith=0,taps=Math.min(48,Math.round(20+Math.min(x||1,y||1)*1.1));
+  if(big){/* two softer passes (each sigma/1.41) in half float: the noise of one pass is averaged by the other, and nothing is rounded to 8 bits in between */
+   mid=makeTarget(src.w,src.h,16,false);draw(read,mid,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),0);draw(mid,dst,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),dith);}
+  else draw(read,dst,x,y,Math.min(64,taps+12),dith);
+ }finally{gl.bindVertexArray(vao);if(tmp)disposeTarget(tmp);if(mid)disposeTarget(mid);}seamBlurPadding(C,dst);return true;}

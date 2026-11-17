@@ -327,6 +327,7 @@ function layerMenu(e,n){const pop=$('#menuPop');closeMenu();const lay=isLayer(n)
     if(n.fill)G.conv.push(it('Mesh maps from this material…',()=>dlgMatConvert(n)));
     if(typeof mcHasSource==='function'&&mcHasSource(n))G.conv.push(head('Make a map from it'),it('Ambient occlusion (AO)…',()=>dlgMatConvert(n,['ao'])),it('Curvature…',()=>dlgMatConvert(n,['curv'])),it('Edges…',()=>dlgMatConvert(n,['curvEdge'])),it('Creases…',()=>dlgMatConvert(n,['curvCrease'])),sep());
     if(n.text||n.grad||n.shape||n.fill)G.conv.push(it('Convert to pixels',()=>{if(n.fill)fillRasterize(n);else rasterizeText(n);changed(n);}));}
+  if(lay&&typeof fxFlattenable==='function'&&fxFlattenable(n))G.conv.unshift(it('Flatten effects',()=>cmdFlattenEffects(n)),sep());/* (0.98.3) bake the live effects into the layer */
   const mm=typeof maskMeshKeys==='function'?maskMeshKeys():[];
   if(!anim&&ui.mode==='paint')G.conv.push(it('Flatten image',cmdFlatten));
   const hasId=!!(doc.meshMaps&&doc.meshMaps.id);

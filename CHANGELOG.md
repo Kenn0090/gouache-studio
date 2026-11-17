@@ -1,3 +1,9 @@
+## 0.98.3
+
+- **Blurs are smooth and quicker across the model.** The Gaussian and Box blur that follow the surface across UV seams (and UV tiles) no longer leave contour steps when the radius is big: the samples now follow the blur's own curve, with a different turn at each pixel, and big radii use two soft passes in half float. It uses fewer samples than before, so dragging the Radius slider is lighter too. Blurring across seams and UDIM tiles is kept.
+- **Flatten effects.** Right-click a layer with effects (the blue effect rows, layer styles, the Array) › **Flatten effects** bakes them into the layer's own pixels in every map they touch, and removes the live effects. A material layer is turned into pixels first. One undo step.
+- **Choose which channel a material channel reads from its picture.** On a grey channel (Roughness, Metallic, Height, AO…) with a picture, **Channel** picks Auto, Red, Green, Blue, Alpha or Brightness, for mix maps (for example roughness in green). A picture whose channels differ is kept in colour instead of being turned into one grey channel.
+
 ## 0.98.2
 
 - **Smaller normal maps in .gmat files.** With Smaller files on, a saved normal map (materials and smart materials you export) is stored as two small grey pictures (red and green, the blue is rebuilt), about four to six times smaller than before for a difference of 4 to 5 out of 255. Older versions of the app cannot open these particular pictures; turn Smaller files off in Preferences to export the old way.

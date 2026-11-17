@@ -22,7 +22,9 @@ const FS_FILLIMG=UDIM_GLSL+`uniform sampler2D uSrc; uniform vec2 uUdimT; uniform
 uniform float uSharp; uniform float uHStr; uniform int uHeight; uniform int uNormal; uniform mat4 uInv; uniform mat3 uNrmInv; uniform mat3 uUvM; uniform int uRep; uniform int uFront; uniform int uKeepA; uniform vec4 uCyl; uniform float uCrop; uniform sampler2D uWarp; uniform vec4 uWarpD; uniform int uNearest; in vec2 vUV;
 bool wrapOut(vec2 t){ if(uCyl.w<0.5) return false; if(uCyl.w<1.5) return t.x<0.0||t.x>1.0||t.y<0.0||t.y>1.0; if(uCyl.w<2.5) return t.y<0.0||t.y>1.0; return t.x<0.0||t.x>1.0; }
 vec2 nearestUV(vec2 t){ vec2 sz=vec2(textureSize(uSrc,0)); return (floor(t*sz)+0.5)/sz; }
-uniform int uOneCh; vec4 monoX(vec4 v){ return uOneCh==1?vec4(v.rrr,1.0):v; }/* (0.95.2) a one-channel grey picture */
+uniform int uOneCh; uniform int uPick;
+/* (0.98.3, Kenn) a grey channel can read any channel of a picture (a mix map): 1 red, 2 green, 3 blue, 4 alpha, 5 brightness */
+vec4 monoX(vec4 v){ if(uPick>0){ vec3 c=v.a>1e-6?v.rgb/v.a:vec3(0.0); float g=uPick==1?c.r:uPick==2?c.g:uPick==3?c.b:uPick==4?v.a:dot(c,vec3(0.2126,0.7152,0.0722)); return vec4(vec3(g),1.0); } return uOneCh==1?vec4(v.rrr,1.0):v; }/* (0.95.2) a one-channel grey picture */
 vec4 samp(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) return monoX(textureLod(uSrc,nearestUV(t),0.0)); return monoX(texture(uSrc,t)); }
 vec4 sampL(vec2 t){ float c=cos(uRot),s=sin(uRot); t=mat2(c,s,-s,c)*(t-0.5)+0.5; if(uNearest==1) t=nearestUV(t); return monoX(textureLod(uSrc,t,0.0)); }
 vec2 fillSlope(vec4 sampleN){
@@ -158,16 +160,21 @@ function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void
     P_FILLCOMP=program(sample+`uniform int uFillDepth;
 vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
 `+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
-function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uUdimT:fillUdimT(fillLiveSource(L,k),s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+const fillChanIdx=(s,k)=>MAP_DEFS[k]&&MAP_DEFS[k].grey?({r:1,g:2,b:3,a:4,lum:5}[s&&s.ch]||0):0;
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(fillLiveSource(L,k),s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
 function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
   if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+  run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
     uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
 }
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
 /* (0.95.2, Kenn: smaller 4K textures) a grey channel's picture (roughness, metal, AO, height…) is kept in ONE channel on the graphics card:
    a quarter of the memory, no loss (Preferences › Memory and disk). Done the first time it is drawn; copies keep the one channel. */
 function fillMonoize(L,k){const img=L._fillImg&&L._fillImg[k];if(!img||img.mono||img.packed||img.depth===16||prefs.monoGrey===false||!MAP_DEFS[k]||!MAP_DEFS[k].grey||img.w*img.h<65536)return img;
+  /* (0.98.3) a picture whose channels differ (a mix map) stays in colour so any channel can be chosen; only real greys become one channel */
+  {const ms=L.fill&&L.fill.maps&&L.fill.maps[k];if(ms&&ms.ch&&ms.ch!=='auto')return img;
+   if(img._greyChecked===undefined){const sm=makeTarget(32,32,8,false);try{copyScaled(img,sm);const d=captureRegionNow(sm,0,0,32,32).data;let diff=0;for(let i=0;i<d.length;i+=4){diff=Math.max(diff,Math.abs(d[i]-d[i+1]),Math.abs(d[i+1]-d[i+2]));}img._greyChecked=diff<4&&d.every((v,i)=>i%4!==3||v>=250);}finally{disposeTarget(sm);}}
+   if(!img._greyChecked)return img;}
   const m=makeTarget(img.w,img.h,8,true,false,true);blit(img,m,0,0,img.w,img.h,0,0);m.opaque=true;if(img._instSrc)m._instSrc=img._instSrc;lrTag(m,img);disposeTarget(img);L._fillImg[k]=m;return m;}
 function fillImgCopy(s){const t=makeTarget(s.w,s.h,8,true,false,!!s.mono);blit(s,t,0,0,s.w,s.h,0,0);lrTag(t,s);return t;}
 function fillRender(L,only){const f=L.fill;if(!f)return;
@@ -181,7 +188,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(L._fillLive)delete L._fillLive[k];const tri=pxfIs3D(f.proj)?fillPosMaps():null,T=ensureMapTarget(L,k),grey=MAP_DEFS[k].grey;
     if(s.src==='g3d'){g3FillRun(L,k,T);T.opaque=true;continue;}
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:fillMonoize(L,k);if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
-      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
+      run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
         uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
@@ -319,6 +326,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
           if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
       else{const has=!!(L._fillImg&&L._fillImg[k]);
         row.append(el('div',{class:'row wrap'},(()=>{const nm=el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')});nm._hpv=()=>L._fillImg&&L._fillImg[k]?{t:L._fillImg[k],name:s.name||MAP_DEFS[k].label}:null;return nm;})(),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}}),...(isN?[]:[el('button',{class:'btn sm',text:'Textures…',id:'fl_tx_'+k,title:'Pick one from the Textures library (grunge, patterns, your own)',onclick:()=>txPickDlg(k)})])));
+        if(has&&MAP_DEFS[k].grey&&!isN&&!L._fillImg[k].mono){const sg=seg([['auto','Auto'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha'],['lum','Brightness']],s.ch||'auto',v=>edit(()=>{s.ch=v;},k),'Take this channel of the picture');sg.id='fl_ch_'+k;sg.title='Which channel of the picture this map reads (for a mix map: roughness in green, metal in blue…)';row.append(el('div',{class:'frow'},el('label',{text:'Channel'}),sg));}
         if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,numericMin:.01,numericMax:Infinity,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
           makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
