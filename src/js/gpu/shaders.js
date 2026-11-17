@@ -109,7 +109,7 @@ float brushMask(vec2 pix){
      reaches round edges, behind walls and over seams, and keeps its shape: the distance from the dab's centre is taken in space and laid out in the tangent plane there. */
   if(uSurf==1){ ivec2 ts=textureSize(uPosT,0), ip=clamp(ivec2(pix),ivec2(0),ts-1); vec4 P=texelFetch(uPosT,ip,0); if(P.a<0.5) return 0.0;
     vec3 Nc=texelFetch(uNrmT,clamp(ivec2(uCenter),ivec2(0),ts-1),0).xyz, Nt=texelFetch(uNrmT,ip,0).xyz; if(dot(Nt,Nc)<-0.15) return 0.0;
-    vec3 d=P.xyz-uSC; float L=length(d); vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);
+    vec3 d=P.xyz-uSC; float L=length(d); if(abs(dot(d,Nc))>0.85*uSW) return 0.0;/* a surface well off the tangent plane at the dab (the far wall behind a thin part) takes no paint */ vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);
     vec2 pl=vec2(dot(d,T),dot(d,B)); float pn=length(pl); dv=(pn>1e-9?pl/pn*L:vec2(0.0))*(uRadius/max(uSW,1e-9)); }
   /* (0.98.13, Kenn: wrap like Painter) on the model, where the surface leans away from the view the brush is squeezed on screen by the lean, so it is round ON the surface instead of stretched.
      The lean comes from how the distance to the camera changes across the screen at the dab (zero when the surface faces the pixel's ray). */
