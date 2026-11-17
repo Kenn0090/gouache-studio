@@ -30,6 +30,9 @@ Material layers are saved as their settings, and Library pictures by name, so fi
 ## Save as (Ctrl+Shift+S)
 **File › Save as…** lists every file type Gouache can write: the Gouache document (every layer, mask and map), a layered Photoshop file, or one flat picture as PNG, TGA, DDS, TIFF, EXR, JPG or WebP (the picture types continue to the export options). In 3D Paint it offers the project or textures for a game engine. **Ctrl+S** saves the document as before.
 
+## The Export button
+The **Export** button sits at the left of the options bar. Drag it to the viewport or to the shelf if you prefer it there; right-click it to put it back. In 3D Paint it opens the texture export window.
+
 ## Export an image
 Exports the **visible image** or the **active layer** as:
 - **PNG** (8 or 16-bit)

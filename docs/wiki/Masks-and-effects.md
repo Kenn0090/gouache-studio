@@ -29,6 +29,24 @@ Rows are listed under the layer, **top first**. Each has an **eye**, its **blend
 
 Blend modes: Normal, Multiply, Add, Subtract, Screen, Min, Max and Overlay. A row covers what is below it where it is white or grey. **Filters change everything below them** in the mask.
 
+## Folders, and a mask for any row
+Rows can be organised like layers.
+
+- **Folders.** Add a **Folder** from the ✦ menu. A folder blends the rows inside it together first, then blends the result with the rows below it using its own blend mode and opacity. Rows you add while a folder is selected go inside it, and folders can sit inside folders. Right-click a row for **Put in a new folder**, **Take out of the folder** and **Move into…**, or drag a row onto a folder. **▾** folds a folder away.
+- **A mask stack for any row.** The small circle button on a row adds a mask to **that row**: it starts as white (the row shows everywhere; paint black to hide it) or black (hidden; paint white to show it). The mask is a stack of its own, so you can select one of its rows and use ✦ to add more rows of any kind, folders included, as deep as you like. The button becomes a half circle once the row has a mask; click it to fold the mask's rows away, right-click it to delete the mask.
+- **Another layer as a mask row.** ✦ › **Another layer, by brightness…** reads a whole layer (its colour, roughness, height or any other map) as a mask row. Anything clear in that layer counts as black.
+- **Moving rows between layers.** Drag a row onto another layer in the list, or right-click it and pick a layer under **Move to**. The row goes with everything inside it, as one undo step.
+- **Hue / Saturation and filter layers** take mask rows too: their mask menu is the same as a fill layer's.
+
+Old documents that used a row's single paint mask still open as they were.
+
+## Volume noise
+**✦ › Volume noise** (also under Generators) fills 3D space with a pattern. Because it never uses the UVs it shows **no seams**, even across UV islands and tiles. Pick a **Pattern**: Clouds, Cells, Gaussian, Ridged, Billow, Cracks, Crystal, Marble, Wood rings, Spots, Stripes or Perlin.
+
+![Twelve volume noise patterns on a sphere.](../readme/volume-noise.png)
+
+Controls: **Intensity**, **Scale** (the slider goes to 200 and you can type any number), **Macro** and **Micro** contrast (the broad shapes and the fine detail), **Warp** amount and detail for each of them, **Sampling** (how many levels of detail), **Level**, **Seed** and **Invert**. The projection box and the gizmo in the 3D view move, turn and scale the pattern. Wood rings and Marble follow the gizmo's axis.
+
 ## What a mask can hold
 | Row | What it does |
 |---|---|
