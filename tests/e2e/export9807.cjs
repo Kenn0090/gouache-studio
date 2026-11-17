@@ -6,6 +6,7 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const
  await p.evaluate(()=>{localStorage.removeItem('gs.optExport');__gs.newDoc(128,128,8,[.5,.5,.5],'ap',false,'pbr');});await p.waitForTimeout(500);
  await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(2500);
  const where=()=>p.evaluate(()=>{const e=document.getElementById('optExport');if(!e)return null;const r=e.getBoundingClientRect();return {parent:e.parentNode.id||e.parentNode.className,x:Math.round(r.x),y:Math.round(r.y)};});
+ ok(!(await p.evaluate(()=>document.getElementById('optBar').textContent)).includes('null'),'no stray "null" text in the options bar');
  let w0=await where();ok(w0&&/optBar|optbar/.test(w0.parent),'starts in the options bar '+JSON.stringify(w0));
  const b0=await p.locator('#optExport').boundingBox();const wv=await p.locator('#work').boundingBox();
  await p.mouse.move(b0.x+10,b0.y+10);await p.mouse.down();await p.mouse.move(wv.x+wv.width*.7,wv.y+wv.height*.6,{steps:10});await p.mouse.up();await p.waitForTimeout(500);
