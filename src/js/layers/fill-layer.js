@@ -156,16 +156,23 @@ function fillLiveSource(L,k){const f=L.fill,s=f&&f.maps[k];if(!s||!s.on||!['imag
 function fillLiveOpaque(L,k){const f=L.fill,s=f&&f.maps[k],img=fillLiveSource(L,k);return !!img&&!f.decal&&(!pxfIs3D(f.proj)||s.src!=='image')&&(MAP_DEFS[k].grey||k==='normal'||!!img.opaque);}
 let P_FILLCOMP=null;
 /* UV sampling can feed the composite directly. Quantize as the former intermediate texture did. */
+/* (0.98.6, Kenn/Georgian: apply a texture to only one UDIM tile) a picture channel can be limited to some tiles (s.tiles = their ids; none = all).
+   fillTileOff gives the canvas rectangles (pixels) of the tiles that are NOT chosen; those stay empty. */
+function fillTileOff(s){if(!s||!s.tiles||!s.tiles.length||typeof udimImgBox!=='function')return null;const B=udimImgBox();if(!B)return null;
+  const off=B.B.tiles.filter(T=>!s.tiles.includes(T.id)).map(T=>udimTileRect(B.name,T,doc.w,doc.h));return off.length?off:null;}
+function fillTileClear(T,s){const off=fillTileOff(s);if(!off)return false;for(const R of off)scissorDo(R,()=>clearTarget(T,[0,0,0,0]));T.opaque=false;return true;}
+function fillTileU(s){const off=fillTileOff(s)||[],a=new Float32Array(64);off.slice(0,16).forEach((R,i)=>{a[i*4]=R[0];a[i*4+1]=R[1];a[i*4+2]=R[2];a[i*4+3]=R[3];});return {uTON:{int:Math.min(16,off.length)},uTO:{v4a:a}};}
 function fillCompProgram(){if(!P_FILLCOMP){const sample=FS_FILLIMG.replace('void main(){ vec4 s;','vec4 fillSample(){ vec4 s;').replace(/o=([^;]+);\s*(?:return;)?/g,'return $1;');
-    P_FILLCOMP=program(sample+`uniform int uFillDepth;
+    P_FILLCOMP=program(sample+`uniform int uFillDepth; uniform int uTON; uniform vec4 uTO[16];
+vec4 fillSampleT(){ vec4 c=fillSample(); vec2 f=gl_FragCoord.xy; for(int i=0;i<16;i++){ if(i>=uTON)break; vec4 r=uTO[i]; if(f.x>=r.x&&f.y>=r.y&&f.x<r.x+r.z&&f.y<r.y+r.w) return vec4(0.0); } return c; }
 vec4 fillQuant(vec4 c){ if(uFillDepth==16) return vec4(unpackHalf2x16(packHalf2x16(c.rg)),unpackHalf2x16(packHalf2x16(c.ba))); return roundEven(clamp(c,0.0,1.0)*255.0)/255.0; }
-`+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSample())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
+`+FS_COMP.replace('texelFetch(uLayer,p,0)','fillQuant(fillSampleT())'));P_FILLCOMP.defaults=P.comp.defaults;}return P_FILLCOMP;}
 const fillChanIdx=(s,k)=>MAP_DEFS[k]&&MAP_DEFS[k].grey?({r:1,g:2,b:3,a:4,lum:5}[s&&s.ch]||0):0;
-function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign({uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(fillLiveSource(L,k),s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
+function fillCompUniforms(L,k){const f=L.fill,s=f.maps[k],bk=s.src==='baked'||s.src==='conv';return Object.assign(fillTileU(s),{uSrc:fillLiveSource(L,k).tex,uOneCh:{int:fillLiveSource(L,k).mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(fillLiveSource(L,k),s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:MAP_DEFS[k].grey?1:0},uPos:dummy,uNrm:dummy,uTan:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0},uFillDepth:{int:mapDepth(k)}},pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf));}
 function fillDrawMap(L,k,T){const f=L.fill,s=f.maps[k],grey=MAP_DEFS[k].grey,bk=s.src==='baked'||s.src==='conv',img=fillLiveSource(L,k),tri=pxfIs3D(f.proj)&&!bk?fillPosMaps():null;
   if(!img){clearTarget(T);return;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
   run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
-    uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);
+    uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);fillTileClear(T,s);
 }
 /* redraw a fill layer's maps from its settings (image maps need their picture in memory) */
 /* (0.95.2, Kenn: smaller 4K textures) a grey channel's picture (roughness, metal, AO, height…) is kept in ONE channel on the graphics card:
@@ -189,7 +196,7 @@ function fillRender(L,only){const f=L.fill;if(!f)return;
     if(s.src==='g3d'){g3FillRun(L,k,T);T.opaque=true;continue;}
     if(s.src==='image'||s.src==='baked'||s.src==='conv'){const bk=s.src==='baked'||s.src==='conv',img=bk?doc.meshMaps&&doc.meshMaps[s.mm]:fillMonoize(L,k);if(!img){if(k==='normal')clearTarget(T,[.5,.5,1,1]);continue;}if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);
       run(P_FILLIMG,T,Object.assign({uSrc:img.tex,uOneCh:{int:img.mono?1:0},uPick:{int:fillChanIdx(s,k)},uUdimT:fillUdimT(img,s,bk),uTile:bk?1:Math.max(.05,s.tile||1),uRot:bk?0:(s.rot||0)*Math.PI/180,uContrast:s.con||0,uGrey:{int:grey?1:0},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uTan:tri?tri.tan.tex:dummy,uRep:{int:f.rep===false?0:1},uFront:{int:f.front?1:0},uKeepA:{int:f.decal?1:0},
-        uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);continue;}
+        uSharp:f.triSharp||4,uHStr:f.hStr==null?1:f.hStr,uHeight:{int:k==='height'?1:0},uNormal:{int:k==='normal'?1:0}},(tri&&!bk?pxfUniforms(f.proj,f.xf):pxfUniforms('uv',bk||pxfIs3D(f.proj)?null:f.xf))));T.opaque=(!tri||bk)&&!f.decal&&(grey||k==='normal'||!!img.opaque);fillTileClear(T,s);continue;}
     if(k==='normal'){clearTarget(T,[.5,.5,1,1]);continue;}
     const c=grey?[s.v,s.v,s.v]:(s.c||[s.v,s.v,s.v]);clearTarget(T,[c[0],c[1],c[2],1]);}
   if(!only||only==='base')fillTintPost(L);
@@ -327,6 +334,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
       else{const has=!!(L._fillImg&&L._fillImg[k]);
         row.append(el('div',{class:'row wrap'},(()=>{const nm=el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')});nm._hpv=()=>L._fillImg&&L._fillImg[k]?{t:L._fillImg[k],name:s.name||MAP_DEFS[k].label}:null;return nm;})(),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}}),...(isN?[]:[el('button',{class:'btn sm',text:'Textures…',id:'fl_tx_'+k,title:'Pick one from the Textures library (grunge, patterns, your own)',onclick:()=>txPickDlg(k)})])));
         if(has&&MAP_DEFS[k].grey&&!isN&&!L._fillImg[k].mono){const sg=seg([['auto','Auto'],['r','Red'],['g','Green'],['b','Blue'],['a','Alpha'],['lum','Brightness']],s.ch||'auto',v=>edit(()=>{s.ch=v;},k),'Take this channel of the picture');sg.id='fl_ch_'+k;sg.title='Which channel of the picture this map reads (for a mix map: roughness in green, metal in blue…)';row.append(el('div',{class:'frow'},el('label',{text:'Channel'}),sg));}
+        if(has&&typeof udimImgBox==='function'&&udimImgBox())row.append(fillTilesRow(L,k,s,edit));
         if(has)row.append(makeSlider({id:'fl_t_'+k,label:W.proj==='tri'?'Scale':'Tile',min:.25,max:1000,numericMin:.01,numericMax:Infinity,step:.25,value:s.tile||1,fmt:v=>v+'×',onInput:v=>edit(()=>{s.tile=v;},k)}).el,
           makeSlider({id:'fl_r_'+k,label:'Turn',min:-180,max:180,step:1,value:s.rot||0,fmt:v=>v+'°',onInput:v=>edit(()=>{s.rot=v;},k)}).el);
         else if(s.name)row.append(el('p',{class:'note',text:'Choose the image again to change its tiling.'}));
@@ -426,3 +434,10 @@ function fillUdimT(t,s,bk){const box=typeof udimImgBox==='function'?udimImgBox()
   if(bk)return whole;if(!t||!t.w)return [1,1];
   if(s&&s.atlasOf===s.name){if(s.atlas===true)return whole;if(s.atlas===false)return [1,1];}
   return nx!==ny&&Math.abs(t.w/t.h-nx/ny)<.03*(nx/ny)?whole:[1,1];}
+
+/* the "Tiles" row of a picture channel in a UDIM set: All, or just the tiles you tick (the rest stay empty) */
+function fillTilesRow(L,k,s,edit){const B=udimImgBox(),ids=B.B.tiles.map(T=>T.id),cur=s.tiles&&s.tiles.length?s.tiles:null;
+  const chip=(id,t)=>{const on=id==null?!cur:!!(cur&&cur.includes(id));return el('button',{type:'button',class:'tsschip'+(on?' on':''),id:'fl_tile_'+k+'_'+(id==null?'all':id),'aria-pressed':String(on),text:t,
+    title:id==null?'The picture covers every tile':'Tick the tiles this picture covers; the others stay empty (click again to remove)',
+    onclick:()=>edit(()=>{if(id==null){delete s.tiles;return;}const set=new Set(s.tiles||[]);if(set.has(id))set.delete(id);else set.add(id);s.tiles=set.size&&set.size<ids.length?[...set]:undefined;if(!s.tiles)delete s.tiles;},k,true)},);};
+  return el('div',{class:'frow'},el('label',{text:'Tiles'}),el('div',{class:'tsschips'},chip(null,'All'),...ids.map(id=>chip(id,String(id)))));}
