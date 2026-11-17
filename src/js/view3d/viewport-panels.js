@@ -29,6 +29,7 @@ function vpSync(){if(!dk.L)return;for(const id of Object.keys(VP_PANELS)){const 
 /* ---- Lights ---- */
 function vpLightsBody(){const s=v3s(),rig=ui.mode==='p3d';
   const out=[];
+  if(rig)out.push(el('div',{class:'frow'},el('label',{text:'Move lights'}),(()=>{const g=seg([['orbit','Orbit'],['free','Free']],lgzFree()?'free':'orbit',v=>{lgzSetFree(v==='free');vpRender('v3lights');},'How lights move');g.id='vpLightMove';g.title='Orbit: the light turns round the model. Free: move it along X, Y and Z or across the screen; cones and arrows show where it points.';return g;})()));
   if(rig){out.push(chk('vpRigLive','Light the view with my lights',!!s.rigLive,v=>{s.rigLive=v;if(v&&!lightRig().lights.length)lightAutoRig();v3.dirty=true;requestRender(true);vpRender('v3lights');}));
     if(s.rigLive)out.push(lightTabPage(null,t=>el('p',{class:'note',text:t})),el('p',{class:'note',text:'Drag a light on the model to move it: the arrows move it along X, Y and Z, the ring turns a sun or a spot. Up to four lights show in the view; the Lighting bake bakes them all, with shadows.'}));
     else out.push(el('p',{class:'note',text:'Turn this on to add your own lights (sun, point, spot, sky) and move them on the model. Off: the studio lighting below and the environment light the model.'}));}

@@ -1,0 +1,37 @@
+/* 0.23: Mesh maps from a material (curvature, AO, edges, roughness, metallic from its height) and the Converted source. */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text())&&!/GPU stall due to ReadPixels/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||150);
+ await p.evaluate(()=>{__gs.setMode('p3d');});await W(9000);
+ await p.evaluate(()=>{__gs.v3s().rigLive=true;__gs.lightAutoRig();const R=__gs.lightRig();R.sel=R.lights.find(l=>l.type==='sun').id;__gs.lgzSetFree(true);__gs.v3.cam.dist*=3.5;__gs.v3.dirty=true;});await W(800);
+ const g=await p.evaluate(()=>{const hit=document.getElementById('v3Hit');const G0=__gs.lgzGeom(hit);const sunIt=G0&&G0.items.find(o=>o.L.type==='sun'&&!o.out);if(sunIt){__gs.lightRig().sel=sunIt.L.id;}const G=__gs.lgzGeom(hit);return G?{out:G.items.map(o=>o.L.type+':'+o.out).join(),free:G.free,ax:G.gz?G.gz.ax.length:-1,ring:G.gz?G.gz.ring:-1,items:G.items.length}:null;});
+ console.log(JSON.stringify(g));
+ ok(g&&g.free&&g.ax>=2&&g.ring===0,'free mode: the sun gets move arrows and no ring');
+ const d=await p.evaluate(()=>{const hit=document.getElementById('v3Hit'),G=__gs.lgzGeom(hit),L=G.gz.it.L,e0=[L.el,L.turn];const a=G.gz.ax[0],r=hit.getBoundingClientRect();
+   const m0=[G.gz.it.p[0]+a.u[0]*(G.gz.ring+30||30),G.gz.it.p[1]+a.u[1]*30];
+   __gs.lgzDown(hit,{clientX:r.left+m0[0],clientY:r.top+m0[1],pointerId:1,shiftKey:false,preventDefault(){}});
+   const D=window.__lgzdrag;return {e0,L:L.name};});
+ const mv=await p.evaluate(()=>{const hit=document.getElementById('v3Hit'),r=hit.getBoundingClientRect(),G=__gs.lgzGeom(hit),L=G.gz.it.L,a=G.gz.ax[1],e0=[L.el,L.turn];
+   const m0=[G.gz.it.p[0]+a.u[0]*40,G.gz.it.p[1]+a.u[1]*40];
+   const ok=__gs.lgzDown(hit,{clientX:r.left+m0[0],clientY:r.top+m0[1],pointerId:1,shiftKey:false,preventDefault(){},});
+   __gs.lgz.drag.m=[m0[0]+a.u[0]*60,m0[1]+a.u[1]*60];__gs.lgzApply();const e1=[L.el,L.turn,L.pos];__gs.lgzUp();return {ok,part:null,e0,e1};});
+ console.log(JSON.stringify(mv));
+ ok(mv.ok&&(Math.abs(mv.e1[0]-mv.e0[0])>1||Math.abs(mv.e1[1]-mv.e0[1])>1)&&mv.e1[2]===undefined,'dragging an arrow moves the sun (direction changed)');
+ const c=await p.evaluate(()=>{const cv=document.querySelector('.v3lgz');if(!cv)return -1;const x=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let n=0;for(let i=3;i<x.length;i+=4)if(x[i]>20)n++;return n;});
+ ok(c>500,'the overlay draws lights and their beams ('+c+' px)');
+ await p.evaluate(()=>{__gs.lgzSetFree(false);});await W(300);
+ ok(await p.evaluate(()=>{const G=__gs.lgzGeom(document.getElementById('v3Hit'));return !G.free&&G.gz.ring===34;}),'orbit mode keeps the ring');
+ ok(!errs.length,'no errors '+errs.join('|').slice(0,200));
+ await b.close();process.exit(fails?1:0);})();
