@@ -295,7 +295,7 @@ function maskMenu(e,n){const pop=$('#menuPop');closeMenu();
   const generators=fly('Generators',()=>[head('From baked maps'),...MS_MESH_GENS.map(([k,title,part])=>it(title,add('mesh',{p:Object.assign(MS_KINDS.mesh.p(),{k:msMeshPick(k),part:part||'both'})}))),sep(),
     head('Wear and weather'),...MS_GENS.map(([k,title])=>it(title,add('gen',{p:msGenDefaults(k)}))),sep(),
     it('3D gradient',add('g3d')),it('Direction (faces pointing up)',add('dir')),it('Gradient (bottom to top)',add('grad'))]);
-  const noises=fly('Noise and grunge',()=>MS_NOISES.map(([k,title])=>it(title,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})}))));
+  const noises=fly('Noise and grunge',()=>[it('Volume noise (3D, no seams)',add('volume')),...MS_NOISES.map(([k,title])=>it(title,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})})))]);
   /* (0.97.1, Kenn: "add Adjust so you can get to Slope blur etc faster") every mask adjustment in one list, the shaping ones first */
   const quick=['levels','invert','blur'],own=k=>it(MS_OWN_FILTERS[k],add('filter',{own:k,p:{r:k==='grow'?3:k==='warp'?4:6,scale:6,seed:1}})),fx=id=>FX[id]?it(FX[id].title,add('filter',{fx:id})):null;
   const more=fly('Adjust',()=>[head('Shape'),own('slope'),own('warp'),own('grow'),sep(),head('Tone'),...['levels','curves','threshold','posterize','invert'].map(fx),sep(),

@@ -29,6 +29,7 @@ const MS_BUILDER_MIX=[['add','Add'],['lightest','Lightest'],['intersect','Inters
 const MS_MESH_GENS=[['ao','Ambient occlusion'],['curv','Curvature'],['curv','Curvature: edges','edges'],['curv','Curvature: cavities','cavities'],['thick','Thickness'],['height','Height']];
 /* the baked map if this set has one, else a converted one (cv:), else the name itself (the document's own map is used) */
 function msMeshPick(k){const M=doc.meshMaps||{};return M[k]?k:M['cv:'+k]?'cv:'+k:k;}
+const MS_VOL_TYPES=[['clouds','Clouds'],['cells','Cells'],['gaussian','Gaussian']];
 const MS_NOISES=[['clouds','Clouds'],['cells','Cells'],['grunge','Grunge'],['scratches','Scratches'],['streaks','Streaks'],['dots','Dots'],['fibres','Fibres']];
 /* what each row kind is: its title, and its settings when new */
 const MS_KINDS={
@@ -38,6 +39,7 @@ const MS_KINDS={
   id:{title:'ID colour',p:()=>({cols:[],tol:.08,soft:.04,inv:false})},
   dir:{title:'Direction',p:()=>({axis:'up',angle:50,soft:15,inv:false})},
   grad:{title:'Gradient',p:()=>({axis:'up',from:0,to:1,inv:false})},
+  volume:{title:'Volume noise',p:()=>({type:'clouds',scale:4,intensity:1,macro:1,micro:1,mwAmt:0,mwDet:2,uwAmt:0,uwDet:4,samp:5,seed:5,level:0,inv:false})},
   noise:{title:'Noise',p:()=>({type:'grunge',scale:6,contrast:1.5,level:0,seed:1,tri:true,inv:false})},
   image:{title:'Picture',p:()=>({tile:1,rot:0,contrast:0,tri:false,inv:false,name:''})},
   ref:{title:'Another mask',p:()=>({name:''})},
@@ -111,6 +113,25 @@ uniform mat4 uInv; uniform mat3 uUvM; uniform int uWorld;
 vec3 surfQ(vec2 uv){ if(uWorld==1&&uHasPos==1){ vec4 P=texelFetch(uPos,ivec2(gl_FragCoord.xy),0); if(P.a>0.5) return (uInv*vec4(P.xyz,1.0)).xyz; } return vec3((uUvM*vec3(udimG(uv),1.0)).xy,0.0); }
 /* "up" for the flat texture: towards the top of the texture (green of the normal map) */
 vec3 upOf(){ return uHasPos==1?vec3(0.0,1.0,0.0):vec3(0.0,1.0,0.0); }`;
+/* (0.98.6, Kenn/Georgian: a volume noise like Marmoset's) noise filled through 3D space, so there are no UVs and no seams: macro and micro contrast,
+   macro and micro warp (amount and detail), sampling (how many octaves), intensity, seed. It lives in the projection's 3D space, so it has a gizmo. */
+const FS_MSVOL=MS_NOISE_GLSL+MS_SURF_GLSL+`
+uniform int uVType; uniform float uVInt; uniform float uVMac; uniform float uVMic; uniform float uVMwA; uniform float uVMwD; uniform float uVUwA; uniform float uVUwD; uniform float uVLvl; uniform int uVOct; uniform float uScale; uniform int uNeg; in vec2 vUV;
+float hv(vec3 p){ p=fract(p*vec3(0.1031,0.1030,0.0973)+uSeed*0.137); p+=dot(p,p.yzx+33.33); return fract((p.x+p.y)*p.z); }
+float vnv(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(hv(i),hv(i+vec3(1,0,0)),f.x),mix(hv(i+vec3(0,1,0)),hv(i+vec3(1,1,0)),f.x),f.y),mix(mix(hv(i+vec3(0,0,1)),hv(i+vec3(1,0,1)),f.x),mix(hv(i+vec3(0,1,1)),hv(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float wv(vec3 p){ vec3 i=floor(p),f=fract(p); float d=8.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; d=min(d,dot(r,r)); } return sqrt(d); }
+vec3 vwarp(vec3 q,float amt,float det){ vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
+void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 q=surfQ(uv)*uScale+vec3(0.37,0.61,0.83);
+  q=vwarp(q,uVMwA,uVMwD*0.3);
+  vec3 qm=vwarp(q*3.0,uVUwA,uVUwD);
+  float macro=0.5,micro=0.5;
+  if(uVType==1){ macro=1.0-clamp(wv(q)*1.15,0.0,1.0); micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
+  else if(uVType==2){ macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
+  else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } macro=s/w;
+    a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } micro=s/max(w,1e-4); }
+  float n=0.5+(macro-0.5)*uVMac*uVInt+(micro-0.5)*uVMic*uVInt*0.7;
+  float m=clamp(n+uVLvl,0.0,1.0); if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 const FS_MSBLEND=`uniform sampler2D uA; uniform sampler2D uB; uniform int uMode; uniform float uOp;
 void main(){ ivec2 p=ivec2(gl_FragCoord.xy); float a=texelFetch(uA,p,0).r; vec4 b4=texelFetch(uB,p,0); float cov=clamp(b4.a,0.0,1.0); float b=cov>1e-5?b4.r/cov:0.0; float r;
   if(uMode==0) r=b; else if(uMode==1) r=a*b; else if(uMode==2) r=a+b; else if(uMode==3) r=a-b; else if(uMode==4) r=1.0-(1.0-a)*(1.0-b);
@@ -471,7 +492,7 @@ const msAnchorNames=()=>{const out=[];for(const n of allNodes(doc.root))for(cons
 function msAnchorCurv(name,ctx,wrap){const A=msAnchor(name),H=A&&mapT(A,'height');if(!H||H.empty)return null;return withUVWrap(wrap,[H],()=>{const t=acquireD(8),b1=blurOf(H,3),b2=blurOf(H,9);
   run(P.f_curv,t,{uH:H.tex,uB1:b1.tex,uB2:b2.tex,uStr:1.5,uMode:{int:0}});release(b1);release(b2);ctx.tmp.push(t);return t;});}
 let P_MS=null;
-function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),zone:program(FS_MSZONE),own:program(FS_MSOWN),curv:program(FS_MSCURV),anc:program(FS_MSANC)};return P_MS;}
+function msProgs(){if(!P_MS)P_MS={blend:program(FS_MSBLEND),src:program(FS_MSSRC),gen:program(FS_MSGEN),zone:program(FS_MSZONE),vol:program(FS_MSVOL),own:program(FS_MSOWN),curv:program(FS_MSCURV),anc:program(FS_MSANC)};return P_MS;}
 
 /* ---- what the rows read: mesh maps (baked, converted, or in 2D the document's maps) and the model's surface ---- */
 function msMeshTex(k){const M=doc.meshMaps||{};if(M[k])return M[k];if(k&&k.startsWith('cv:')&&M[k])return M[k];
@@ -593,6 +614,7 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
   if(r.kind==='dir'){const o=out(),a=(p.angle||50)*Math.PI/180;run(P.src,o,Object.assign({uKind:{int:2},uDir:MS_AXES[p.axis]||[0,1,0],uA:Math.cos(a),uB:Math.max(.01,(p.soft||15)/90),uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
   if(r.kind==='g3d'){const o=out();g3Run(o,p,1,ctx.surf,p.inv);return {t:o,pooled:true};}
   if(r.kind==='grad'){const o=out();run(P.src,o,Object.assign({uKind:{int:3},uDir:MS_AXES[p.axis]||[0,1,0],uA:p.from||0,uB:p.to==null?1:p.to,uNeg:{int:p.inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};}
+  if(r.kind==='volume'){const o=out();run(P.vol,o,Object.assign(msPx(r,ctx),{uVType:{int:Math.max(0,MS_VOL_TYPES.findIndex(n=>n[0]===p.type))},uScale:p.scale||4,uVInt:p.intensity??1,uVMac:p.macro??1,uVMic:p.micro??1,uVMwA:p.mwAmt||0,uVMwD:p.mwDet||2,uVUwA:p.uwAmt||0,uVUwD:p.uwDet||4,uVLvl:p.level||0,uVOct:{int:Math.max(1,Math.min(8,p.samp||5))},uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='noise'){const o=out();run(P.src,o,Object.assign(msPx(r,ctx),{uKind:{int:4},uType:{int:Math.max(0,MS_NOISES.findIndex(n=>n[0]===p.type))},uScale:p.scale||6,uC:p.contrast||1,uV:p.level||0,uNeg:{int:p.inv?1:0},uSeed:p.seed||1}));return {t:o,pooled:true};}
   if(r.kind==='anchor'){const A=msAnchor(p.name);if(!A)return null;const o=out(),ch=p.ch||'height',T=ch==='height'?mapT(A,'height'):mapT(A,'base');if(!T||T.empty)return null;
     run(msProgs().anc,o,{uT:T.tex,uM:A.mask&&A.mask.enabled!==false?A.mask.target.tex:dummy,uUseM:{int:A.mask&&A.mask.enabled!==false&&ch==='shape'?1:0},uCh:{int:ch==='shape'?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}

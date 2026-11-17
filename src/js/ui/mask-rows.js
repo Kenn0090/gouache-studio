@@ -52,6 +52,7 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
       it('Mesh map',sub('Mesh map',mks.length?mks.map(k=>it(msMeshName(k),add('mesh',{p:{k,inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No baked maps yet. Bake in the Bake tab and press Send to 3D Paint.'})]),true),
       it('ID colour',()=>{const r=msAdd(L,'id');if(r){ui.viewMask=true;maskTool('id');}}),
       it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),it('3D gradient (points around the model)',add('g3d')),
+      it('Volume noise (3D, no seams)',add('volume')),
       it('Noise',sub('Noise',MS_NOISES.map(([k,t])=>it(t,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})})))),true),
       it('Picture…',add('image')),
       it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
@@ -130,6 +131,11 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
+  if(r.kind==='volume')box.append(sel('ms_vtype','Pattern',MS_VOL_TYPES,'type'),S('ms_vint','Intensity','intensity',0,3,.01,pct),S('ms_vscale','Scale','scale',.5,64,.5),
+    el('div',{class:'sub',text:'Contrast'}),S('ms_vmac','Macro','macro',0,3,.01,pct),S('ms_vmic','Micro','micro',0,3,.01,pct),
+    el('div',{class:'sub',text:'Warp'}),S('ms_vmwa','Macro amount','mwAmt',0,1,.01,pct),S('ms_vmwd','Macro detail','mwDet',.5,8,.1),S('ms_vuwa','Micro amount','uwAmt',0,1,.01,pct),S('ms_vuwd','Micro detail','uwDet',1,16,.1),
+    el('div',{class:'sub',text:'Quality'}),S('ms_vsamp','Sampling (detail levels)','samp',1,8,1,v=>String(v)),S('ms_vlvl','Level','level',-.5,.5,.01),S('ms_vseed','Seed','seed',1,99,1,v=>String(v)),inv(),
+    pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),el('p',{class:'note',text:'Noise filled through the model\u2019s 3D space, so it ignores the UVs and has no seams. Move, turn and scale it with the gizmo in the 3D view.'}));
   if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),msImageDrop(L,r),
     makeSlider({id:'ms_imgContrast',label:'Contrast',min:-1,max:4,step:.01,value:p.contrast??0,fmt:pct,onInput:v=>ed(x=>{x.p.contrast=v;})}).el,
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
