@@ -330,7 +330,7 @@ fxDef('edgeWear',{title:'Edge wear',note:'Lightens raised edges and darkens cavi
   init:()=>({src:'shape',em:0,cm:0,ec:null,cc:null}),
   defs:[{key:'k',label:'Strength',min:.2,max:12,step:.1,value:4,fmt:pct},{key:'r',label:'Width',min:0,max:16,step:.5,value:1.5,fmt:px},{key:'e',label:'Edges',min:0,max:2,step:.01,value:.8,fmt:pct},{key:'c',label:'Cavities',min:0,max:2,step:.01,value:.6,fmt:pct},
     {key:'s',label:'Sharpness',min:.3,max:3,step:.05,value:1,fmt:pct},{key:'sm',label:'Smooth',min:0,max:8,step:.5,value:1,fmt:px},
-    {key:'cbBig',label:'Big shapes',min:0,max:4,step:.01,value:1,fmt:pct},{key:'cbMed',label:'Medium shapes',min:0,max:4,step:.01,value:1,fmt:pct},{key:'cbSmall',label:'Small details',min:0,max:4,step:.01,value:1,fmt:pct}],
+    ...[['Sharp','cbSharp'],['Fine','cbFine'],['Soft','cbSoft'],['Medium','cbMedium'],['Large','cbLarge'],['Big','cbBig'],['Huge','cbHuge']].map(([l,k])=>({key:k,label:l,min:0,max:4,step:.01,value:1,fmt:pct}))],
   controls:(v,upd)=>{if(!v.ec){v.ec=ui.fg.slice();v.cc=ui.bg.slice();}const out=[el('div',{class:'sub',text:'Shape from'}),seg([['shape','Normal and height maps'],['curv','Curvature map']],v.src,x=>{v.src=x;upd();},'Shape from'),
       el('div',{class:'sub',text:'Edges become'}),seg([[0,'Lighter'],[1,'Foreground colour']],v.em,x=>{v.em=x;if(x===1)v.ec=ui.fg.slice();upd();},'Edges become'),
       el('div',{class:'sub',text:'Cavities become'}),seg([[0,'Darker'],[1,'Background colour']],v.cm,x=>{v.cm=x;if(x===1)v.cc=ui.bg.slice();upd();},'Cavities become')];return out;},
@@ -343,7 +343,7 @@ fxDef('edgeWear',{title:'Edge wear',note:'Lightens raised edges and darkens cavi
     else if(doc.maps.includes('normal')||doc.maps.includes('height')){const n=normalComposite(false,null),b=acquireD(n.depth);if(v.r>.25)gaussian(n,b,v.r);else blit(n,b,0,0,doc.w,doc.h,0,0);release(n);
       c=acquireD(canFloat?16:doc.depth);run(P.f_ncurv,c,{uN:b.tex,uWrap:!!doc.wrap,uStr:1,uMode:{int:0},uStep:Math.max(1,Math.round(v.r*.7))});release(b);}
     if(!c){blit(src,dst,0,0,doc.w,doc.h,0,0);return;}
-    if(typeof cbInto==='function')cbInto(c,{big:v.cbBig,med:v.cbMed,small:v.cbSmall});/* (0.97.29) curvature detail */
+    if(typeof cbInto==='function')cbInto(c,cbFromV(v));/* (0.97.29) curvature detail */
     if(v.sm>.25){const t=acquireD(c.depth);gaussian(c,t,v.sm);release(c);c=t;}
     run(P.f_cwear,dst,{uSrc:src.tex,uC:c.tex,uEdge:v.e,uCav:v.c,uEC:v.ec||[1,1,1],uCC:v.cc||[0,0,0],uEM:{int:v.em},uCM:{int:v.cm},uSharp:v.s,uK:v.k==null?4:v.k});release(c);}});
 
