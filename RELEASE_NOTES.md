@@ -1,3 +1,10 @@
+## Gouache Studio 0.98.13
+
+- Wrap brush stays round on leaning surfaces; smoother edges where paint is hidden.
+- A bar shows when the app is compiling shaders or building skies and search trees.
+- Lights panel laid out like Marmoset's; lights stay off until turned on; R turns the light gizmo.
+- Undo history uses less memory.
+
 ## Gouache Studio 0.98.12
 
 - Drop pictures onto a material's Converted or Mesh map channel; send any converted or baked map as a layer.

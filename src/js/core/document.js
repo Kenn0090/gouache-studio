@@ -99,7 +99,7 @@ const mem=Object.assign({limitMB:0,steps:0,diskGB:20,dir:''},(()=>{try{return JS
 const memSys={ramTotal:0,ramAvail:0};/* filled in by the desktop app at start-up (memory.js) */
 function memSave(){try{localStorage.setItem('gs.mem',JSON.stringify(mem));}catch(e){}}
 /* the limit in bytes: yours, or half of this computer's memory (at least 2 GB) */
-const memAutoMB=()=>platform.isDesktop?(memSys.ramTotal?Math.min(3072,Math.max(2048,Math.round(memSys.ramTotal/1048576*.5/256)*256)):3072):1024;/* (0.98.3) undo in memory is capped at 3 GB by default: a Painting report showed 6 GB of undo and 2-second page pauses (memory clean-up); the rest goes to the disk cache */
+const memAutoMB=()=>platform.isDesktop?(memSys.ramTotal?Math.min(1536,Math.max(1024,Math.round(memSys.ramTotal/1048576*.25/256)*256)):1536):1024;/* (0.98.3) undo in memory is capped at 3 GB by default: a Painting report showed 6 GB of undo and 2-second page pauses (memory clean-up); the rest goes to the disk cache */
 const memLimit=()=>(mem.limitMB||memAutoMB())*1048576;
 /* fewer undo steps by default (0.25): long histories of big documents used a lot of memory and could crash */
 const UNDO_DEFAULT=()=>platform.isDesktop?50:30;

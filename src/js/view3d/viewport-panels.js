@@ -65,7 +65,7 @@ function vpOpen(id,btn){if(!dkSecs[id])vpInit();
   if(panelShown(id)){const g=[...dkAllGroups(),...dk.L.floats].find(x=>x.tabs&&x.tabs.includes(id));if(!g||g.active===id){dkMove(id,{hidden:true});dkRender();dkSave();}else showPanel(id);}
   else{const r=btn?btn.getBoundingClientRect():{left:200,bottom:120};const w=320;dkMove(id,{float:{x:Math.max(8,Math.min(window.innerWidth-w-8,r.left)),y:Math.max(8,r.bottom+6)}});
     const f=dk.L.floats.find(x=>x.tabs.includes(id));if(f){f.w=w;f.h=Math.min(560,window.innerHeight-r.bottom-30);}dkRender();dkSave();}
-  if(id==='v3lights'&&ui.mode==='p3d'&&panelShown(id)&&!v3s().rigLive){v3s().rigLive=true;if(!lightRig().lights.length)lightAutoRig();v3.dirty=true;}
+
   vpRender(id);vpBtnSync();requestRender(true);}
 function vpBtnSync(){for(const [id,[bid]] of Object.entries(VP_BTN)){const b=document.getElementById(bid);if(!b)continue;const on=panelShown(id);b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));}}
 {const f=dkRender;dkRender=function(){const r=f.apply(this,arguments);try{vpSync();vpBtnSync();}catch(e){}return r;};}

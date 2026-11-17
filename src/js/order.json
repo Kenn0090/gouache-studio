@@ -274,6 +274,7 @@
     "ui/straight-preview",
     "view3d/text3d",
     "ui/safety",
+    "ui/busy-chip",
     "layers/locks",
     "ui/key-helper",
     "ui/doc-tabs",

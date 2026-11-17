@@ -41,6 +41,11 @@ function lightBakeUniforms(rig,bmin,bsize,SS){rig=rig||lightRig();const on=(rig.
 const lightBakeOff=()=>({});
 
 /* ---- the Lighting tab of the Bake panel: the rig as a list (eye, name, type, colour, strength, softness, shadows…) ---- */
+/* a Marmoset-style section: a dark bar you fold, the settings under it */
+const lightKelvin=K=>{const t=K/100;let r,g,b;if(t<=66){r=255;g=99.4708025861*Math.log(t)-161.1195681661;b=t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307;}else{r=329.698727446*Math.pow(t-60,-.1332047592);g=288.1221695283*Math.pow(t-60,-.0755148492);b=255;}const c=v=>clamp(v,0,255)/255;return [c(r),c(g),c(b)];};
+function lightSec(id,title,...kids){let open=true;try{open=JSON.parse(localStorage.getItem('gs.lightSec')||'{}')[id]!==false;}catch(e){}
+  const d=el('details',{class:'lsec',id:'lsec_'+id},el('summary',{text:title}),el('div',{class:'lsecbody'},...kids));d.open=open;
+  d.addEventListener('toggle',()=>{try{const o=JSON.parse(localStorage.getItem('gs.lightSec')||'{}');o[id]=d.open;localStorage.setItem('gs.lightSec',JSON.stringify(o));}catch(e){}});return d;}
 function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
   if(!R.lights.length&&(C.kinds.light||!on))lightAutoRig();/* before the undo history starts */
   const paint=()=>{pg.replaceChildren(...lightTabBody().filter(Boolean));v3.dirty=true;requestRender&&requestRender();};
@@ -55,16 +60,27 @@ function lightTabPage(on,note){const R=lightRig(),C=bakeCfg,pg=el('div',{});
       const nm=el('input',{type:'text',value:L.name,'aria-label':'Name',id:'l_name'});nm.oninput=()=>{L.name=nm.value;};nm.onchange=()=>{H.note();};
       const typ=el('select',{id:'l_type','aria-label':'Type'},...LIGHT_TYPES.map(([v,t])=>el('option',{value:v,text:t})));typ.value=L.type;typ.onchange=()=>{L.type=typ.value;redraw();};
       const D0=lightNew(L.type),sl=(k,label,min,max,step,fmt)=>makeSlider({id:'l_'+k,label,min,max,step,value:L[k],def:typeof D0[k]==='number'?D0[k]:undefined,fmt,onInput:v=>set(k,v)}).el;const b=lightBox();
-      const box=el('div',{class:'dlg-grid lset'},el('label',{class:'hpsel'},el('span',{text:'Name'}),nm),el('label',{class:'hpsel'},el('span',{text:'Type'}),typ),
-        el('label',{class:'hpcol'},el('span',{text:'Colour'}),colourBtn('l_col',()=>L.col,c=>set('col',c.slice(0,3)),'Light colour')),sl('int','Strength',0,5,.01,v=>v.toFixed(2)),
-        chk('l_shadow','Shadows',L.shadow!==false,v=>set('shadow',v)),sl('rays',L.type==='sky'?'Rays':'Shadow rays',1,64,1,String));
-      if(L.type==='sun')box.append(sl('soft','Shadow softness',0,20,.1,v=>v.toFixed(1)+'°'),sl('el','Height',-90,90,1,v=>Math.round(v)+'°'),sl('turn','Turn',-180,180,1,v=>Math.round(v)+'°'));
-      if(L.type==='point'||L.type==='spot')box.append(sl('soft','Shadow softness (size)',0,b.r,b.r/200,v=>(v/b.r*100).toFixed(0)+'%'),sl('range','Reach',b.r*.1,b.r*10,b.r/100,v=>(v/b.r).toFixed(1)+'×'));
-      if(L.type==='spot')box.append(sl('cone','Cone',5,170,1,v=>Math.round(v)+'°'),sl('edge','Soft edge',0,1,.01,pct),el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:'l_aimMid',text:'Aim at the model',title:'Point the spot at the middle of the model again',onclick:()=>{delete L.aim;redraw();}})),el('p',{class:'note',text:'Drag the arrows in the view to move it, the ring to turn it.'}));
-      if(L.type==='sky')box.append(el('p',{class:'note',text:'Light from the environment picture of the 3D view (its HDRI, turned as there). No HDRI: plain white sky.'}));
-      if(L.type==='point'||L.type==='spot')box.append(lightXYZ(L,set));
-      if(L.type==='point')box.append(el('p',{class:'note',text:'Drag the bulb or its arrows in the view to move it (Shift while dragging the bulb: nearer or further), or type its position. Delete removes the selected light.'}));
-      if(L.type==='sun')box.append(el('p',{class:'note',text:'Drag the sun or its ring in the view to turn it around the model.'}));
+      /* (0.98.13, Kenn: "make it look like Marmoset's lamp settings") sections like Marmoset's: Transform, Light, Area / Shape, Spot */
+      const kel=el('input',{type:'checkbox',id:'l_usek'});kel.checked=!!L.useK;kel.onchange=()=>{L.useK=kel.checked;if(L.useK)set('col',lightKelvin(L.kelvin||6500));redraw();};
+      const ks=makeSlider({id:'l_kelvin',label:'Kelvin',min:1000,max:12000,step:50,value:L.kelvin||6500,def:6500,fmt:v=>Math.round(v)+' K',onInput:v=>{L.kelvin=v;L.useK=true;L.col=lightKelvin(v);H.note();v3.dirty=true;requestRender&&requestRender();}}).el;
+      const sec=(id,title,...kids)=>lightSec(id,title,...kids.filter(Boolean));
+      const secs=[el('div',{class:'lnamerow'},el('label',{class:'hpsel'},el('span',{text:'Name'}),nm))];
+      if(L.type!=='sky'){const tr=[];if(L.type==='point'||L.type==='spot')tr.push(lightXYZ(L,set));
+        if(L.type==='sun')tr.push(sl('el','Height',-90,90,1,v=>Math.round(v)+'°'),sl('turn','Turn',-180,180,1,v=>Math.round(v)+'°'));
+        if(L.type==='spot')tr.push(el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:'l_aimMid',text:'Aim at the model',title:'Point the spot at the middle of the model again',onclick:()=>{delete L.aim;redraw();}})));
+        tr.push(el('p',{class:'note',text:L.type==='sun'?'Drag the sun in the view, or press R in Free mode for the rotate ring.':'Drag the arrows in the view to move it. Spots: press R for the rotate ring.'}));
+        secs.push(sec('transform','Transform',...tr));}
+      const lt=[el('div',{class:'lsplit'},el('label',{class:'hpsel'},el('span',{text:'Type'}),typ),el('label',{class:'hpcol'},el('span',{text:'Colour'}),colourBtn('l_col',()=>L.col,c=>{L.useK=false;set('col',c.slice(0,3));},'Light colour'))),
+        sl('int',L.type==='sky'?'Brightness':'Brightness',0,5,.01,v=>v.toFixed(3))];
+      if(L.type==='point'||L.type==='spot')lt.push(sl('range','Distance',b.r*.1,b.r*10,b.r/100,v=>(v/b.r).toFixed(1)+'×'));
+      if(L.type!=='sky')lt.push(el('div',{class:'ltemp'},el('label',{class:'chk'},kel,el('span',{text:'Temperature'})),ks));
+      lt.push(chk('l_shadow','Cast Shadows',L.shadow!==false,v=>set('shadow',v)),sl('rays',L.type==='sky'?'Rays':'Shadow rays',1,64,1,String));
+      if(L.type==='sky')lt.push(el('p',{class:'note',text:'Light from the environment picture of the 3D view (its HDRI, turned as there). No HDRI: plain white sky.'}));
+      secs.push(sec('light','Light',...lt));
+      if(L.type==='sun')secs.push(sec('area','Area / Shape',sl('soft','Diameter (shadow softness)',0,20,.1,v=>v.toFixed(1)+'°')));
+      if(L.type==='point'||L.type==='spot')secs.push(sec('area','Area / Shape',sl('soft','Diameter',0,b.r,b.r/200,v=>(v/b.r*100).toFixed(0)+'%')));
+      if(L.type==='spot')secs.push(sec('spot','Spot',sl('cone','Spot Angle',5,170,1,v=>Math.round(v)+'°'),makeSlider({id:'l_edge',label:'Spot Sharpness',min:0,max:1,step:.01,value:1-(L.edge??.4),def:.6,fmt:pct,onInput:v=>set('edge',1-v)}).el));
+      const box=el('div',{class:'lset lmar'},...secs);
       return el('div',{},head,box);});
     const add=t=>el('button',{class:'btn sm',type:'button',id:'lAdd_'+t,text:'+ '+LIGHT_TYPES.find(x=>x[0]===t)[1],onclick:()=>{const L=lightNew(t);if(t==='spot')L.name='Spot';R.lights.push(L);R.sel=L.id;redraw();}});
     return [on,H.buttons('l'),lightPresetRow(redraw),el('div',{class:'chips'},el('button',{class:'btn sm',type:'button',id:'lAuto',text:'Auto rig (key, fill, rim, sky)',title:'Three-point lighting around the model, like Marmoset',onclick:()=>{lightAutoRig();redraw();}}),add('sun'),add('point'),add('spot'),add('sky')),
@@ -103,7 +119,7 @@ function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sun
     const m=18;if(p[0]<m||p[0]>w-m||p[1]<m||p[1]>h-m){out=true;p=[clamp(p[0],m,w-m),clamp(p[1],m,h-m)];}return {L,at,p,out};});
   /* the selected light's gizmo: move arrows (bulb, spot) and a turn ring (sun, spot) */
   const free=lgzFree(),S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
-  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free)?0:34};if(S.L.type!=='sun'||free){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
+  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free&&!lgz.rot)?0:34};if((S.L.type!=='sun'||free)&&!(free&&lgz.rot&&S.L.type!=='point')){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
     if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}
     /* size handles (squares): reach of a bulb or spot, the cone of a spot, the shadow softness of a sun */
     gz.sz=[];if(!isSun){const t=S.L.type,R0=(gz.ring||14)+34;if(t==='sun')gz.sz.push({id:'soft',at:[S.p[0]+R0,S.p[1]],label:'Softness'});else{gz.sz.push({id:'reach',at:[S.p[0]+R0,S.p[1]],label:'Reach'});if(t==='spot')gz.sz.push({id:'cone',at:[S.p[0],S.p[1]+R0],label:'Cone'});}}}
@@ -166,7 +182,7 @@ function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-
   else if(D.part==='ring'&&L.type==='spot'){/* turn the spot: across = around the up axis, up/down = tilt */const a0=D.aim0,yaw=-dx*.6*Math.PI/180,pit=-dy*.6*Math.PI/180;
     let v=[a0[0]*Math.cos(yaw)+a0[2]*Math.sin(yaw),a0[1],-a0[0]*Math.sin(yaw)+a0[2]*Math.cos(yaw)];const hz=Math.hypot(v[0],v[2])||1e-6,el=Math.asin(clamp(v[1],-1,1))+pit,ce=Math.cos(clamp(el,-1.55,1.55));
     v=[v[0]/hz*ce,Math.sin(clamp(el,-1.55,1.55)),v[2]/hz*ce];L.aim=v;}
-  else if(L.type==='sun'&&!G.free){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
+  else if(L.type==='sun'&&(!G.free||D.part==='ring')){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
   else{/* across the screen: screen pixels → model units, measured at the light; Shift: nearer or further from the view */
     const p0=G.pr(D.pos0),eye=v3Eye(),f=lightNorm(D.pos0.map((v,k)=>v-eye[k])),rt=lightNorm([-f[2],0,f[0]]),up=[f[1]*rt[2]-f[2]*rt[1],f[2]*rt[0]-f[0]*rt[2],f[0]*rt[1]-f[1]*rt[0]].map(v=>-v),
       px=G.pr(D.pos0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;
@@ -266,6 +282,10 @@ async function lightPreviewStop(){if(lp.prog)lp.prog.cancelled=true;clearTimeout
 
 /* (0.95.8, Kenn) Delete removes the selected light, while the lights are being worked on (Bake tab's Lighting page, the Lights
    window, or right after a light was clicked in the view) */
+/* (0.98.13, Kenn) R switches the selected light's gizmo between Move (arrows) and Rotate (ring) in Free mode */
+function lightKeyRotate(e){if(e.key!=='r'&&e.key!=='R')return false;if(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||isTypingTarget(e.target)||ui.mode!=='p3d'||!lgzFree())return false;
+  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const L=R.lights.find(x=>x.id===R.sel);if(!L||L.type==='point')return false;
+  e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return true;lgz.rot=!lgz.rot;lgzDraw();try{toast(lgz.rot?'Rotate: turn the light with the ring (R for Move).':'Move: drag the arrows (R for Rotate).');}catch(_){}return true;}
 function lightKeyDelete(e){if(e.key!=='Delete'&&e.key!=='Backspace')return false;if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return false;
   const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const page=ui.mode==='bake'&&!!(bakeCfg.mapOpen&&bakeCfg.mapOpen.light);/* (0.97, no tabs) the Lighting settings are always on show: its preview and lights follow the Lighting tick */if(!(page||lightWin.open||lgz.picked))return false;
   if(!modal.hidden&&!lightWin.open)return false;const L=R.lights.find(x=>x.id===R.sel);if(!L)return false;

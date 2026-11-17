@@ -39,6 +39,7 @@ float pap_h(vec2 p,int t,float sc){ vec2 q=p/sc; float h=0.5;
   return h; }
 `;
 const CH_BRUSH=PAPER_GLSL+`
+uniform float uTiltK; uniform highp sampler2D uTiltD;
 uniform vec2 uCenter; uniform float uRadius; uniform float uHard; uniform float uGrain; uniform vec2 uGrainScale; uniform vec2 uPeriod;
 uniform int uUseDual; uniform sampler2D uDual; uniform vec2 uDualSize; uniform vec2 uDualOff; uniform int uDualMode; uniform float uDualAmt;
 float hash(vec2 p, vec2 per){ p=mod(p,per); return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -103,7 +104,14 @@ float pt_field(vec2 pix, int id, float S, float seed){ vec2 p=pix/S;
   return 1.0; }
 float brushMask(vec2 pix){
   float r=max(uRadius,0.01);
-  vec2 dv=pix-uCenter; float ca=cos(uAngle), sa=sin(uAngle);
+  vec2 dv=pix-uCenter;
+  /* (0.98.13, Kenn: wrap like Painter) on the model, where the surface leans away from the view the brush is squeezed on screen by the lean, so it is round ON the surface instead of stretched.
+     The lean comes from how the distance to the camera changes across the screen at the dab (zero when the surface faces the pixel's ray). */
+  if(uTiltK>0.0){ ivec2 tc=ivec2(uCenter), ts=textureSize(uTiltD,0); float d0=texelFetch(uTiltD,clamp(tc,ivec2(0),ts-1),0).r;
+    if(d0>0.0){ float a=texelFetch(uTiltD,clamp(tc+ivec2(2,0),ivec2(0),ts-1),0).r, b=texelFetch(uTiltD,clamp(tc-ivec2(2,0),ivec2(0),ts-1),0).r, c=texelFetch(uTiltD,clamp(tc+ivec2(0,2),ivec2(0),ts-1),0).r, e=texelFetch(uTiltD,clamp(tc-ivec2(0,2),ivec2(0),ts-1),0).r;
+      if(a>0.0&&b>0.0&&c>0.0&&e>0.0&&abs(a-b)<0.3*d0&&abs(c-e)<0.3*d0){ vec2 g=vec2(a-b,c-e)*0.25; float gl=length(g);
+        if(gl>1e-7){ float tn=gl/(d0*uTiltK), co=max(inversesqrt(1.0+tn*tn),0.22); vec2 u=g/gl, w=vec2(-u.y,u.x); dv=u*(dot(dv,u)/co)+w*dot(dv,w); } } } }
+  float ca=cos(uAngle), sa=sin(uAngle);
   vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; q.y/=max(uRound,0.02);
   float m;
   if(uUseTip==1){
