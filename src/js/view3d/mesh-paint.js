@@ -109,7 +109,9 @@ function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p
     const x0=clamp(Math.floor(b[0]/w*16),0,15),x1=clamp(Math.floor(b[2]/w*16),0,15),y0=clamp(Math.floor(b[1]/h*16),0,15),y1=clamp(Math.floor(b[3]/h*16),0,15);let u0=1,v0=1,u1=0,v1=0;
     for(const B of bins)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const j=(y*16+x)*4;u0=Math.min(u0,B[j]);v0=Math.min(v0,B[j+1]);u1=Math.max(u1,B[j+2]);v1=Math.max(v1,B[j+3]);}
     return u1<u0?[0,0,0,0]:[u0*doc.w-2,v0*doc.h-2,u1*doc.w+2,v1*doc.h+2];};
-  return SPo={w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,colourStencil:!!st3.img&&st3.mode==='colour',
+  return SPo={w,h,buf:M.buf,yup:true,viewportBounds,mesh:true,depthTex:M.dt,
+    /* the uniforms that keep the brush round on a leaning surface (surface wrap only; off in orthographic views) */
+    get tilt(){const s=v3s();if(s.paintAlign!=='wrap'||s.wrapKeep===false||s.ortho||replay)return null;return {uTiltK:2*Math.tan(s.fov*Math.PI/360)/Math.max(1,h),uTiltD:M.dt};},colourStencil:!!st3.img&&st3.mode==='colour',
     get paintProjection(){
       if(replay||!doc.p3||bake||useH||(st3.img&&st3.mode!=='off'))return null;
       return {mesh:p3PaintMeshKey(mesh),VP:Array.from(VP),eye:Array.from(eye),mirs:mirs.map(m=>Array.from(m)),
@@ -493,4 +495,5 @@ function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id
   const a=s.paintAlign||'uv',sz=s.sizeSpace||'object';
   const note=el('p',{class:'note',text:(a==='wrap'?'Tangent | Wrap follows the surface, even just behind a raised edge.':a==='camera'?'Camera projects the stroke flat from the view and only paints what you can see.':'UV stamps the brush straight onto the texture where you point; a seam starts a new stroke.')+
     ' Culling: surfaces turned away by more than the angle take no paint (90° = only those facing away). '+(sz==='object'?'Object: the brush keeps its size on the model as you zoom.':sz==='viewport'?'Viewport: the size is in screen pixels.':'Texture: the size is in texture pixels.')});
-  box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),size,note);return box;}
+  const keep=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Keep the brush round'}),(()=>{const k=s.wrapKeep!==false,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projKeep','aria-pressed':String(k),text:k?'On':'Off',title:'On a surface that leans away from you the brush is squeezed on screen, so it stays round on the model instead of stretching (like Painter)',onclick:()=>{s.wrapKeep=!k;redo();}});return b;})()):null;
+  box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),...(keep?[keep]:[]),size,note);return box;}

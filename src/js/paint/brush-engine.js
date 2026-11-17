@@ -176,7 +176,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
     else if(o.material?.surfaceDetail)surfaceDetailStamp(s,dst,U,copies,a);
     else if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
-    else for(const c of copies)paintRegularDab(dst,U,c,a,s.dabCol,s.dabTint,o.buildup||o.pFlow);
+    else{const U2=s.space&&s.space.tilt?Object.assign({},U,s.space.tilt):U;for(const c of copies)paintRegularDab(dst,U2,c,a,s.dabCol,s.dabTint,o.buildup||o.pFlow);}
   }
   for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
