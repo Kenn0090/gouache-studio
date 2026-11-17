@@ -128,7 +128,13 @@ function meshConnectedBlur(src,dst,x,y,box,low){if(ui.mode!=='p3d'||(!low&&(src.
   const w=Math.max(64,Math.round(src.w/f)),h=Math.max(64,Math.round(src.h/f)),dp=canFloat?16:src.depth,s1=makeTarget(w,h,dp,false),d1=makeTarget(w,h,dp,false);let ok=false;
   try{run(P.resample,s1,{uSrc:src.tex,uOffset:[0,0],uScale:[src.w/w,src.h/h],uTaps:{int:Math.min(8,Math.max(1,Math.ceil(src.w/w)))}});
    ok=meshConnectedBlur(s1,d1,x/f,y/f,box,true);
-   if(ok){copyScaled(d1,dst);seamBlurPadding(C,dst);}}
+   if(ok){/* back up in steps of two with a light smoothing at each size, so the enlargement cannot show as a lattice */
+    let up=d1,uw=w,uh=h;const keep=[];
+    while(uw<src.w||uh<src.h){const nw=Math.min(src.w,uw*2),nh=Math.min(src.h,uh*2);
+     if(nw>=src.w&&nh>=src.h){copyScaled(up,dst);if(dst.w===doc.w&&dst.h===doc.h&&typeof scratchT!=='undefined'&&scratchT&&scratchT.w===dst.w){run(P.blur,scratchT,{uSrc:dst.tex,uDir:[1,0],uSigma:1.4,uRadius:{int:5}});run(P.blur,dst,{uSrc:scratchT.tex,uDir:[0,1],uSigma:1.4,uRadius:{int:5}});}break;}
+     const t=makeTarget(nw,nh,dp,false),t2=makeTarget(nw,nh,dp,false);keep.push(t,t2);copyScaled(up,t);run(P.blur,t2,{uSrc:t.tex,uDir:[1,0],uSigma:1.4,uRadius:{int:5}});run(P.blur,t,{uSrc:t2.tex,uDir:[0,1],uSigma:1.4,uRadius:{int:5}});up=t;uw=nw;uh=nh;}
+    for(const t of keep)disposeTarget(t);
+    seamBlurPadding(C,dst);}}
   finally{disposeTarget(s1);disposeTarget(d1);gl.bindVertexArray(vao);}
   if(ok)return true;}
 if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
@@ -136,7 +142,7 @@ if(!seamBlurProgram)seamBlurProgram=prog3(VS_SEAMBLUR,FS_SEAMBLUR);
  let read=src,tmp=null,mid=null;if(src===dst){tmp=makeTarget(src.w,src.h,src.depth,false,src.packed,src.mono);blit(src,tmp,0,0,src.w,src.h,0,0);read=tmp;}else blit(src,dst,0,0,src.w,src.h,0,0);
  const draw=(from,to,rx,ry,taps,dither)=>{useProg(seamBlurProgram,{uFaces:C.tex,uSrc:from.tex,uSize:[src.w,src.h],uRadius:box?[rx,ry]:[rx*3,ry*3],uBox:{int:box?1:0},uTaps:{int:taps},uDither:dither},!!to.packed);
   bindTarget(to);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);};
- try{const big=Math.max(x,y)>10&&canFloat&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono,dith=0,taps=Math.min(48,Math.round(20+Math.min(x||1,y||1)*1.1));
+ try{const big=(Math.max(x,y)>10||low)&&canFloat&&!src.packed&&!src.mono&&!dst.packed&&!dst.mono,dith=0,taps=low?48:Math.min(48,Math.round(20+Math.min(x||1,y||1)*1.1));/* (0.98.8) the shrunken pass always uses two half-float passes and plenty of taps: it is small, so it is cheap, and it must not leave a pattern */
   if(big){/* two softer passes (each sigma/1.41) in half float: the noise of one pass is averaged by the other, and nothing is rounded to 8 bits in between */
    mid=makeTarget(src.w,src.h,16,false);draw(read,mid,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),0);draw(mid,dst,x/Math.SQRT2,y/Math.SQRT2,Math.min(40,taps),dith);}
   else draw(read,dst,x,y,Math.min(64,taps+12),dith);

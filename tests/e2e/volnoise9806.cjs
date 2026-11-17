@@ -8,7 +8,7 @@ const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const
    return {lo,hi,mean:s/n,sig:a.slice(0,2000).filter((_,i)=>i%7===0).join(',')};});
  await p.evaluate(()=>{const g=__gs;g.cmdAddLayer();const L=g.doc.active;const r=g.msAdd(L,'volume');window.__r=r;});await p.waitForTimeout(400);
  const a=await stat();console.log(JSON.stringify({lo:a.lo,hi:a.hi,mean:a.mean}));ok(a.hi-a.lo>60&&a.mean>60&&a.mean<200,'clouds fill the mask with detail (range '+(a.hi-a.lo)+')');
- for(const t of ['cells','gaussian']){await p.evaluate(t=>{const g=__gs,L=g.doc.active;window.__r.p.type=t;L.lookVer=(L.lookVer||0)+1;},t);await p.waitForTimeout(250);const s=await stat();ok(s.hi-s.lo>40&&s.sig!==a.sig,t+' makes its own pattern (range '+(s.hi-s.lo)+')');}
+ for(const t of ['cells','gaussian','ridged','billow','cracks','crystal','marble','wood','spots','stripes']){await p.evaluate(t=>{const g=__gs,L=g.doc.active;window.__r.p.type=t;L.lookVer=(L.lookVer||0)+1;},t);await p.waitForTimeout(250);const s=await stat();ok(s.hi-s.lo>40&&s.sig!==a.sig,t+' makes its own pattern (range '+(s.hi-s.lo)+')');}
  await p.evaluate(()=>{const g=__gs,L=g.doc.active;Object.assign(window.__r.p,{type:'clouds',macro:0,micro:0});L.lookVer++;});await p.waitForTimeout(250);
  const flat=await stat();ok(flat.hi-flat.lo<4,'macro and micro contrast at 0 leave it flat grey ('+(flat.hi-flat.lo)+')');
 console.log(JSON.stringify(await p.evaluate(()=>window.__r.p)));

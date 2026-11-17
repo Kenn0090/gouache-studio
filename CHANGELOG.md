@@ -1,3 +1,8 @@
+## 0.98.8
+
+- **More volume noise types.** Ridged (sharp mountain ridges), Billow (soft rounded lumps), Cracks (lines where cells meet), Crystal (angular facets), Marble (flowing veins), Wood rings (growth rings that follow the gizmo's axis), Spots (round blotches) and Stripes (warpable bands). All fill 3D space, so none has a seam, and they use the same contrast, warp, sampling and seed controls as Clouds, Cells and Gaussian.
+- **Wide blur without a pattern.** The seam-aware wide blur (used by Gaussian and Box blur on the model, and by the curvature Width) now runs its small pass in two half-float passes with plenty of samples and is enlarged in smoothed steps, so no diamond lattice shows. It is still quick.
+
 ## 0.98.7
 
 - **Wide blurs are quick and smooth.** A wide Gaussian blur is made on a shrunken copy (in half-float) and brought back up in steps of two with a light smoothing at each size, so its cost no longer grows with the radius and the enlargement leaves no creases (it matches the exact blur to within 0.5 of 255 on average). The seam-safe blur across the model, which the curvature **Width** spread uses, does the same on a smaller copy.
