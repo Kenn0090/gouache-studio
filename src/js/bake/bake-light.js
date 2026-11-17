@@ -103,7 +103,7 @@ function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sun
     const m=18;if(p[0]<m||p[0]>w-m||p[1]<m||p[1]>h-m){out=true;p=[clamp(p[0],m,w-m),clamp(p[1],m,h-m)];}return {L,at,p,out};});
   /* the selected light's gizmo: move arrows (bulb, spot) and a turn ring (sun, spot) */
   const free=lgzFree(),S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
-  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free)?0:34};if(S.L.type!=='sun'||free){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
+  if(S){gz={it:S,ax:[],ring:(S.L.type==='point'||S.L.type==='sun'&&free&&!lgz.rot)?0:34};if((S.L.type!=='sun'||free)&&!(free&&lgz.rot&&S.L.type!=='point')){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=gz.ring,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
     if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}
     /* size handles (squares): reach of a bulb or spot, the cone of a spot, the shadow softness of a sun */
     gz.sz=[];if(!isSun){const t=S.L.type,R0=(gz.ring||14)+34;if(t==='sun')gz.sz.push({id:'soft',at:[S.p[0]+R0,S.p[1]],label:'Softness'});else{gz.sz.push({id:'reach',at:[S.p[0]+R0,S.p[1]],label:'Reach'});if(t==='spot')gz.sz.push({id:'cone',at:[S.p[0],S.p[1]+R0],label:'Cone'});}}}
@@ -166,7 +166,7 @@ function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-
   else if(D.part==='ring'&&L.type==='spot'){/* turn the spot: across = around the up axis, up/down = tilt */const a0=D.aim0,yaw=-dx*.6*Math.PI/180,pit=-dy*.6*Math.PI/180;
     let v=[a0[0]*Math.cos(yaw)+a0[2]*Math.sin(yaw),a0[1],-a0[0]*Math.sin(yaw)+a0[2]*Math.cos(yaw)];const hz=Math.hypot(v[0],v[2])||1e-6,el=Math.asin(clamp(v[1],-1,1))+pit,ce=Math.cos(clamp(el,-1.55,1.55));
     v=[v[0]/hz*ce,Math.sin(clamp(el,-1.55,1.55)),v[2]/hz*ce];L.aim=v;}
-  else if(L.type==='sun'&&!G.free){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
+  else if(L.type==='sun'&&(!G.free||D.part==='ring')){L.turn=((D.turn0+dx*.5+540)%360)-180;L.el=clamp(D.el0-dy*.5,-89,89);}
   else{/* across the screen: screen pixels → model units, measured at the light; Shift: nearer or further from the view */
     const p0=G.pr(D.pos0),eye=v3Eye(),f=lightNorm(D.pos0.map((v,k)=>v-eye[k])),rt=lightNorm([-f[2],0,f[0]]),up=[f[1]*rt[2]-f[2]*rt[1],f[2]*rt[0]-f[0]*rt[2],f[0]*rt[1]-f[1]*rt[0]].map(v=>-v),
       px=G.pr(D.pos0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;
@@ -266,6 +266,10 @@ async function lightPreviewStop(){if(lp.prog)lp.prog.cancelled=true;clearTimeout
 
 /* (0.95.8, Kenn) Delete removes the selected light, while the lights are being worked on (Bake tab's Lighting page, the Lights
    window, or right after a light was clicked in the view) */
+/* (0.98.13, Kenn) R switches the selected light's gizmo between Move (arrows) and Rotate (ring) in Free mode */
+function lightKeyRotate(e){if(e.key!=='r'&&e.key!=='R')return false;if(e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||isTypingTarget(e.target)||ui.mode!=='p3d'||!lgzFree())return false;
+  const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const L=R.lights.find(x=>x.id===R.sel);if(!L||L.type==='point')return false;
+  e.preventDefault();e.stopImmediatePropagation();if(e.repeat)return true;lgz.rot=!lgz.rot;lgzDraw();try{toast(lgz.rot?'Rotate: turn the light with the ring (R for Move).':'Move: drag the arrows (R for Rotate).');}catch(_){}return true;}
 function lightKeyDelete(e){if(e.key!=='Delete'&&e.key!=='Backspace')return false;if(isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return false;
   const R=bakeCfg&&bakeCfg.rig;if(!R||!R.sel||!lgzActive())return false;const page=ui.mode==='bake'&&!!(bakeCfg.mapOpen&&bakeCfg.mapOpen.light);/* (0.97, no tabs) the Lighting settings are always on show: its preview and lights follow the Lighting tick */if(!(page||lightWin.open||lgz.picked))return false;
   if(!modal.hidden&&!lightWin.open)return false;const L=R.lights.find(x=>x.id===R.sel);if(!L)return false;
