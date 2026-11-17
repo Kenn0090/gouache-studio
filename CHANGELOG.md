@@ -1,3 +1,11 @@
+## 0.98.7
+
+- **Wide blurs are quick and smooth.** A wide Gaussian blur is made on a shrunken copy (in half-float) and brought back up in steps of two with a light smoothing at each size, so its cost no longer grows with the radius and the enlargement leaves no creases (it matches the exact blur to within 0.5 of 255 on average). The seam-safe blur across the model, which the curvature **Width** spread uses, does the same on a smaller copy.
+- **Transfer paint from another project.** File › Import › **Transfer paint from another project…** reads another saved 3D Paint project (without opening it) and projects the maps you tick onto this model by surface position, as a new layer in each target set. It also works between UDIM projects (and UDIM to non-UDIM and back); projects with one set per UDIM tile (the older way) are not supported.
+- **Re-projection finishes the job.** UDIM sets follow new UVs too. **Replace the model, keep my paint** offers to bake the mesh maps again for exact ones, and the model updater now waits for the paint move to finish before it bakes.
+- **A column of its own.** Dropping a tab on the strip beside the viewport makes an independent column there (own width bar), instead of joining the material column. Right-click a tab › **Dock as a column beside the viewport**.
+- **Dockable Export button.** Drag the Export button onto the viewport (it stays at that spot of the view) or onto a shelf's bar (it becomes a button there). Right-click puts it back in the options bar.
+
 ## 0.98.6
 
 - **Masks of masks.** Every row under a mask has a small ◌ button that adds its own mask (white shows the row everywhere and you paint black to hide it; black hides it until you paint white). Click it again to paint that mask, right-click it to delete it. Right-click a row › **Move to** another layer: the row and its own mask go to the top of that layer's mask or effects as one undo step.

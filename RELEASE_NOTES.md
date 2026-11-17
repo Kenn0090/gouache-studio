@@ -1,7 +1,7 @@
-## Gouache Studio 0.98.6
+## Gouache Studio 0.98.7
 
-- Masks of masks: every mask row has its own small mask button (white or black, paint it, right-click deletes it). Right-click a row to move it, with its own mask, to another layer.
-- Volume noise: a new mask row that fills 3D space (Clouds, Cells, Gaussian) with intensity, scale, macro and micro contrast and warp, sampling and seed. No UVs, no seams, with a gizmo.
-- Texture on one UDIM tile: a Tiles row on a picture channel, and a button per tile in the 3D Paint strip.
-- When a model comes back with different UVs (or other triangles), your paint is moved onto the new layout. File > Import > Replace the model, keep my paint.
-- Mesh maps from a material is a wide, resizable window with an Open in Convert tab button.
+- Wide Gaussian blurs stay quick and smooth (the radius no longer slows them), and the curvature Width spread is much lighter on big models.
+- Transfer paint from another saved 3D Paint project (File > Import), including UDIM projects.
+- Paint now follows a model's new UVs in UDIM projects too; "Replace the model, keep my paint" offers to bake again for exact mesh maps, and the model updater waits for the paint move before baking.
+- Dragging a tab to the strip beside the viewport makes a column of its own.
+- The Export button can be dropped on the viewport or into a shelf's bar (right-click puts it back).

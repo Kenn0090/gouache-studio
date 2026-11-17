@@ -12,7 +12,9 @@ const rpTick=()=>new Promise(r=>setTimeout(r,0));
 function rpTrisByMat(m){const T=m.idx.length/3,nm=m.matNames||['default'],M=m.triMat,out=new Map();for(const n of nm)out.set(n,[]);
   for(let t=0;t<T;t++){const n=nm[M?M[t]:0]||nm[0];out.get(n).push(t);}return out;}
 /* vertex positions in the model file's own units, so two models of different size or centring still line up */
-function rpFilePos(m){const s=m.fitS||1,c=m.fitC||[0,0,0],n=m.pos.length/3,o=new Float64Array(n*3);for(let i=0;i<n;i++)for(let k=0;k<3;k++)o[i*3+k]=m.pos[i*3+k]/s+c[k];return o;}
+/* both models in the file's units when each remembers its own (a saved project's model does not: it was already centred and scaled), else both as they are (centred, 2 units across) */
+function rpPosMode(a,b){return !!(a&&b&&a.fitS&&b.fitS);}
+function rpFilePos(m,fileUnits){const s=fileUnits===false?1:m.fitS||1,c=fileUnits===false?[0,0,0]:m.fitC||[0,0,0],n=m.pos.length/3,o=new Float64Array(n*3);for(let i=0;i<n;i++)for(let k=0;k<3;k++)o[i*3+k]=m.pos[i*3+k]/s+c[k];return o;}
 /* same triangles in the same places? (only the UVs differ) */
 function rpSameShape(a,b,pa,pb){if(a.idx.length!==b.idx.length||pa.length!==pb.length)return false;for(let i=0;i<a.idx.length;i++)if(a.idx[i]!==b.idx[i])return false;
   let mn=1e30,mx=-1e30;for(let i=0;i<pa.length;i++){mn=Math.min(mn,pa[i]);mx=Math.max(mx,pa[i]);}const tol=(mx-mn)*1e-5+1e-9;
@@ -50,7 +52,7 @@ function rpGrid(pos,idx,tris){let mn=[1e30,1e30,1e30],mx=[-1e30,-1e30,-1e30];
   return {mn,cell,dims,cells,key,diag};}
 /* the map: for each texel of the new layout, the old UV (u,v) of the same spot on the surface, or -1 */
 async function rpBuildMap(oldM,newM,oldTris,newTris,W,H,progress,tolFrac){
-  const map=new Float32Array(W*H*2).fill(-1),inside=new Uint8Array(W*H),got={n:0},pa=rpFilePos(oldM),pb=rpFilePos(newM),same=rpSameShape(oldM,newM,pa,pb);
+  const map=new Float32Array(W*H*2).fill(-1),inside=new Uint8Array(W*H),got={n:0},fu=rpPosMode(oldM,newM),pa=rpFilePos(oldM,fu),pb=rpFilePos(newM,fu),same=rpSameShape(oldM,newM,pa,pb);
   const grid=same?null:rpGrid(pa,oldM.idx,oldTris),tmp=[0,0,0,0],best=[0,0,0,0],lastT={t:-1},tol=grid?grid.diag*(tolFrac||.03):0;
   const ouv=oldM.uv,uvn=newM.uv,io=oldM.idx,inw=newM.idx;let work=0;
   const lookup=(t,wa,wb,wc)=>{/* position of the new texel on the new triangle, in file units */
@@ -154,6 +156,7 @@ async function trRun(src,jobs,keys,tolFrac,newM0){const newM=p3.ua?udimAtlasMesh
       if(!nt||!ot||!dims){report.low.push(S.name);continue;}
       loadSet(n/jobs.length,'Looking up “'+S.name+'”…');
       const r=await rpBuildMap(srcM,newM,ot,nt,dims[0],dims[1],f=>loadSet((n+f*.8)/jobs.length),tolFrac);let area=0;for(let i=0;i<r.inside.length;i++)area+=r.inside[i];
+      (report.stats||(report.stats=[])).push({set:S.name,got:r.got,inside:area,srcDims:[S.w,S.h],dstDims:dims});
       if(area<50||r.got<area*RP_MIN_COVER){report.low.push(S.name);n++;continue;}
       const tex=rpMapTex(r.map,dims[0],dims[1]);
       try{if(!P_RPMAP)P_RPMAP=program(FS_RPMAP);
