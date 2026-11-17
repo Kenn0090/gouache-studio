@@ -87,3 +87,23 @@ function dlgMatConvert(L,only){L=L||doc.active;if(!isLayer(L)||L.fx){toast('Sele
 function mcOpenConvert(L){const src=mcSource(L);if(!src){toast('\u201c'+L.name+'\u201d has no height or normal to send.');return;}
   const t=makeTarget(src.h.w,src.h.h,8,false);blit(src.h,t,0,0,src.h.w,src.h.h,0,0);if(src.own)disposeTarget(src.h);
   if(!setMode('convert',true)){disposeTarget(t);return;}tabDocResize(t.w,t.h,'Convert');cvSetSource(t,L.name,true);cvSetKind('height');cvAllDirty();buildConvertPanel();}
+
+/* (0.98.11, Kenn) Drop a picture onto a material channel that reads Converted or Mesh map: the picture becomes
+   that kind of map and the channel uses it. Any converted or baked map can be sent on as a plain layer. */
+function mcUniqueKey(M,name){const base='cv:'+(String(name||'Picture').replace(/\.[^.]+$/,'').replace(/[^\w ()-]+/g,'').trim().slice(0,32)||'Picture');let key=base,i=2;while(M[key])key=base+' '+i++;return key;}
+async function mcDropImage(L,k,s,file,kind,done){
+  let t;try{t=await fileTarget(file);}catch(e){toast('Could not read '+file.name+': '+(e.message||e));return false;}
+  setWrap(t,true);const M=doc.meshMaps||(doc.meshMaps={});let key=null;
+  if(kind==='baked'&&ui.mode==='p3d'){const g=p3MapGuess(file.name)||(P3_IMPORT_MAPS.includes(k)?k:null);if(g&&p3MapSet(g,t,file.name))key=g;}
+  if(!key){key=mcUniqueKey(M,file.name);M[key]=t;const meta=doc.meshMapInfo||(doc.meshMapInfo={});meta[key]={name:baseName(file.name),w:t.w,h:t.h};doc.meshMapVer=(doc.meshMapVer||0)+1;
+    if(kind==='baked')toast('“'+file.name+'” is not a map type Gouache bakes, so it was added as a converted map.');}
+  s.src=key.startsWith('cv:')?'conv':'baked';s.mm=key;s.on=true;
+  if(typeof p3MeshMapsChanged==='function')p3MeshMapsChanged();else msEpoch++;
+  if(done)done();return true;}
+function mcSendLayer(key){const M=doc.meshMaps||{},t=M[key];if(!t){toast('That map is not there any more.');return;}
+  const nm=msMeshName(key).replace(' (converted)',''),own=['rough','metal','height','normal'].includes(key)&&doc.maps.includes(key)?key:'base';
+  const Ln=newLayerObj(nm);doc.count--;for(const x of Object.keys(Ln.maps))if(x!==own){disposeTarget(Ln.maps[x]);delete Ln.maps[x];}
+  if(own!==doc.map)Ln.target=emptyFor(mapDepth(doc.map));
+  copyScaled(t,ensureMapTarget(Ln,own));if(own!=='base'){Ln.blankBase=true;setMapModeOf(Ln,own,0);}
+  if(key==='ao'||key==='cv:ao')Ln.mode=MODES.indexOf('Multiply');
+  structOp('Send “'+nm+'” as a layer',()=>{const P0=insertPoint();insertNode(Ln,P0[0],P0[1]);});changedAll();toast('Sent “'+nm+'” as a layer.');}

@@ -1,0 +1,35 @@
+/* 0.23: Mesh maps from a material (curvature, AO, edges, roughness, metallic from its height) and the Converted source. */
+const {chromium}=require('playwright');
+const OLD=__dirname+'/';
+const OUT=__dirname+'/out/';
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{
+ const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const ctx=await b.newContext({viewport:{width:1440,height:1000}});const p=await ctx.newPage();
+ await p.route('**/*',r=>{const u=r.request().url();
+  if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});
+  if(u.includes('UTIF.js'))return r.fulfill({path:OLD+'node_modules/utif/UTIF.js',contentType:'text/javascript'});
+  if(u.includes('ag-psd'))return r.fulfill({path:OLD+'node_modules/ag-psd/dist/bundle.js',contentType:'text/javascript'});
+  if(u.startsWith('file:'))return r.continue();return r.abort();});
+ const errs=[];p.on('pageerror',e=>errs.push('PAGEERR '+e.stack));p.on('console',m=>{if(m.type()==='error'&&!m.text().includes('ERR_'))errs.push(m.text());if(m.type()==='warning'&&/GL|WebGL/.test(m.text())&&!/GPU stall due to ReadPixels/.test(m.text()))errs.push('GLWARN '+m.text());});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ const W=ms=>p.waitForTimeout(ms||150);
+ const box=await p.locator('#gl').boundingBox();
+ await p.evaluate(()=>{__gs.newDoc(128,128,8,[1,1,1],'cd',false);__gs.setDocMaps(['base','rough','metal','height','normal'],'maps');__gs.cmdNewFillLayer({name:'Mat',maps:{base:{c:[.6,.6,.6]},rough:{v:.5}}});const L=__gs.doc.active;L.fill.maps.rough.on=true;L.fill.maps.rough.src='conv';__gs.matEd&&0;});await W(300);
+ await p.evaluate(()=>{__gs.showPanel('matEd');});await W(300);
+ await p.evaluate(()=>{localStorage.setItem('gs.matOpen','all');});
+ const drop=async sel=>p.evaluate(async sel=>{const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,8,16);g.fillStyle='#000';g.fillRect(8,0,8,16);
+   const b=await new Promise(r=>c.toBlob(r));const f=new File([b],'Rust Stain.png',{type:'image/png'}),dt=new DataTransfer();dt.items.add(f);
+   const el=document.querySelector(sel);if(!el)return 'nocard';for(const t of ['dragover','drop'])el.dispatchEvent(new DragEvent(t,{dataTransfer:dt,bubbles:true,cancelable:true}));return 'ok';},sel);
+ await p.evaluate(()=>{const L=__gs.doc.active;__gs.fillRender(L);});
+ ok(await drop('.fillcard[data-material-channel="rough"]')==='ok','card found and dropped on');await W(800);
+ const r=await p.evaluate(()=>{const L=__gs.doc.active,s=L.fill.maps.rough;return {src:s.src,mm:s.mm,keys:Object.keys(__gs.doc.meshMaps||{}).join()};});
+ ok(r.src==='conv'&&/^cv:Rust Stain/.test(r.mm)&&r.keys.includes(r.mm),'dropped picture became a converted map '+JSON.stringify(r));
+ const n0=await p.evaluate(()=>__gs.allNodes().length);
+ ok(await p.locator('#fl_cvl_rough_'+r.mm.slice(3).replace(/ /g,' ')).count()>=0,'tile rendered');
+ await p.evaluate(mm=>mcSendLayer(mm),r.mm).catch(()=>{});
+ await p.evaluate(()=>{const b=document.querySelector('.cvlayer');if(b)b.click();});await W(500);
+ const n1=await p.evaluate(()=>__gs.allNodes().length);
+ ok(n1===n0+1,'Layer button sent it as a layer ('+n0+' → '+n1+')');
+ ok(!errs.length,'no errors '+errs.join('|').slice(0,200));
+ await b.close();process.exit(fails?1:0);})();

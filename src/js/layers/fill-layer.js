@@ -305,6 +305,7 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
     card.addEventListener('dragleave',e=>{if(!card.contains(e.relatedTarget))card.classList.remove('material-drop');});
     card.addEventListener('drop',async e=>{e.preventDefault();e.stopPropagation();card.classList.remove('material-drop');const fs=[...e.dataTransfer.files].filter(fillImageFile);if(!fs.length){toast('Drop an image onto a material channel.');return;}
       /* (0.94.7, Kenn) several pictures at once: each goes to the channel its name says (BaseColor, Roughness, Normal…); the rest to this channel */
+      if(fs.length===1&&L.fill.maps[k]&&(L.fill.maps[k].src==='conv'||L.fill.maps[k].src==='baked')&&typeof mcDropImage==='function'){const cs=L.fill.maps[k];matEdBegin(L);if(await mcDropImage(L,k,cs,fs[0],cs.src,()=>{edit(()=>{matEd.open[k]=true;},k,true);matEdCommit();}))toast('Added “'+fs[0].name+'” as a '+(cs.src==='conv'?'converted':'mesh')+' map.');return;}
       const plan=[];let left=null;for(const f of fs){const c=typeof miChannel==='function'&&fs.length>1?miChannel(f.name):null;if(c&&L.fill.maps[c.k]&&!plan.some(x=>x[0]===c.k))plan.push([c.k,f]);else if(!left)left=f;}
       if(left&&!plan.some(x=>x[0]===k))plan.push([k,left]);
       for(const [ck,f] of plan){const cs=L.fill.maps[ck];await fillUseImage(L,ck,cs,f,()=>{edit(()=>{cs.on=true;matEd.open[ck]=true;},ck,true);matEdCommit();});}
@@ -324,12 +325,13 @@ function renderMatEd(force){const box=document.getElementById('matEdBody');if(!b
       else if(s.src==='g3d'){if(!W.g3)W.g3=g3Default();row.append(g3Box({L,g:W.g3,row:null},grey));}
       else if(s.src==='conv'){
         /* the maps made by Filter › Mesh maps from material, as tiles */
-        if(!cks.length)row.append(el('p',{class:'note',text:'No converted maps yet. Right-click a material layer › Mesh maps from this material.'}),el('button',{class:'btn sm',text:'Make them…',onclick:()=>dlgMatConvert(L)}));
-        else row.append(el('div',{class:'cvtiles'},...cks.map(x=>el('button',{class:'cvtile'+(s.mm===x?' on':''),id:'fl_cv_'+k+'_'+x.slice(3),'aria-pressed':String(s.mm===x),text:msMeshName(x).replace(' (converted)',''),onclick:()=>edit(()=>{s.mm=x;},k,true)}))));}
+        if(!cks.length)row.append(el('p',{class:'note',text:'No converted maps yet. Drop a picture here, or right-click a material layer › Mesh maps from this material.'}),el('button',{class:'btn sm',text:'Make them…',onclick:()=>dlgMatConvert(L)}));
+        else row.append(el('div',{class:'cvtiles'},...cks.map(x=>el('span',{class:'cvtilewrap'},el('button',{class:'cvtile'+(s.mm===x?' on':''),id:'fl_cv_'+k+'_'+x.slice(3),'aria-pressed':String(s.mm===x),text:msMeshName(x).replace(' (converted)',''),onclick:()=>edit(()=>{s.mm=x;},k,true)}),el('button',{class:'cvtile cvlayer',id:'fl_cvl_'+k+'_'+x.slice(3),text:'Layer',title:'Send this map to the layer stack as a layer',onclick:()=>mcSendLayer(x)})))));
+        row.append(el('p',{class:'note',text:'Drop a picture here to add it as a converted map.'}));}
       else if(s.src==='baked'){
-        if(!mks.length)row.append(el('p',{class:'note',text:'No baked maps in this texture set yet. Bake in the Bake tab and press Send to 3D Paint.'}));
+        if(!mks.length)row.append(el('p',{class:'note',text:'No baked maps in this texture set yet. Drop a picture here, or bake in the Bake tab and press Send to 3D Paint.'}));
         else{const pick=el('select',{id:'fl_mm_'+k,'aria-label':MAP_DEFS[k].label+' from the baked map'},...mks.map(x=>el('option',{value:x,text:(typeof P3_MESHMAP_NAMES!=='undefined'&&P3_MESHMAP_NAMES[x])||x})));
-          pick.value=M[s.mm]?s.mm:mks[0];pick.onchange=()=>edit(()=>{s.mm=pick.value;},k);row.append(pick);
+          pick.value=M[s.mm]?s.mm:mks[0];pick.onchange=()=>edit(()=>{s.mm=pick.value;},k);row.append(pick,el('button',{class:'btn sm',id:'fl_mml_'+k,text:'Send as layer',onclick:()=>mcSendLayer(pick.value)}),el('p',{class:'note',text:'Drop a picture here to add it as a mesh map.'}));
           if(k==='height')row.append(makeSlider({id:'fl_hs',label:'Bump strength',min:0,max:4,numericMax:20,step:.05,value:W.hStr==null?1:W.hStr,fmt:pct,onInput:v=>edit(()=>{W.hStr=v;},k)}).el);}}
       else{const has=!!(L._fillImg&&L._fillImg[k]);
         row.append(el('div',{class:'row wrap'},(()=>{const nm=el('span',{class:'note',text:s.name||(isN?'No normal map yet':'No image')});nm._hpv=()=>L._fillImg&&L._fillImg[k]?{t:L._fillImg[k],name:s.name||MAP_DEFS[k].label}:null;return nm;})(),el('button',{class:'btn sm',text:'Choose image…',id:'fl_img_'+k,onclick:()=>{matEdBegin(L);fillPickImage(L,k,s,()=>edit(()=>{},k,true));}}),...(isN?[]:[el('button',{class:'btn sm',text:'Textures…',id:'fl_tx_'+k,title:'Pick one from the Textures library (grunge, patterns, your own)',onclick:()=>txPickDlg(k)})])));
