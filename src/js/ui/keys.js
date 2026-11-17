@@ -9,7 +9,7 @@ const KB_EXTRA=[
   ['tool:gradient','Gradient / fill','Tools','G',()=>setTool(ui.fillKind||'gradient')],['tool:dodge','Dodge / burn','Tools','O',()=>setTool(ui.tonal||'dodge')],['tool:crop','Crop','Tools','C',()=>setTool('crop')],
   ['tool:text','Text','Tools','T',()=>setTool('text')],['tool:shape','Shape','Tools','U',()=>setTool('shape')],['tool:array','Array','Tools','',()=>setTool('array')],['tool:marquee','Marquee','Tools','M',()=>setTool('marquee')],['tool:lasso','Lasso','Tools','',()=>setTool('lasso')],['tool:wand','Magic wand','Tools','W',()=>setTool('wand')],
   ['paint:lastBrush','Swap last two brushes','Painting','Shift+B',brushSwapLast],
-  ['p3:pick','3D Paint: pick colour (hold)','Painting','Alt',()=>{}],
+  ['p3:pick','3D Paint: pick colour (hold, then click)','Painting','Z',()=>{}],
   ['paint:smaller','Brush smaller','Painting','[',e=>kbBrushSize(-1,e&&e.repeat)],['paint:bigger','Brush bigger','Painting',']',e=>kbBrushSize(1,e&&e.repeat)],
   ['paint:swap','Swap colours','Painting','X',()=>swapColors()],['paint:reset','Black and white colours','Painting','D',()=>{ui.bg=[1,1,1];setFG([0,0,0]);}]];
 /* (0.95.5, Kenn) holding [ or ] keeps resizing and speeds up the longer it is held; the brush outline shows at the new size
@@ -39,6 +39,7 @@ function kbCombo(e){let k=e.key;if(['Control','Shift','Alt','Meta'].includes(k))
   else if(e.code==='BracketLeft')k='[';else if(e.code==='BracketRight')k=']';else if(k==='Delete')k='Del';else if(k===' ')k='Space';else if(k.length===1)k=k.toUpperCase();
   return (e.ctrlKey||e.metaKey?'Ctrl+':'')+(e.shiftKey?'Shift+':'')+(e.altKey?'Alt+':'')+k;}
 function kbHandle(e){const combo=kbCombo(e);if(!combo)return false;
+  if(ui.mode==='p3d'&&typeof v3PickKey==='function'&&combo===v3PickKey()&&v3.on&&v3.hover&&prefs.altPick!==false)return false;/* the pick key belongs to the viewport while the pointer is over the model */
   let mine=Object.keys(kbUser).find(id=>kbUser[id]===combo);if(!mine&&typeof KB_AUTO!=='undefined')mine=KB_AUTO.find(id=>!(id in kbUser)&&kbDefault(id)===combo);
   if(!mine&&!Object.keys(kbUser).length)return false;
   if(mine==='p3:pick')return false;/* temporary viewport action, handled on key down/up */

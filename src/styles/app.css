@@ -1911,3 +1911,5 @@ body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.s
 .xwfile{display:inline-flex;align-items:flex-start;gap:6px;cursor:pointer}.xwfile input{margin:3px 0 0}.xwfile-t{display:grid;gap:0;min-width:0}.xwfile.off{opacity:.5}.xwfile.off code{text-decoration:line-through}
 
 .optexport{margin-left:auto;padding:4px 16px;font-weight:600}
+
+#pickPrev{position:fixed;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #000,0 2px 6px #0008;pointer-events:none;z-index:9999}#pickPrev[hidden]{display:none}

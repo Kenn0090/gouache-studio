@@ -765,7 +765,7 @@ function v3PickHeld(e){if(prefs.altPick===false||sel3.armed||['bake','convert'].
   const mods=e&&typeof kbModifiers==='function'?kbModifiers(e):null;
   if(/^(Ctrl|Shift|Alt)(\+(Ctrl|Shift|Alt))*$/.test(key))return e?mods===key:v3PickHold.on;
   const wanted=key.split('+').slice(0,-1).join('+');return v3PickHold.on&&(!e||mods===wanted);}
-function v3PickRelease(){v3PickHold.on=false;v3PickHold.code=null;if(typeof v3PickQ!=='undefined'){clearTimeout(v3PickQ);v3PickQ=null;}
+function v3PickRelease(){if(typeof v3PickPreviewOff==='function')v3PickPreviewOff();v3PickHold.on=false;v3PickHold.code=null;if(typeof v3PickQ!=='undefined'){clearTimeout(v3PickQ);v3PickQ=null;}
   if(v3PickHold.hit?.isConnected&&v3PickHold.point)meshCursor(v3PickHold.hit,{...v3PickHold.point,altKey:false,ctrlKey:false,metaKey:false,shiftKey:false});else{v3PickHold.hit=null;v3PickHold.point=null;}}
 /* Registered before stencil/navigation key handlers, so a reassigned key owns its hold in the viewport. */
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&sel3.armed&&modal.hidden&&!isTypingTarget(e.target)){e.preventDefault();e.stopImmediatePropagation();sel3Arm(false);return;}
