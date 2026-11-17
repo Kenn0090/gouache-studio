@@ -114,7 +114,20 @@ float hatchPlane(vec2 p,float dark,float breakup,float phase){
   return 1.0-(1.0-a*first)*(1.0-b*second*0.86);
 }
 vec4 mapSample(sampler2D tex,vec2 uv){vec2 dx,dy;mapGrad(uv,dx,dy);if(uSh==8)return retroSample(tex,uv,dx,dy);return textureGrad(tex,uv,dx,dy);}
-void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; if(uSh==19&&uCxR.x>0.5) uv=(floor(uv*uCxR.x)+0.5)/uCxR.x; vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=(uHas&512)!=0?mapSample(uOpac,uv+uPO).a:mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
+/* (0.98.11, Kenn: an eye shader) the iris sits below a clear cornea: the view bends going in (refraction), the iris is read at its own depth (parallax),
+   and the pupil opens and closes by re-mapping the painted iris. uShP = centre x, y, iris radius, pupil; uShQ = depth, refraction, limbal ring, cornea roughness */
+float gEyeC=0.0,gEyeR=1.0,gEyeP=0.0,gEyeCa=0.0;
+vec2 eyeUV(vec2 uv){ vec2 c=uShP.xy; float R=max(uShP.z,1e-3); vec2 d=uv-c; float r=length(d);
+  vec3 Ng=normalize(vN); vec3 T=normalize(vTan.xyz-Ng*dot(Ng,vTan.xyz)), B=cross(Ng,T)*vTan.w; vec3 V=normalize(uCam-vP);
+  vec3 Vt=vec3(dot(V,T),dot(V,B),dot(V,Ng)); vec3 Vr=normalize(vec3(Vt.xy*(1.0-uShQ.y*0.45),max(Vt.z,0.15)));
+  float cm=1.0-smoothstep(R*0.92,R*1.12,r); gEyeC=cm;
+  vec2 d2=d-Vr.xy/max(Vr.z,0.2)*uShQ.x*R*cm; float r2=length(d2);
+  float pt=uShD.x*R, pn=clamp(pt*uShP.w*2.0,R*0.04,R*0.92), rs;
+  if(r2>=R) rs=r2; else if(r2>pn) rs=pt+(r2-pn)*(R-pt)/max(R-pn,1e-4); else rs=r2*pt/max(pn,1e-4);
+  gEyeR=r2; gEyeP=pn; vec3 L=normalize(uSun); vec2 Lt=vec2(dot(L,T),dot(L,B)); vec2 dn=d2/max(r2,1e-5);
+  gEyeCa=pow(max(dot(dn,-Lt/(length(Lt)+1e-4)),0.0),3.0)*smoothstep(pn,R*0.75,r2)*(1.0-smoothstep(R*0.8,R,r2))*length(Lt);
+  return c+d2*(rs/max(r2,1e-5)); }
+void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv=uUseUDIM==1?fract(vT):vT; if(uSh==19&&uCxR.x>0.5) uv=(floor(uv*uCxR.x)+0.5)/uCxR.x; if(uSh==20) uv=eyeUV(uv); vec2 dUx=dFdx(uv),dUy=dFdy(uv); vec4 b=mapSample(uBase,uv+uPB); float aOp=1.0; if((uHas&64)!=0) aOp=(uHas&512)!=0?mapSample(uOpac,uv+uPO).a:mapSample(uOpac,uv+uPO).r; float a=b.a*aOp;
   /* (0.97.15, Kenn) in 3D Paint the model always has a plain grey base material: where the layers (or a black mask) leave it see-through, that grey shows instead of the mesh vanishing; only an Opacity map cuts holes */
   if(uBackdrop==1){ if(uClip==1&&aOp<0.5) discard; a=aOp; } else if(uClip==1&&a<0.5) discard;
   vec3 alb=b.a>1e-5?b.rgb/b.a:vec3(0.0); if(uBackdrop==1) alb=mix(vec3(0.5),alb,b.a);
@@ -174,6 +187,10 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
   if(uMetalView==1){ alb=lin(vec3(0.78,0.8,0.84)); metal=1.0; rough=uMetalRough; ao=1.0; }
   if(uBevelMaterial==1){ alb=lin(vec3(0.62,0.64,0.68));metal=uBevelMetal;rough=uBevelRough;ao=1.0; }
   if(uSh==15) rough=mix(rough,max(rough,0.5),uShP.z);
+  if(uSh==20){ float R=max(uShP.z,1e-3), pn=gEyeP, r=gEyeR;
+    float iris=smoothstep(pn*0.95,pn*1.15+1e-4,r)*(1.0-smoothstep(R*0.86,R,r)), scl=smoothstep(R*0.96,R*1.12,r);
+    alb*=mix(vec3(1.0),lin(uShC),iris); alb*=1.0-uShQ.z*smoothstep(R*0.7,R*0.97,r)*(1.0-smoothstep(R*0.97,R*1.08,r));
+    alb=mix(alb,alb*lin(uSkin.rgb),scl); rough=mix(rough,uShQ.w,gEyeC); metal=0.0; }
   vec3 V=normalize(uCam-vP), L=normalize(uSun), H=normalize(L+V);
   float NdL=max(dot(N,L),0.0), NdV=max(dot(N,V),1e-3), NdH=max(dot(N,H),0.0), VdH=max(dot(V,H),0.0);
   /* a Specular colour map (Spec/Gloss) sets the reflection colour directly (flag 256); otherwise it follows the metal amount */
@@ -362,6 +379,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec2 uv
         vec3 dg=refract(-V,N,eta); if(dot(dg,dg)<0.5) dg=reflect(-V,N); vec3 Tg=envSpec(dg,rf)*uSkyI*exp(-(vec3(1.0)-sc)*P.z*1.6/NdV)*mix(vec3(1.0),alb,0.85);
         vec3 c=Tg*(1.0-Fg)+envSpec(reflect(-V,N),rf*0.6)*uSkyI*Fg; col=mix(col,c,wm); }
       else if(kd==13){ cxRet=wm; cxRP=P; } } }
+  if(uSh==20) col+=alb*gEyeCa*uShD.y*(0.2+uSunI)*1.5;
   if((uHas&16)!=0) col+=lin(mapSample(uEmis,uv+uPE).rgb)*2.0;
   col*=uExpo; col=tone(col); vec3 outC=pow(clamp(col,0.0,1.0),vec3(1.0/2.2));
   if(cxRet>0.0){ float bt=max(cxRP.y,2.0); vec3 q=floor(outC*bt+0.5+(retroBayer(gl_FragCoord.xy)-0.5)*cxRP.z)/bt; outC=mix(outC,clamp(q,0.0,1.0),cxRet); }

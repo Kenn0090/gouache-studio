@@ -1,3 +1,9 @@
+## 0.98.11
+
+- **Gizmos for the lights in the viewport.** The studio sun in the 3D view now has a handle you can grab and turn, like your own lights. Selected lights also get square **size handles**: **Reach** (how far a bulb or spot lights), **Cone** (a spot's opening) and **Softness** (a sun's shadow edge), next to the move arrows and turn ring they already had.
+- **Get more skies.** Environments has a new **Get more skies…** button. It lists Poly Haven's free HDRIs (CC0) with pictures and creators; pick 1K, 2K or 4K and one click downloads and uses it. Downloaded skies stay in your list and can be removed there. Desktop app only.
+- **Eye shader.** A new look, **Eye (iris parallax)**, for eyeballs: the iris is read at its own depth under a clear cornea, so it shifts as you move round the eye, with cornea bending, a pupil that opens and closes, a dark ring round the iris, iris and white tints, a light crescent and the cornea's own gloss. Presets for human, wide and pin-point pupils, deep iris, doll glass and flat cartoon, and a **Pick centre on model** button.
+
 ## 0.98.10
 
 - **Kinder to the graphics card.** Any pass on a picture bigger than about 12 million pixels (roughly 3500 × 3500) is drawn in 512-pixel tiles with a flush between them, whichever program it is, and the seam-aware blur does the same. No single job runs long enough to trip Windows's graphics timeout, which was dropping pieces of 8K pictures and could crash the card.

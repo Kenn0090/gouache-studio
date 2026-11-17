@@ -1,3 +1,9 @@
+## Gouache Studio 0.98.11
+
+- Lights in the viewport get gizmos: the studio sun can be grabbed and turned, and a selected light shows Reach, Cone and Softness handles.
+- Environments: **Get more skies…** browses and downloads Poly Haven's free HDRIs (1K, 2K or 4K).
+- New **Eye (iris parallax)** shader with depth, cornea bending, pupil size, dark ring, tints and presets.
+
 ## Gouache Studio 0.98.10
 
 - Big pictures are drawn in tiles, so no single job runs long enough to make Windows reset the graphics driver (fewer crashes and black or missing patches on 8K).
