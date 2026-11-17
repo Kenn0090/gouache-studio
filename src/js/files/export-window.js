@@ -24,11 +24,15 @@ function xwTileAutoPx(x,U,T){const s=(texCfg.setSz&&texCfg.setSz[x.name])||texCf
 function xwTileOutPx(x,U,T){const ov=texCfg.tileSz&&texCfg.tileSz[x.name]&&texCfg.tileSz[x.name][T.id];return ov||xwTileAutoPx(x,U,T);}
 const xwTileOn=(x,T)=>!(texCfg.tileOff&&texCfg.tileOff[x.name]&&texCfg.tileOff[x.name][T.id]);
 /* the files of the live document's preset (other sets usually have the same maps; the count is an estimate for them) */
-function xwOuts(){const pr=TEX_PRESETS[texCfg.preset];return pr?texOutputs(pr):[];}
+/* (0.98.4, Georgian: the map chips should be tick boxes) which maps each set writes: texCfg.fileOff[set][suffix]=true leaves one out */
+const xwFileOff=(set,suffix)=>!!(texCfg.fileOff&&texCfg.fileOff[set]&&texCfg.fileOff[set][suffix]);
+const xwOutsAllRaw=texOutputs;/* every map the preset could write for this document, ticked or not */
+texOutputs=function(pr){const l=xwOutsAllRaw(pr),set=typeof texSetNow==='function'?texSetNow():'';return l.filter(o=>!xwFileOff(set,o.s));};
+function xwOuts(){const pr=TEX_PRESETS[texCfg.preset];return pr?xwOutsAllRaw(pr):[];}
 /* how many files and about how many megabytes */
 function xwEstimate(){const outs=xwOuts(),png=texCfg.fmt==='png';let files=0,bytes=0;const add=(px,o)=>{const C=o.rgb==='normal'?3:o.grey?1:(o.ch?o.ch.length:4),b=o.grey==='height'&&texCfg.h16&&png?2:1;files++;bytes+=px*px*C*b*(png?.45:1);};
   const sets=xwSets().filter(x=>xwSetOn(x.name)&&(texCfg.allSets!==false||x.i<0||x.i===p3.cur));
-  for(const x of sets){const U=xwTiles(x);if(U){for(const T of U.B.tiles)if(xwTileOn(x,T))for(const o of outs)add(xwTileOutPx(x,U,T),o);}else for(const o of outs)add(xwOutPx(x),o);
+  for(const x of sets){const U=xwTiles(x),outsX=outs.filter(o=>!xwFileOff(x.i<0?'':x.name,o.s));if(U){for(const T of U.B.tiles)if(xwTileOn(x,T))for(const o of outsX)add(xwTileOutPx(x,U,T),o);}else for(const o of outsX)add(xwOutPx(x),o);
     if(texCfg.meshMaps&&(x.i<0||x.i===p3.cur))for(const k of texMeshKeys())if(texMeshWanted(k)){const t=doc.meshMaps[k];files++;bytes+=(texCfg.size||t.w)*(texCfg.size||t.h)*3*(png?.45:1);}}
   if(mxHasModel()&&texCfg.model&&texCfg.model!=='none')files+=texCfg.model==='obj'?2:1;
   return {files,mb:bytes/1048576,sets:sets.length};}
@@ -60,7 +64,9 @@ function xwSetCard(x,redraw){const U=xwTiles(x),on=xwSetOn(x.name),pr=TEX_PRESET
   /* the maps this set writes, as small chips (the full file name is the tip) */
   const chips=el('div',{class:'xwfiles',id:'xwFiles_'+key});
   for(const o of outs){const nm=pr.name(fileBase).replace('{s}',o.s),flip=texNormalFlip(pr),what=o.rgb==='normal'?'Normal ('+(flip?'DirectX':'OpenGL')+')':o.what;
-    chips.append(el('span',{class:'xwfile',title:(U?U.B.tiles.filter(T=>xwTileOn(x,T)).map(T=>nm+'.'+T.id+'.'+texCfg.fmt).join('\n'):nm+'.'+texCfg.fmt)+'\n'+what},el('code',{text:o.s}),el('small',{text:what})));}
+    const fk=x.i<0?'':x.name,offF=xwFileOff(fk,o.s),cb=el('input',{type:'checkbox',id:'xwFile_'+key+'_'+o.s,'aria-label':'Export '+o.s+' for '+x.name});cb.checked=!offF;
+    cb.onchange=()=>{texCfg.fileOff=texCfg.fileOff||{};const q=texCfg.fileOff[fk]=texCfg.fileOff[fk]||{};if(cb.checked)delete q[o.s];else q[o.s]=true;redraw();};
+    chips.append(el('label',{class:'xwfile'+(offF?' off':''),title:(offF?'Not exported. Tick to export:\n':'')+(U?U.B.tiles.filter(T=>xwTileOn(x,T)).map(T=>nm+'.'+T.id+'.'+texCfg.fmt).join('\n'):nm+'.'+texCfg.fmt)+'\n'+what},cb,el('span',{class:'xwfile-t'},el('code',{text:o.s}),el('small',{text:what}))));}
   if(texCfg.meshMaps&&(x.i<0||x.i===p3.cur))for(const k of texMeshKeys())if(texMeshWanted(k))chips.append(el('span',{class:'xwfile baked',title:pr.name(fileBase).replace('{s}',meshExportSuffix(k))+'.'+texCfg.fmt},el('code',{text:meshExportSuffix(k)}),el('small',{text:'Baked · '+(P3_MESHMAP_NAMES[k]||k)})));
   card.append(chips);
   if(x.i<0&&doc.maps.length<2)card.append(el('p',{class:'note',text:'This document only has base colour. Add maps with Image › Document maps… to export roughness, metallic, height and normal too.'}));

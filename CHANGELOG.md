@@ -1,3 +1,13 @@
+## 0.98.4
+
+- **Colour picking in 3D Paint.** Hold **Z** (rebindable) over the model: a small swatch shows the colour a click would pick, and clicking picks it. **Alt no longer picks** or shows the picker icon, so Alt+drag only turns the view (Preferences can bring back picking while hovering). The picker has a **sample size** (Point, 3×3, 5×5, 11×11, 31×31, averaged) in Preferences, and on a mask it picks the mask's grey value instead of the base colour.
+- **Channel lock.** The lock beside the channel drop-down makes the brush paint every channel at once; unlocked, it paints the channel you are on plus the ones ticked in the brush.
+- **Export window.** Each map file chip is a tick box, so single maps can be left out; the options bar has a big **Export** button; the Colour tab can be docked at the side in 3D Paint.
+- **Keys.** Convert tab: **C** steps through the maps. Bake tab: **C** and **B** step through the baked maps (the Crop key is gone there). In 3D Paint, C also stops at the layer's mask.
+- **Layer buttons follow the mask.** With a mask selected, New layer / Fill / Filter add a paint, fill or filter row to the mask; with the layer selected they make new layers as before.
+- **Curvature mask rows reworked.** Width (spreads edges and cavities across seams and UV islands), Big / Medium / Small detail, black and white points and a sharpness curve. The spread of the Mask Builder's edge and cavity curvature now follows the surface across seams.
+- **Smaller fixes.** Scanned grunge pictures tile without a seam; paint fades out near the grazing angle instead of cutting off; the skin shader works out the model's size itself (the Model height slider is gone); Save brush in the Brush tab of 3D Paint; graphics card memory setting in Preferences › Memory; colour changes in Preferences › Look no longer lag; the UDIM size heading says it sets all tiles.
+
 ## 0.98.3
 
 - **Blurs are smooth and quicker across the model.** The Gaussian and Box blur that follow the surface across UV seams (and UV tiles) no longer leave contour steps when the radius is big: the samples now follow the blur's own curve, with a different turn at each pixel, and big radii use two soft passes in half float. It uses fewer samples than before, so dragging the Radius slider is lighter too. Blurring across seams and UDIM tiles is kept.

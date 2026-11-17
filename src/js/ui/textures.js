@@ -121,11 +121,17 @@ function txCacheKeep(key,t){tx.cache.set(key,t);tx.used.set(key,performance.now(
   if(tx.cacheTimer)clearTimeout(tx.cacheTimer);tx.cacheTimer=setTimeout(()=>{tx.cacheTimer=0;txCacheTrim();},0);return t;}
 async function txRead(rec){if(rec.data)return rec;const raw=await store.getRaw(rec.id,'textures');if(!raw)throw new Error('This texture is no longer in the library.');tx.stats.unpacks++;const full=await pxDeep(raw,false);
   if(!(full.data instanceof Uint8Array)||full.data.length!==full.w*full.h*4)throw new Error('The saved texture could not be read.');return full;}
+/* (0.98.4, Georgian) scanned grunge was not seamless: the picture is cross-faded with a copy shifted by half, so its edges meet */
+const FS_TXSEAM=`uniform sampler2D uA; void main(){vec2 uv=gl_FragCoord.xy/vec2(textureSize(uA,0));
+  float w=(1.0-abs(2.0*uv.x-1.0))*(1.0-abs(2.0*uv.y-1.0));w=smoothstep(0.0,1.0,w);o=mix(texture(uA,fract(uv+0.5)),texture(uA,uv),w);}`;
+let P_TXSEAM=null;
+function txMakeSeamless(t){if(prefs.seamlessGrunge===false)return t;if(!P_TXSEAM)P_TXSEAM=program(FS_TXSEAM);const out=makeTarget(t.w,t.h,t.depth||8,true);
+  run(P_TXSEAM,out,{uA:t.tex});setWrap(out,true);disposeTarget(t);return out;}
 async function txTarget(it){const key=it.kind+':'+it.id,cached=txCacheGet(key);if(cached)return cached;
   if(tx.pending.has(key)){tx.stats.coalesced++;return tx.pending.get(key);}
   const job=(async()=>{let t;tx.stats.loads++;
     if(it.kind==='gen')t=txGenTarget(it.id,1024);
-    else if(it.kind==='photo'){const bm=await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'}));try{t=await bitmapTarget(bm);}finally{bm.close();}}
+    else if(it.kind==='photo'){const bm=await createImageBitmap(new Blob([await txPhotoBytes(it.id)],{type:'image/webp'}));try{t=await bitmapTarget(bm);}finally{bm.close();}t=txMakeSeamless(t);}
     else{const rec=await txRead(it.rec||{id:it.id});t=makeTarget(rec.w,rec.h,8,true);writeRegion(t,0,0,rec.w,rec.h,rec.data);setWrap(t,true);}
     return txCacheKeep(key,t);})();tx.pending.set(key,job);try{return await job;}finally{tx.pending.delete(key);}}
 function txCopy(t){const c=makeTarget(t.w,t.h,8,true);blit(t,c,0,0,t.w,t.h,0,0);setWrap(c,true);return c;}

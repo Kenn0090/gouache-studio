@@ -1,0 +1,14 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'ap',false,'pbr'));await p.waitForTimeout(500);
+ await p.click('#modeTabs [data-mode=convert]');await p.waitForTimeout(1500);
+ const tab=()=>p.evaluate(()=>[__gs.cvS.tab,__gs.ui.tool]);
+ const a=await tab();await p.mouse.move(700,400);await p.keyboard.press('c');await p.waitForTimeout(400);const c=await tab();
+ ok(c[0]!==a[0]&&c[1]!=='crop','Convert: C steps the map '+a+' -> '+c);
+ await p.click('#modeTabs [data-mode=bake]');await p.waitForTimeout(1500);
+ await p.keyboard.press('c');await p.waitForTimeout(300);ok(await p.evaluate(()=>__gs.ui.tool)!=='crop','Bake: C is not Crop');
+ await p.keyboard.press('b');await p.waitForTimeout(300);ok(errs.length===0,'B in Bake runs without errors '+errs.join('|').slice(0,200));
+ await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();

@@ -1,0 +1,13 @@
+const {chromium}=require('playwright');const OLD=__dirname+'/';let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const p=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();const errs=[];p.on('pageerror',e=>errs.push(e.stack));
+ await p.route('**/*',r=>{const u=r.request().url();if(u.includes('pako'))return r.fulfill({path:OLD+'node_modules/pako/dist/pako.min.js',contentType:'text/javascript'});if(u.startsWith('file:'))return r.continue();return r.abort();});
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(()=>__gs.newDoc(256,256,8,[1,1,1],'ap',false,'pbr'));await p.waitForTimeout(500);
+ await p.click('#modeTabs [data-mode=p3d]');await p.waitForTimeout(1500);
+ ok(await p.locator('#lChanLock').count()===1,'lock button exists');
+ const t=()=>p.evaluate(()=>__gs.mapBrushTargets().length);
+ const n0=await t();await p.evaluate(()=>localStorage.setItem('gs.linkAll','1'));const n1=await t();
+ ok(n1>n0&&n1>=3,'locked: more channels painted '+n0+' -> '+n1);
+ await p.evaluate(()=>localStorage.setItem('gs.linkAll','0'));ok(await t()===n0,'unlocked: back to normal');
+ ok(errs.length===0,'no errors '+errs.join('|').slice(0,200));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();

@@ -26,6 +26,7 @@ function refreshMapsUI(){mapsPanelSync();if(typeof renderShading==="function")re
   ctl.hidden=!ctl.children.length;
   /* (0.40, Kenn) a channel drop-down on the layer stack, like Painter's: which channel you see and paint, and whose blend mode and opacity the stack shows */
   {const h=$('#hLayers');if(h){let sel=$('#lChan');if(!sel){sel=el('select',{id:'lChan',class:'shsel lchan','aria-label':'Channel',title:'Which channel you see and paint. The blend mode and opacity below are for this channel.'});sel.onchange=()=>setView(sel.value);h.append(sel);}
+    let lk=$('#lChanLock');if(!lk){lk=el('button',{type:'button',id:'lChanLock',class:'btn sm lchanlock',onclick:()=>{try{localStorage.setItem('gs.linkAll',mapLinkAll()?'0':'1');}catch(e){}mapLockSync();if(typeof buildBrushPanel==='function')buildBrushPanel();}});sel.after(lk);}mapLockSync();
     sel.replaceChildren(...rows.map(([k,l])=>el('option',{value:k,text:l})));sel.value=doc.view;sel.hidden=doc.maps.length<2;}}
   $('#mapState').textContent=doc.maps.length>1?doc.maps.length+' maps':'';
   const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}if(ui.mode==='p3d'&&typeof buildOptBar==='function'&&!optSliders.__busy)buildOptBar();
@@ -60,3 +61,6 @@ function dlgMaps(){if(ui.mode==='anim'){toast('Switch to paint mode to change ma
     if(wf!==(doc.workflow||'metal')){setTimeout(()=>wfAsk(wf,apply),0);return;}apply();}});}
 $('#mapsBtn').addEventListener('click',dlgMaps);
 if($('#stMap'))$('#stMap').addEventListener('click',()=>setView(doc.map));
+
+function mapLockSync(){const b=$('#lChanLock');if(!b)return;const on=mapLinkAll();b.textContent=on?'🔒':'🔓';b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);
+  b.title=on?'Locked: the brush paints every channel at once. Click to paint only the channel you are on (plus the ones ticked in the brush).':'Unlocked: the brush paints only this channel (plus the ones ticked in the brush). Click to paint all channels together.';b.hidden=doc.maps.length<2;}

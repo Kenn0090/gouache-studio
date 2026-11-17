@@ -378,6 +378,8 @@ function dkDragMove(e){const d=dk.drag;if(!d)return;if(!d.on){if(Math.hypot(e.cl
       else if(k==='left'){to={edge:'left'};box={left:r.left,top:r.top,width:w,height:r.height};}
       else if(k==='top'){to={edge:'top'};box={left:r.left,top:r.top,width:r.width,height:h};}
       else if(ui.mode==='paint'){to={newGroup2:dk.col2.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}
+      /* (0.98.4, Georgian: the Colour tab could not be docked at the side in 3D Paint) the hint showed the strip beside the viewport, but the tab went into the far right dock, "down there". It now joins the material column, which is what the strip points at. */
+      else if(dkCol2On()){to={newGroup2:0};box={left:r.right-w,top:r.top,width:w,height:r.height};}
       else{to={newGroup:dk.L.groups.length};box={left:r.right-w,top:r.top,width:w,height:r.height};}}
     else to={float:{x:e.clientX-40,y:e.clientY-12}};}
   else if(t&&t.closest('.dkfloat:not(.flyout)')){/* onto another floating panel: join it */const fe=t.closest('.dkfloat');const f=dk.L.floats[[...document.querySelectorAll('.dkfloat:not(.flyout)')].indexOf(fe)];if(f){to={floatJoin:f};box=fe.getBoundingClientRect();}}

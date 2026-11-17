@@ -7,7 +7,9 @@
      3. the drawn picture swaps its sharp under-skin light for the blurred one, times the skin colour, so painted detail,
         shine and fuzz stay sharp.
    Millimetres need the model's real size: Model height (cm) in the skin settings (25 cm for a head, 180 cm for a body). */
-Object.assign(SH_DEF.skin,{blur:1,realH:25});
+Object.assign(SH_DEF.skin,{blur:1});
+/* (0.98.4) the model's real size comes from the file: units up to 4 across count as metres, bigger ones as centimetres */
+function skAutoCm(m){const sz=m&&m.fitS?2/m.fitS:2;return sz<=4?sz*100:sz;}
 const FS_SKBLUR=`vec3 dec(vec3 e){ e=min(e,vec3(0.996)); return e/(1.0-e); }
 uniform sampler2D uSrc; uniform sampler2D uDepth; uniform vec2 uDir; uniform vec3 uR; uniform vec2 uSz;
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec4 c0=texture(uSrc,uv); if(c0.a<0.01){ o=c0; return; } float z0=texture(uDepth,uv).r;
@@ -32,7 +34,7 @@ function skbTargets(w,h){let X=skb.F;if(X&&(X.w!==w||X.h!==h)){skbFree();X=null;
   /* the under-skin picture's framebuffer also holds the scene's depth, so hidden skin is not drawn */
   for(const t of [X.d,X.a]){gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,X.dt,0);}gl.bindFramebuffer(gl.FRAMEBUFFER,null);return X;}
 /* blur distance in pixels for each colour: Scatter Depth (mm) × scatter colour, at the model's real size on screen */
-function skbRadius(P,F){const s=v3s(),m=v3.mesh;if(!m)return [0,0,0];const realMm=Math.max(10,(P.realH??25)*10)/2;
+function skbRadius(P,F){const s=v3s(),m=v3.mesh;if(!m)return [0,0,0];const realMm=Math.max(10,(P.realH!=null?P.realH:skAutoCm(m))*10)/2;
   const halfView=s.ortho?v3.cam.dist*Math.tan(s.fov*Math.PI/360):v3.cam.dist*Math.tan(s.fov*Math.PI/360);
   const pxPerUnit=(F.h/2)/Math.max(1e-4,halfView),pxPerMm=pxPerUnit*(m.radius||1)/realMm,c=P.col||[1,.62,.52],d=Math.max(0,P.scatDepth??1);
   return c.map(x=>Math.min(48,d*(0.35+0.65*x)*pxPerMm));}
@@ -60,5 +62,4 @@ function skinBlurPass(F,C,list,common,flip,g){
 /* the settings: Skin blur and the model's real height, beside Scatter Depth */
 {const f=skSkinUI;skSkinUI=function(sh){const box=f.apply(this,arguments);try{const P=shParams(sh),setP=(key,v)=>shadeEdit(d=>{d.p.skin=Object.assign({},shParams(d,'skin'),{[key]:v});});
   const blur=makeSlider({id:'sh_blur',label:'Skin blur (soft light under the skin)',min:0,max:1,step:.01,value:P.blur??1,fmt:v=>Math.round(v*100)+'%',onInput:v=>setP('blur',v)}).el;
-  const real=makeSlider({id:'sh_realH',label:'Model height (cm), for the mm depths',min:5,max:250,step:1,value:P.realH??25,fmt:v=>v+' cm',onInput:v=>setP('realH',v)}).el;
-  const anchor=box.querySelector('#sh_strength');const row=anchor&&(anchor.closest('.srow')||anchor);if(row)row.before(blur,real);else box.append(blur,real);}catch(e){console.warn('skin blur settings',e);}return box;};}
+  const anchor=box.querySelector('#sh_strength');const row=anchor&&(anchor.closest('.srow')||anchor);if(row)row.before(blur);else box.append(blur);}catch(e){console.warn('skin blur settings',e);}return box;};}

@@ -66,9 +66,9 @@ $('#hex').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
 function pickAt(x,y){
   const W=doc.w,H=doc.h;x=Math.floor(x);y=Math.floor(y);if(doc.wrap){x=mod(x,W);y=mod(y,H);}if(x<0||y<0||x>=W||y>=H)return;
   if(dirtyComp){composite();dirtyComp=false;}
-  gl.bindFramebuffer(gl.FRAMEBUFFER,compOut.fbo);let px;
-  if(compOut.depth===16){const f=new Float32Array(4);gl.readPixels(x,y,1,1,gl.RGBA,gl.FLOAT,f);px=Array.from(f);}
-  else{const u=new Uint8Array(4);gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,u);px=Array.from(u,v=>v/255);}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,compOut.fbo);let px;const n=Math.max(1,+prefs.pickSize||1),h=n>>1,x0=Math.max(0,x-h),y0=Math.max(0,y-h),w=Math.min(n,W-x0),hh=Math.min(n,H-y0);
+  if(compOut.depth===16){const f=new Float32Array(w*hh*4);gl.readPixels(x0,y0,w,hh,gl.RGBA,gl.FLOAT,f);px=[0,0,0,0];for(let i=0;i<w*hh;i++)for(let c=0;c<4;c++)px[c]+=f[i*4+c];px=px.map(v=>v/(w*hh));}
+  else{const u=new Uint8Array(w*hh*4);gl.readPixels(x0,y0,w,hh,gl.RGBA,gl.UNSIGNED_BYTE,u);px=[0,0,0,0];for(let i=0;i<w*hh;i++)for(let c=0;c<4;c++)px[c]+=u[i*4+c]/255;px=px.map(v=>v/(w*hh));}
   if(px[3]<.002)return;setFG([px[0]/px[3],px[1]/px[3],px[2]/px[3]].map(v=>clamp(v,0,1)));
 }
 {const slot=$('#eyeSlot'),b=slot&&screenPickBtn(c=>{const keep=ui.bg;setFG(c);ui.bg=keep;refreshColor();pushRecent(c);});if(b)slot.replaceWith(b);else if(slot)slot.remove();}

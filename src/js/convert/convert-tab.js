@@ -340,3 +340,9 @@ function dlgCvMaterial(){if(!cvS.src){toast('Pick a source first.');return;}
     okLabel:'Make material',onOk(){const rec=cvMaterialRec(name.trim(),max);matLib.list.push(rec);store.put(rec,'materials');if(typeof renderMats==='function')renderMats();const made=paRemember('mat',rec);made.catch(e=>toast('Could not add the material to Projects: '+e.message));
       if(add&&setMode('p3d',true)){doc.projectAssets=doc.projectAssets||[];const owner=docState().doc;paTrack(owner.projectAssets,made.then(a=>paRemember('mat',a.rec,owner,true))).catch(e=>toast('Could not add the material to Projects: '+e.message));matApply(rec);toast('“'+rec.name+'” is in Materials and on a new layer in 3D Paint.');}
       else toast('Saved “'+rec.name+'” in Materials. Add it from the Materials tab in 3D Paint.');}});}
+
+/* (0.98.4, Kenn) Convert tab: C steps through the maps (Shift+C back) instead of the Crop tool, which does nothing there */
+window.addEventListener('keydown',e=>{if(ui.mode!=='convert'||(e.key!=='c'&&e.key!=='C')||e.ctrlKey||e.metaKey||e.altKey||isTypingTarget(e.target)||!modal.hidden)return;
+  e.preventDefault();e.stopImmediatePropagation();const outs=CV_OUTS[cvS.kind],i=Math.max(0,outs.indexOf(cvS.tab)),k=outs[(i+(e.shiftKey?-1:1)+outs.length)%outs.length];
+  cvS.tab=k;cvS.show='result';cvSchedule();buildConvertPanel();requestRender();
+  const nm=x=>x==='ao'?'AO':CV_NAMES[x].replace(' colour','');if(typeof flipLabel==='function')flipLabel('Map',outs.map(nm),outs.indexOf(k));},true);
