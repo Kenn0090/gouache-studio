@@ -1,3 +1,15 @@
+## 0.98.10
+
+- **Kinder to the graphics card.** Any pass on a picture bigger than about 12 million pixels (roughly 3500 × 3500) is drawn in 512-pixel tiles with a flush between them, whichever program it is, and the seam-aware blur does the same. No single job runs long enough to trip Windows's graphics timeout, which was dropping pieces of 8K pictures and could crash the card.
+- **Graphics memory limit by card.** The "memory nearly full" warning no longer assumes 6 GB: the card's name gives its real size (GeForce 10 to 50 series, Radeon RX 6000 and 7000, Arc, RTX A-series; laptop cards capped at 8 GB). Unknown cards still get 6 GB, and Preferences › Memory can set it by hand.
+- **Masks on filter layers.** Hue / Saturation and filter layers take mask rows (generators, noise, anything), their mask has the same right-click menu as a fill layer's, and the layer buttons add into a selected mask there too.
+- **Drag a mask row onto another layer** to move it (with everything inside it); the target layer lights up.
+- **Mask Builder across UV seams.** The Big / Medium / Small curvature blurs follow the model over seams instead of stopping at island edges.
+- **Perlin noise** is a new volume noise type.
+- **Export button** leads the options bar. **Tile sizes** are set tile by tile (the all-tiles size is gone).
+- **Wrap painting** thins out smoothly as the surface turns away instead of ending in a line.
+- **Alt + click picks the colour on the model** is a new option in Preferences (off by default; Alt + drag still turns the view).
+
 ## 0.98.9
 
 - **Mask stack like Marmoset's.** A mask can now hold **folders**: a folder blends the rows inside it first, then blends that with the rows below by its own blend mode and opacity, and it can have its own mask. Rows go inside the selected folder when you add them; right-click a row for "Put in a new folder", "Take out of the folder" and "Move into…", or drag a row onto a folder. Any row can have **a full mask stack of its own** (the ◌ button; it becomes ◐ once it has one): add as many rows of any kind as you like inside it. **Another layer, by brightness…** reads a whole layer (base colour, roughness, height…) as a mask row. Everything nests as deep as you like and shows indented under the layer, and folders fold with ▾. Files from 0.98.6 and 0.98.7 with a row's single paint mask still open correctly.

@@ -1,4 +1,8 @@
-## Gouache Studio 0.98.9
+## Gouache Studio 0.98.10
 
-- Mask stack like Marmoset's: folders inside a mask (nested, with their own blend mode, opacity and mask), a full stack of rows for any row's own mask, and any layer usable as a mask row. Rows nest and indent under the layer.
-- Volume noise is lighter on every slider move, and Scale goes up to 200 on the slider (type any number).
+- Big pictures are drawn in tiles, so no single job runs long enough to make Windows reset the graphics driver (fewer crashes and black or missing patches on 8K).
+- The graphics-memory warning now knows your card: a 24 GB card is no longer treated as 6 GB.
+- Hue / Saturation and filter layers take mask rows too; their mask has the full mask menu. Drag a mask row onto another layer to move it.
+- Mask Builder curvature blurs go across UV seams. New Perlin volume noise.
+- The Export button leads the options bar. Tile sizes are set tile by tile. Paint thins out smoothly near the edge in wrap mode.
+- New option: Alt + click picks the colour on the model (off by default).
