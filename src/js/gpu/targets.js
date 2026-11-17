@@ -91,7 +91,7 @@ function snapSparse(a,b){if(!a||!b||a.tiles||b.tiles||a.w!==b.w||a.h!==b.h||a.de
   for(const sn of [a,b]){const src=sn._d,out=new src.constructor(keep);for(const t of tiles)for(let y=0;y<t.h;y++){const o=((t.y+y)*w+t.x)*4;out.set(src.subarray(o,o+t.w*4),t.off+y*t.w*4);}
     sn._d=out;sn.tiles=tiles;sn.bytes=out.byteLength;}
   return true;}
-function snapSparseLater(a,b,tries){tries=tries||0;if(tries>40)return;setTimeout(()=>{try{if(a._job||b._job||!a._d||!b._d){if(a._d!==null&&b._d!==null)snapSparseLater(a,b,tries+1);return;}snapSparse(a,b);}catch(e){}},tries?250:400);}
+function snapSparseLater(a,b,tries){tries=tries||0;if(tries>40)return;setTimeout(()=>{try{if(a._job||b._job||!a._d||!b._d){snapSparseLater(a,b,tries+1);return;}snapSparse(a,b);}catch(e){}},tries?250:400);}
 function restoreRegion(snap,dst,x,y){p3PaintWrite(dst);dst.opaque=false;gl.bindTexture(gl.TEXTURE_2D,dst.tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
   if(snap.tiles){const d=snap.data,fmt=dst.mono?gl.RED:dst.packed?gl.RG:gl.RGBA;for(const t of snap.tiles){const part=d.subarray(t.off,t.off+t.w*t.h*4);
       if(snap.depth===16)gl.texSubImage2D(gl.TEXTURE_2D,0,x+t.x,y+t.y,t.w,t.h,gl.RGBA,gl.HALF_FLOAT,part);else gl.texSubImage2D(gl.TEXTURE_2D,0,x+t.x,y+t.y,t.w,t.h,gl.RGBA,gl.UNSIGNED_BYTE,part);}
