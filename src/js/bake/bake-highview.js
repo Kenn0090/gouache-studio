@@ -28,7 +28,7 @@ function bakeShowList(){const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!
 function bakeCycleShow(dir){uvw.view='off';bk.uvCheck=false;const L=bakeShowList();if(L.length<2){toast('Bake first: C steps through the baked maps on the model.');return;}const i=L.indexOf(bk.show);bk.show=L[(i+dir+L.length)%L.length];bk.dirty=true;v3.dirty=true;requestRender();
   if(typeof buildBakePanel==='function')buildBakePanel();const nm=x=>x==='material'?'Material (lit)':x==='curv'?'Curvature':BAKE_NAMES[x]||(BK_PAINT[x]?BK_PAINT[x].name+' map':x);
   if(typeof flipLabel==='function')flipLabel('Baked map',L.map(nm),L.indexOf(bk.show));else toast('Showing: '+nm(bk.show));}
-window.addEventListener('keydown',e=>{if(ui.mode!=='bake'||(e.key!=='c'&&e.key!=='C')||e.ctrlKey||e.metaKey||e.altKey||isTypingTarget(e.target))return;e.preventDefault();e.stopImmediatePropagation();bakeCycleShow(e.shiftKey?-1:1);},true);
+window.addEventListener('keydown',e=>{if(ui.mode!=='bake'||(e.key!=='c'&&e.key!=='C'&&e.key!=='b'&&e.key!=='B')||e.ctrlKey||e.metaKey||e.altKey||isTypingTarget(e.target))return;e.preventDefault();e.stopImmediatePropagation();bakeCycleShow(e.shiftKey?-1:1);},true);
 
 window.addEventListener('keydown',e=>{if(ui.mode==='bake'&&(e.key==='m'||e.key==='M')&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!isTypingTarget(e.target)&&modal.hidden){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){v3ShowMaterial();toast('Material (lit)');}return;}
   if(ui.mode==='bake'&&e.key==='Escape'&&!isTypingTarget(e.target)&&modal.hidden&&(bk.uvCheck||bk.show!=='material')){e.preventDefault();e.stopImmediatePropagation();v3ShowMaterial();}},true);

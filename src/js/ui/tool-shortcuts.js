@@ -31,7 +31,7 @@ function toolKeyBinding(e){if(ui.mode==='p3d'&&typeof v3PickKey==='function'&&ty
   const user=Object.keys(kbUser).find(id=>kbUser[id]===combo),isTool=id=>id.startsWith('tool:')||id==='cageTool'||id==='arrayTool';
   if(user)return isTool(user)?{cmd:kbCommands().find(c=>c[0]===user)}:null;
   const cmd=kbCommands().find(c=>isTool(c[0])&&kbKeyOf(c[0])===combo);if(cmd){/* Crop is not a 3D tool; keep the viewport's channel-cycle key. */
-    if(ui.mode==='p3d'&&combo==='C'&&cmd[0]==='tool:crop')return null;if((ui.mode==='p3d'||ui.mode==='bake')&&combo==='M'&&cmd[0]==='tool:marquee')return null;/* (0.95.8) M = the lit material there */return {cmd};}
+    if(['p3d','bake','convert'].includes(ui.mode)&&combo==='C'&&cmd[0]==='tool:crop')return null;if(ui.mode==='bake'&&combo==='B'&&cmd[0]==='tool:brush')return null;if((ui.mode==='p3d'||ui.mode==='bake')&&combo==='M'&&cmd[0]==='tool:marquee')return null;/* (0.95.8) M = the lit material there */return {cmd};}
   /* Shift cycles the built-in tool groups, unless that key has been rebound. */
   if(e.shiftKey&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const k=combo.slice(6),group={M:'marquee',L:'lasso',G:'gradient',O:'dodge'}[k];
     if(group&&kbKeyOf('tool:'+group)===k)return {cmd:kbCommands().find(c=>c[0]==='tool:'+group),cycle:group};}
