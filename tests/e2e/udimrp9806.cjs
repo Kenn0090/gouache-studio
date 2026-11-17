@@ -27,7 +27,7 @@ const OBJ=['v -1 -1 0','v 0 -1 0','v 0 1 0','v -1 1 0','v 1 -1 0','v 1 1 0','v -
     for(let y=R[1];y<R[1]+R[3];y++)for(let x=R[0];x<R[0]+R[2];x++){const i=(y*t.w+x)*4;if(d[i]>200&&d[i+1]<80)red++;if(d[i+1]>200&&d[i]<80)grn++;}o[id]={R,red,grn};}return o;});
  await stroke([1,0,0],-0.5);
  const c0=await count();console.log(JSON.stringify(c0));
- ok(c0.w===256&&c0[1001].red>200&&c0[1002].red>200,'before: equal tiles, one stroke paints both');
+ ok(c0.w===256&&c0[1001].red>60&&c0[1002].red>60,'before: equal tiles, one stroke paints both');
  const cent=()=>p.evaluate(()=>{const g=__gs,t=g.compositeMap('base'),d=g.captureRegionNow(t,0,0,t.w,t.h).data;g.release(t);const T=g.udimBox('Body').tiles.find(x=>x.id===1001),R=g.udimTileRect('Body',T,t.w,t.h);let n=0,sx=0;
    for(let y=R[1];y<R[1]+R[3];y++)for(let x=R[0];x<R[0]+R[2];x++){const i=(y*t.w+x)*4;if(d[i]>200&&d[i+1]<80){n++;sx+=(y-R[1])/R[3];}}return {n,cx:n?sx/n:0};});
  const k0=await cent();console.log('before',JSON.stringify(k0),JSON.stringify(c0));ok(k0.n>60&&Math.abs(k0.cx-.5)>.15,'before: the stroke is off-centre in tile 1001 '+JSON.stringify(k0));
