@@ -29,7 +29,7 @@ const MS_BUILDER_MIX=[['add','Add'],['lightest','Lightest'],['intersect','Inters
 const MS_MESH_GENS=[['ao','Ambient occlusion'],['curv','Curvature'],['curv','Curvature: edges','edges'],['curv','Curvature: cavities','cavities'],['thick','Thickness'],['height','Height']];
 /* the baked map if this set has one, else a converted one (cv:), else the name itself (the document's own map is used) */
 function msMeshPick(k){const M=doc.meshMaps||{};return M[k]?k:M['cv:'+k]?'cv:'+k:k;}
-const MS_VOL_TYPES=[['clouds','Clouds'],['cells','Cells'],['gaussian','Gaussian']];
+const MS_VOL_TYPES=[['clouds','Clouds'],['cells','Cells'],['gaussian','Gaussian'],['ridged','Ridged'],['billow','Billow'],['cracks','Cracks'],['crystal','Crystal'],['marble','Marble'],['wood','Wood rings'],['spots','Spots'],['stripes','Stripes']];
 const MS_NOISES=[['clouds','Clouds'],['cells','Cells'],['grunge','Grunge'],['scratches','Scratches'],['streaks','Streaks'],['dots','Dots'],['fibres','Fibres']];
 /* what each row kind is: its title, and its settings when new */
 const MS_KINDS={
@@ -122,12 +122,24 @@ float vnv(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
   return mix(mix(mix(hv(i),hv(i+vec3(1,0,0)),f.x),mix(hv(i+vec3(0,1,0)),hv(i+vec3(1,1,0)),f.x),f.y),mix(mix(hv(i+vec3(0,0,1)),hv(i+vec3(1,0,1)),f.x),mix(hv(i+vec3(0,1,1)),hv(i+vec3(1,1,1)),f.x),f.y),f.z); }
 float wv(vec3 p){ vec3 i=floor(p),f=fract(p); float d=8.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; d=min(d,dot(r,r)); } return sqrt(d); }
 vec3 vwarp(vec3 q,float amt,float det){ vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
+/* nearest and second nearest feature point, and which cell the nearest belongs to */
+vec3 wc(vec3 p){ vec3 i=floor(p),f=fract(p); float d1=8.0,d2=8.0,id=0.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; float d=dot(r,r); if(d<d1){ d2=d1; d1=d; id=hv(i+g+5.5); } else if(d<d2) d2=d; } return vec3(sqrt(d1),sqrt(d2),id); }
+float ridge(float v){ float r=1.0-abs(2.0*v-1.0); return r*r; }
+float vfbm(vec3 p,int oct,float g,int mode){ float a=0.5,s=0.0,w=0.0; for(int i=0;i<8;i++){ if(i>=oct)break; float n=vnv(p); if(mode==1)n=ridge(n); else if(mode==2)n=abs(2.0*n-1.0); s+=a*n; w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=g; } return s/max(w,1e-4); }
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 q=surfQ(uv)*uScale+vec3(0.37,0.61,0.83);
   q=vwarp(q,uVMwA,uVMwD*0.3);
   vec3 qm=vwarp(q*3.0,uVUwA,uVUwD);
   float macro=0.5,micro=0.5;
   if(uVType==1){ macro=1.0-clamp(wv(q)*1.15,0.0,1.0); micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
   else if(uVType==2){ macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
+  else if(uVType==3){ macro=vfbm(q,2,0.5,1); micro=vfbm(qm,uVOct,0.55,1); }
+  else if(uVType==4){ macro=vfbm(q,2,0.5,2); micro=vfbm(qm,uVOct,0.55,2); }
+  else if(uVType==5){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.0,0.14,a.y-a.x); micro=1.0-smoothstep(0.0,0.18,b.y-b.x); }
+  else if(uVType==6){ vec3 a=wc(q),b=wc(qm); macro=a.z; micro=0.5*b.z+0.5*(1.0-clamp(b.x*1.2,0.0,1.0)); }
+  else if(uVType==7){ float t=vfbm(q*0.8,3,0.5,0); macro=0.5+0.5*sin(6.2831*(q.x*0.5+1.8*t)); float t2=vfbm(qm,3,0.5,0); micro=pow(0.5+0.5*sin(6.2831*(qm.x*0.8+2.4*t2)),3.0); }
+  else if(uVType==8){ float r=length(q.xz)+0.35*vfbm(q*vec3(1.0,0.35,1.0),3,0.5,0); macro=0.5+0.5*sin(r*6.2831*1.3); micro=vfbm(vec3(qm.x*0.4,qm.y*5.0,qm.z*0.4),uVOct,0.55,0); }
+  else if(uVType==9){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.12,0.34,a.x*(0.55+0.9*a.z)); micro=1.0-smoothstep(0.12,0.34,b.x*(0.55+0.9*b.z)); }
+  else if(uVType==10){ macro=0.5+0.5*sin(6.2831*q.x); micro=0.5+0.5*sin(6.2831*qm.x*1.0+vnv(qm)*3.0); }
   else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } macro=s/w;
     a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } micro=s/max(w,1e-4); }
   float n=0.5+(macro-0.5)*uVMac*uVInt+(micro-0.5)*uVMic*uVInt*0.7;
