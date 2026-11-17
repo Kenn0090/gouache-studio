@@ -1913,3 +1913,5 @@ body.sharp .xwset,body.sharp .xwtile,body.sharp .xweng,body.sharp .xwfile,body.s
 .optexport{margin-left:auto;padding:4px 16px;font-weight:600}
 
 #pickPrev{position:fixed;width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #000,0 2px 6px #0008;pointer-events:none;z-index:9999}#pickPrev[hidden]{display:none}
+body:not(.m-p3d) #lChanLock{display:none}#lChanLock{padding:0 5px;min-width:0}#lChanLock.on{background:var(--accent,#4a7)}
+body.m-p3d .lblendrow:has(#lChanLock:not([hidden])){grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}

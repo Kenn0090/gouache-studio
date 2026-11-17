@@ -375,7 +375,7 @@ function idColourMask(n){if(!(doc.meshMaps&&doc.meshMaps.id)){toast('Bake an ID 
       const lp=document.querySelector('.lprops'),mr=document.querySelector('#maskRow');
       if(lp){/* (0.45.1, Kenn's mock-up) one block: blend mode and channel side by side, the opacity slider across the full width; Clip and Lock go below the layer buttons */
         let br=document.querySelector('#lBlendRow');if(!br){br=el('div',{id:'lBlendRow',class:'lblendrow'});lp.prepend(br);}
-        const mb=document.querySelector('#lModeBtn'),ch=document.querySelector('#lChan'),chips=lp.querySelector(':scope>.chips')||document.querySelector('#lChipRow');if(mb&&mb.parentNode!==br)br.append(mb);if(ch&&ch.parentNode!==br)br.append(ch);
+        const mb=document.querySelector('#lModeBtn'),ch=document.querySelector('#lChan'),chips=lp.querySelector(':scope>.chips')||document.querySelector('#lChipRow');if(mb&&mb.parentNode!==br)br.append(mb);if(ch&&ch.parentNode!==br)br.append(ch);{const lk=document.querySelector('#lChanLock');if(lk&&lk.parentNode!==br)br.append(lk);}
         if(chips){chips.id='lChipRow';}
         if(tp)bar.before(lp);else list.before(lp);if(chips)(tp?bar:lp).after(chips);}
       if(mr)list.before(mr);
