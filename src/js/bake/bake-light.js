@@ -85,7 +85,11 @@ const LGZ_GRAB={ring:11,axis:12,light:24};
 let lightPageRedraw=null,lightHist=null;
 const lightWin={open:false};
 function lgzActive(){const R=bakeCfg&&bakeCfg.rig;return (ui.mode==='bake'||ui.mode==='p3d'&&(v3s().rigLive||lightWin.open))&&v3.on&&R&&R.show!==false&&R.lights&&R.lights.some(L=>L.type!=='sky')?R:null;}
-function lgzGeom(hit){const R=lgzActive();if(!R||!hit)return null;const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return null;
+/* (0.98.11, Kenn: gizmos for the lights in the viewport) the studio sun of the 3D view gets the same handles, as one pseudo light */
+const SGZ={rig:{lights:[],sel:'__sun'},L:null};
+function sunGzOn(){if(ui.mode!=='p3d'||!v3.on||lightWin.open)return false;const s=v3s();if(s.rigLive||s.sunGizmo===false)return false;return (typeof envOf==='function'&&envOf(s)==='none')?(s.sunI||0)>0:(s.envSun||0)>0;}
+function sunGzRig(){const s=v3s();SGZ.rig.lights=[Object.assign(SGZ.L||(SGZ.L={id:'__sun',type:'sun',name:'Sun',on:true}),{col:(s.lightColor||[1,1,1]).slice(0,3),el:s.sunEl||0,turn:s.sunAz||0})];return SGZ.rig;}
+function lgzGeom(hit){let R=lgzActive();const isSun=!R&&sunGzOn();if(isSun)R=sunGzRig();if(!R||!hit)return null;const r=hit.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);if(r.width<4)return null;
   const {VP}=v3ViewProj(w,h),b=lightBox();
   const pr=p=>{const x=VP[0]*p[0]+VP[4]*p[1]+VP[8]*p[2]+VP[12],y=VP[1]*p[0]+VP[5]*p[1]+VP[9]*p[2]+VP[13],ww=VP[3]*p[0]+VP[7]*p[1]+VP[11]*p[2]+VP[15];if(ww<=1e-5)return null;return [(x/ww*.5+.5)*w,(1-(y/ww*.5+.5))*h];};
   /* (0.95.8) a light outside the view sits at the edge, with an arrow pointing to it */
@@ -95,8 +99,10 @@ function lgzGeom(hit){const R=lgzActive();if(!R||!hit)return null;const r=hit.ge
   /* the selected light's gizmo: move arrows (bulb, spot) and a turn ring (sun, spot) */
   const S=items.find(o=>o.L.id===R.sel&&!o.out);let gz=null;
   if(S){gz={it:S,ax:[],ring:S.L.type!=='point'?34:0};if(S.L.type!=='sun'){const len=b.r*.4;for(let k=0;k<3;k++){const q=S.at.slice();q[k]+=len;const e=pr(q);if(e){const v=[e[0]-S.p[0],e[1]-S.p[1]],l=Math.hypot(v[0],v[1]);if(l>4){const rr=S.L.type!=='point'?34:0,L2=Math.max(l,rr+40),u=[v[0]/l,v[1]/l];gz.ax.push({k,u,ppu:l/len,end:[S.p[0]+u[0]*Math.min(L2,rr+90),S.p[1]+u[1]*Math.min(L2,rr+90)]});}}}}
-    if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}}
-  return {R,w,h,pr,b,items,c:pr(b.c),gz};}
+    if(S.L.type==='spot'){const d=lightAim(S.L),e=pr(S.at.map((v,k)=>v+d[k]*b.r*.5));gz.aim=e;}
+    /* size handles (squares): reach of a bulb or spot, the cone of a spot, the shadow softness of a sun */
+    gz.sz=[];if(!isSun){const t=S.L.type,R0=(gz.ring||14)+34;if(t==='sun')gz.sz.push({id:'soft',at:[S.p[0]+R0,S.p[1]],label:'Softness'});else{gz.sz.push({id:'reach',at:[S.p[0]+R0,S.p[1]],label:'Reach'});if(t==='spot')gz.sz.push({id:'cone',at:[S.p[0],S.p[1]+R0],label:'Cone'});}}}
+  return {R,w,h,pr,b,items,c:pr(b.c),gz,sun:isSun};}
 function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const G=lgzGeom(hit);
   if(!G){if(c)c.hidden=true;return;}
   if(!c||!c.isConnected){c=lgz.el=el('canvas',{class:'v3gz v3lgz','aria-hidden':'true'});hit.parentNode.insertBefore(c,hit.nextSibling);}
@@ -116,17 +122,21 @@ function lgzDraw(){const hit=document.getElementById('v3Hit');let c=lgz.el;const
     for(const a of z.ax){const hot=lgz.hot==='ax'+a.k;x.strokeStyle=AX[a.k];x.fillStyle=AX[a.k];x.lineWidth=hot?5:3.5;const r0=z.ring?z.ring+5:14,s0=[p[0]+a.u[0]*r0,p[1]+a.u[1]*r0];x.beginPath();x.moveTo(s0[0],s0[1]);x.lineTo(a.end[0],a.end[1]);x.stroke();
       const n=[-a.u[1],a.u[0]];x.beginPath();x.moveTo(a.end[0]+a.u[0]*13,a.end[1]+a.u[1]*13);x.lineTo(a.end[0]+n[0]*7,a.end[1]+n[1]*7);x.lineTo(a.end[0]-n[0]*7,a.end[1]-n[1]*7);x.fill();}
     if(z.ring){x.strokeStyle=lgz.hot==='ring'?'#ffd24a':'rgba(255,210,74,.75)';x.lineWidth=lgz.hot==='ring'?5:3.5;x.beginPath();x.arc(p[0],p[1],z.ring,0,7);x.stroke();}
+    for(const q of z.sz||[]){const hot=lgz.hot==='sz:'+q.id||lgz.drag&&lgz.drag.part==='sz:'+q.id;x.strokeStyle='rgba(255,210,74,.5)';x.lineWidth=1;x.setLineDash([2,3]);x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(q.at[0],q.at[1]);x.stroke();x.setLineDash([]);
+      x.fillStyle=hot?'#ffd24a':'#fff';x.strokeStyle='#111';x.lineWidth=1.5;const h=hot?7:5.5;x.fillRect(q.at[0]-h,q.at[1]-h,h*2,h*2);x.strokeRect(q.at[0]-h,q.at[1]-h,h*2,h*2);
+      if(hot){const L=z.it.L,v=q.id==='reach'?(L.range||0).toPrecision(3):q.id==='cone'?Math.round(L.cone??35)+'°':(+L.soft||0).toPrecision(2);x.fillStyle='#fff';x.font='11px sans-serif';x.fillText(q.label+' '+v,q.at[0]+11,q.at[1]+4);}}
     if(z.aim){x.strokeStyle='#ffd24a';x.lineWidth=2;x.setLineDash([2,3]);x.beginPath();x.moveTo(p[0],p[1]);x.lineTo(z.aim[0],z.aim[1]);x.stroke();x.setLineDash([]);x.beginPath();x.arc(z.aim[0],z.aim[1],3,0,7);x.fillStyle='#ffd24a';x.fill();}}}
 const lgzMouse=(hit,e)=>{const r=hit.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
 /* which gizmo part is under the pointer: 'ax0'..'ax2' (move along X/Y/Z) or 'ring' (turn) */
 function lgzPart(G,m){const z=G&&G.gz;if(!z)return null;const p=z.it.p;
+  for(const q of z.sz||[])if(Math.abs(m[0]-q.at[0])<10&&Math.abs(m[1]-q.at[1])<10)return 'sz:'+q.id;
   if(z.ring&&Math.abs(Math.hypot(m[0]-p[0],m[1]-p[1])-z.ring)<LGZ_GRAB.ring)return 'ring';const a0=z.ring?z.ring+4:10;
   for(const a of z.ax){const t=(m[0]-p[0])*a.u[0]+(m[1]-p[1])*a.u[1],L=Math.hypot(a.end[0]-p[0],a.end[1]-p[1])+14;if(t>a0&&t<L){const d=Math.abs((m[0]-p[0])*a.u[1]-(m[1]-p[1])*a.u[0]);if(d<LGZ_GRAB.axis)return 'ax'+a.k;}}
   return null;}
 function lgzHover(hit,e){const G=lgzGeom(hit),m=G?lgzMouse(hit,e):null;let h=G&&!lgz.drag?lgzPart(G,m):null;
   /* (0.97.27, Kenn: "lights are a little hard to move around") a light under the pointer shows it can be grabbed too */
   if(!h&&G&&!lgz.drag&&G.items.some(it=>Math.hypot(m[0]-it.p[0],m[1]-it.p[1])<LGZ_GRAB.light))h='light';
-  if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'?'grab':'move';return !!h;}
+  if(h!==lgz.hot){lgz.hot=h;lgzDraw();}if(hit&&h)hit.style.cursor=h==='move'?'move':h==='ring'||h==='light'?'grab':h&&h.startsWith('sz:')?'ew-resize':'move';return !!h;}
 function lgzDown(hit,e){const G=lgzGeom(hit);if(!G)return false;const m=lgzMouse(hit,e);let best=null;
   const part=lgzPart(G,m);if(part){const L=G.gz.it.L;lgz.drag={L,m0:m,el0:L.el,turn0:L.turn,pos0:(L.pos||[0,0,0]).slice(),aim0:lightAim(L),G,part,shift:e.shiftKey};lgz.picked=true;try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();return true;}
   for(const it of G.items){const d=Math.hypot(m[0]-it.p[0],m[1]-it.p[1]);if(d<LGZ_GRAB.light&&(!best||d<best.d))best={it,d};}
@@ -134,7 +144,9 @@ function lgzDown(hit,e){const G=lgzGeom(hit);if(!G)return false;const m=lgzMouse
   try{hit.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();if(lightPageRedraw)lightPageRedraw();else lightTabSync();return true;}
 function lgzMove(hit,e){const D=lgz.drag;if(!D)return;D.m=lgzMouse(hit,e);D.shift=e.shiftKey;if(lgz.raf)return;lgz.raf=requestAnimationFrame(()=>{lgz.raf=0;lgzApply();});}
 function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-D.m0[0],dy=D.m[1]-D.m0[1];
-  if(D.part&&D.part.startsWith('ax')){const k=+D.part[2],a=G.gz&&G.gz.ax.find(o=>o.k===k);if(a){const t=(dx*a.u[0]+dy*a.u[1])/a.ppu;L.pos=D.pos0.slice();L.pos[k]+=t;}}
+  if(D.part&&D.part.startsWith('sz:')){const k=D.part.slice(3),f=Math.exp(dx/150);D.r0=D.r0||{range:L.range,soft:L.soft,cone:L.cone??35};
+    if(k==='reach')L.range=Math.max(1e-3,D.r0.range*f);else if(k==='soft')L.soft=Math.max(0,(D.r0.soft||.5)*f);else if(k==='cone')L.cone=clamp(D.r0.cone+dy*.5,5,170);}
+  else if(D.part&&D.part.startsWith('ax')){const k=+D.part[2],a=G.gz&&G.gz.ax.find(o=>o.k===k);if(a){const t=(dx*a.u[0]+dy*a.u[1])/a.ppu;L.pos=D.pos0.slice();L.pos[k]+=t;}}
   else if(D.part==='ring'&&L.type==='spot'){/* turn the spot: across = around the up axis, up/down = tilt */const a0=D.aim0,yaw=-dx*.6*Math.PI/180,pit=-dy*.6*Math.PI/180;
     let v=[a0[0]*Math.cos(yaw)+a0[2]*Math.sin(yaw),a0[1],-a0[0]*Math.sin(yaw)+a0[2]*Math.cos(yaw)];const hz=Math.hypot(v[0],v[2])||1e-6,el=Math.asin(clamp(v[1],-1,1))+pit,ce=Math.cos(clamp(el,-1.55,1.55));
     v=[v[0]/hz*ce,Math.sin(clamp(el,-1.55,1.55)),v[2]/hz*ce];L.aim=v;}
@@ -143,6 +155,7 @@ function lgzApply(){const D=lgz.drag;if(!D||!D.m)return;const {L,G}=D,dx=D.m[0]-
     const p0=G.pr(D.pos0),eye=v3Eye(),f=lightNorm(D.pos0.map((v,k)=>v-eye[k])),rt=lightNorm([-f[2],0,f[0]]),up=[f[1]*rt[2]-f[2]*rt[1],f[2]*rt[0]-f[0]*rt[2],f[0]*rt[1]-f[1]*rt[0]].map(v=>-v),
       px=G.pr(D.pos0.map((v,k)=>v+rt[k]))||p0,u=p0&&px?Math.max(1e-3,Math.hypot(px[0]-p0[0],px[1]-p0[1])):100;
     L.pos=D.shift?D.pos0.map((v,k)=>v-f[k]*dy/u):D.pos0.map((v,k)=>v+rt[k]*dx/u-up[k]*dy/u);}
+  if(G.sun){const s=v3s();s.sunAz=((L.turn%360)+360)%360;s.sunEl=clamp(L.el,0,90);for(const [id,v] of [['v3Az',s.sunAz],['v3El',s.sunEl]]){const i=document.getElementById(id);if(i)i.value=v;}}
   v3.dirty=true;requestRender&&requestRender();lightTabSync();}
 function lgzUp(){if(!lgz.drag)return;if(lgz.raf){cancelAnimationFrame(lgz.raf);lgz.raf=0;lgzApply();}lgz.drag=null;if(lightHist)lightHist.commit();lgzDraw();}
 /* the open Lighting tab follows a drag (its sliders) */

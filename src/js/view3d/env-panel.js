@@ -13,6 +13,6 @@ function renderEnvs(){const box=$('#envBody');if(!box)return;const cur=envOf(v3s
   const tile=(k,label,img,title)=>{const b=el('button',{class:'mattile envtile'+(cur===k?' sel':''),title:title||label,'aria-label':label,'aria-pressed':cur===k?'true':'false',onclick:()=>envPick(k)},
       img?el('img',{src:img,alt:'',draggable:'false',style:'width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:4px'}):el('div',{style:'width:100%;aspect-ratio:2/1;border-radius:4px;background:var(--ground)'}),el('span',{class:'mtname',text:label}));return b;};
   const mine=env.custom?[tile('custom',env.custom.name,'','Your own environment')]:[];
-  box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'envLoad',text:'Load your own…',title:'Read a .hdr or .exr file',onclick:()=>envLoadFile().then(renderEnvs)})),
+  box.replaceChildren(el('div',{class:'chips'},el('button',{class:'btn sm',id:'envLoad',text:'Load your own…',title:'Read a .hdr or .exr file',onclick:()=>envLoadFile().then(renderEnvs)}),el('button',{class:'btn sm',id:'envMore',text:'Get more skies…',title:'Browse and download free skies from Poly Haven',onclick:dlgMoreSkies})),
     el('div',{class:'matgrid',id:'envGrid'},...ENV_LIST.map(([id,l,f,by])=>tile(id,l,envThumbs[id],l+' by '+by+' (Poly Haven, CC0)')),...mine,tile('none','Simple sky','','A plain sky with a sun, no HDRI')));
   envThumbNext();}

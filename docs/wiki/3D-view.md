@@ -54,6 +54,15 @@ The HDRIs that come with Gouache Studio are from [Poly Haven](https://polyhaven.
 | [Venice Sunset](https://polyhaven.com/a/venice_sunset) | Greg Zaal |
 | [Industrial Sunset 02 (Pure Sky)](https://polyhaven.com/a/industrial_sunset_02_puresky) | Jarod Guest, Sergej Majboroda |
 
+## More skies
+In 3D Paint, open **Environments** in the shelf and press **Get more skies…** (desktop app). The list comes from Poly Haven; pick 1K, 2K or 4K and press Download. The sky is used at once and stays in your Environments list until you press Remove. All Poly Haven HDRIs are CC0 (free for any use); each tile shows its creator, and Poly Haven's page for a sky lists everyone who worked on it. Skies built into the app are credited in the table above.
+
+## Light gizmos
+Your own lights (**Light the view with my lights**) and the studio sun show handles in the viewport. Drag a light to move it across the screen, drag an arrow to move it along one axis, and use the yellow ring to turn a sun or spot. The white squares change **Reach** (bulbs and spots), the **Cone** of a spot and the **Softness** of a sun; hover one to see its value. The studio sun (when you are not using your own lights) can be dragged and turned the same way.
+
+## Eye shader
+Pick **Eye (iris parallax)** in the Shader panel for an eyeball's texture set. Lay the eye's picture flat with the iris in the middle (or press **Pick centre on model** and click the iris). **Iris depth** and **Cornea bending** make the iris shift as you look round the eye, **Pupil size** opens or closes the pupil without repainting, and **Light crescent** adds the bright patch opposite the light. Presets cover human, wide and pin-point pupils, deep iris, doll glass and flat cartoon eyes. Engine exports send the eye as Standard.
+
 ## Shaders
 The **Shader** panel (beside Colour and Properties) picks how the model is shaded, from a drop-down list. In 3D Paint each **texture set** has its own, so skin and armour can differ on one model. Each shader keeps its own settings:
 - **Standard:** physically based (metal/roughness).
