@@ -1,6 +1,8 @@
 ## 0.98.5
 
 - **No picker icon on Alt in 3D Paint.** Holding Alt over the model (or the flat texture view) no longer changes the pointer to the colour picker; use Z to pick.
+- **More texture file formats.** The Export window's Format list now has PNG, TGA, TIFF (8 or 16-bit height), DDS (uncompressed), WebP (lossless), BMP and JPG (lossy, not for normal maps).
+- **Draggable Export button.** Drag the Export button in the options bar anywhere; the place is remembered and right-click puts it back.
 
 ## 0.98.4
 
