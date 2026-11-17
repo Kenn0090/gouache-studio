@@ -113,3 +113,14 @@ async function rpAfterSwap(old,m){try{if(ui.mode!=='p3d'||!rpUVsDiffer(old,m))re
     if(r.ok)toast('Your paint was moved onto the new UVs'+(r.missed.length||r.low.length?' (not for: '+[...r.missed,...r.low].join(', ')+')':'')+'. Baked maps were moved too, so bake again for exact ones.');
     else toast(r.why||'The paint could not be moved onto the new UVs'+(r.low.length?' (too little of the new model matches the old one: '+r.low.join(', ')+')':'')+'.');
     return !!r.ok;}catch(e){loadEnd();console.warn('re-project',e);toast('Re-projecting the paint failed: '+(e.message||e));return false;}}
+
+/* File › Replace the model, keep my paint: another model (new UVs, other triangles, a retopologised version) takes the old one's place and
+   the paint is moved across by surface position */
+async function p3ReplaceModel(){if(ui.mode!=='p3d'||!p3.imported){toast('Open a 3D Paint project with an imported model first.');return;}
+  const old=p3.imported,opts={udim:!!(p3.udim||p3.ua)},done=m=>{if(!m)return;if(typeof mwTag==='function'&&m.srcPath===undefined&&old.srcPath)m.srcPath=undefined;mwSwap(old,m);toast('Replaced with “'+(m.name||'the new model')+'”.');};
+  if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadModelStart(fileNameOf(p));
+      try{const bytes=await platform.readFile(p),dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
+        done(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},opts),p));}finally{loadEnd();}}
+    catch(e){if(e.message==='Import cancelled.')toast('Cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}return;}
+  const f=el('input',{type:'file',accept:'.obj,.glb,.gltf,.fbx',multiple:true});f.onchange=async()=>{const fs=[...f.files],file=fs.find(x=>isModelName(x.name));if(!file)return;loadModelStart(file.name);
+    try{done(await parseModelFile(file,fs,opts));}catch(e){if(e.message==='Import cancelled.')toast('Cancelled.');else{console.warn(e);toast('This model could not be loaded: '+(e.message||e));}}finally{loadEnd();}};f.click();}

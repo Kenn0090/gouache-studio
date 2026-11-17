@@ -35,4 +35,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.evaluate(async q=>{const m=await __gs.parseModelBytes('a.obj',new TextEncoder().encode(q),{noUp:true});const old=window.__cur;m.srcPath=old.srcPath;__gs.mwSwap(old,m);},grid());
  await W(5000);const b2=await halves();console.log('retopo',JSON.stringify(b2));
  ok(b2[0]>b0[0]*.5&&b2[1]<40,'with other triangles the paint is found again by the surface position '+b2);
+ await p.locator('#menus >> text=File').first().click();await W(300);
+ await p.locator('#menuPop .mi',{hasText:'Import'}).first().hover();await W(400);
+ ok(await p.evaluate(()=>[...document.querySelectorAll('#menuSub .mi')].some(b=>/Replace the model/.test(b.textContent))),'File has Replace the model, keep my paint');
  ok(errs.length===0,'no errors '+errs.join('|').slice(0,300));await b.close();console.log(fails?'FAILED':'ALL PASSED');process.exit(fails?1:0);})();
