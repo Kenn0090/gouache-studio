@@ -22,7 +22,7 @@ function mwSwap(old,m){m.srcPath=old.srcPath;m.srcTime=old.srcTime;
   if(typeof bakeCfg!=='undefined'){if(bakeCfg.low===old)bakeSetModel('low',m);if(bakeCfg.high===old)bakeSetModel('high',m);}
   v3.mapsDirty=true;v3.dirty=true;requestRender(true);
   /* (0.98.6) the new model has other UVs: the paint is moved onto them */
-  if(typeof rpAfterSwap==='function'&&typeof p3!=='undefined'&&p3.imported===m)rpAfterSwap(old,m);}
+  return typeof rpAfterSwap==='function'&&typeof p3!=='undefined'&&p3.imported===m?rpAfterSwap(old,m):null;}
 /* bake again with the last settings: 3D Paint's Bake mesh maps if it was used, else the Bake tab */
 function mwCanRebake(){return !!((ui.mode==='p3d'&&p3bk.lastArgs)||(bakeCfg.low&&Object.keys(bakeCfg.kinds||{}).some(k=>bakeCfg.kinds[k])&&(Object.keys(bk.res||{}).length||bk.byMat)));}
 async function mwRebake(){if(bk.busy)return;
@@ -38,7 +38,7 @@ async function mwChanged(e,t){const {m,role}=e,name=fileNameOf(m.srcPath),auto=!
     if(role!=='high'&&always!==!!prefs.meshAuto){prefs.meshAuto=always;savePrefs();}
     if(!yes){m.srcTime=t;return;}}
   let nm;try{nm=await mwLoad(m.srcPath);}catch(err){toast('Could not read the changed model: '+(err.message||err));m.srcTime=t;return;}
-  nm.srcPath=m.srcPath;m.srcTime=t;mwSwap(m,nm);nm.srcTime=t;
+  nm.srcPath=m.srcPath;m.srcTime=t;await mwSwap(m,nm);nm.srcTime=t;
   toast('Updated “'+nm.name+'”: '+nm.tris.toLocaleString()+' triangles.');
   if(!mwCanRebake())return;
   if(auto||prefs.meshAuto||await mwAsk('Bake again?','Bake the mesh maps again with the last settings, so everything that uses them follows the new model?','Bake'))await mwRebake();}

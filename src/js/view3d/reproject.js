@@ -118,7 +118,9 @@ async function rpAfterSwap(old,m){try{if(ui.mode!=='p3d'||!rpUVsDiffer(old,m))re
 /* File › Replace the model, keep my paint: another model (new UVs, other triangles, a retopologised version) takes the old one's place and
    the paint is moved across by surface position */
 async function p3ReplaceModel(){if(ui.mode!=='p3d'||!p3.imported){toast('Open a 3D Paint project with an imported model first.');return;}
-  const old=p3.imported,opts={udim:!!(p3.udim||p3.ua)},done=m=>{if(!m)return;if(typeof mwTag==='function'&&m.srcPath===undefined&&old.srcPath)m.srcPath=undefined;mwSwap(old,m);toast('Replaced with “'+(m.name||'the new model')+'”.');};
+  const old=p3.imported,opts={udim:!!(p3.udim||p3.ua)},done=async m=>{if(!m)return;await mwSwap(old,m);toast('Replaced with “'+(m.name||'the new model')+'”.');
+    /* the baked maps were moved across approximately: offer exact ones */
+    if(typeof mwCanRebake==='function'&&mwCanRebake()&&doc.meshMaps&&Object.keys(doc.meshMaps).length&&await mwAsk('Bake again?','Bake the mesh maps again with the last settings, so they fit the new model exactly?','Bake'))await mwRebake();};
   if(platform.isDesktop){try{const p=await platform.openDialog([{name:'3D models',extensions:['obj','glb','gltf','fbx','OBJ','GLB','GLTF','FBX']}]);if(!p)return;loadModelStart(fileNameOf(p));
       try{const bytes=await platform.readFile(p),dir=p.replace(/[\\/][^\\/]*$/,''),sep=p.includes('\\')?'\\':'/';
         done(await mwTag(await parseModelBytes(fileNameOf(p),bytes,async u=>{const b=await platform.readFile(dir+sep+u);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},opts),p));}finally{loadEnd();}}
@@ -143,13 +145,15 @@ async function trReadProject(file){const buf=await file.arrayBuffer();if(!isP3Pr
   return {name:head.name||file.name,mesh,sets,ua:head.ua||null};}
 function trFree(src){if(!src)return;for(const S of src.sets)for(const k in S.maps)disposeTarget(S.maps[k]);src.sets=[];}
 /* one source set onto one target set: a new paint layer */
-async function trRun(src,jobs,keys,tolFrac,newM){let n=0;const newBy=rpTrisByMat(newM),oldBy=rpTrisByMat(src.mesh),report={done:0,low:[]};
+/* UDIM: a project's meshes are laid out with ITS tile layout (the atlas mesh), so the layout is swapped in while it is built */
+function trAtlas(m,ua){if(!ua)return m;const keep=p3.ua;p3.ua=ua;try{return udimAtlasMesh(m);}finally{p3.ua=keep;}}
+async function trRun(src,jobs,keys,tolFrac,newM0){const newM=p3.ua?udimAtlasMesh(newM0):newM0,srcM=trAtlas(src.mesh,src.ua);let n=0;const newBy=rpTrisByMat(newM),oldBy=rpTrisByMat(srcM),report={done:0,low:[]};
   loadStart('Transferring paint');
   try{for(const j of jobs){const S=src.sets[j.si],T=p3.sets[j.ti];if(!S||!T||T.missing)continue;
       const dims=p3InSet(j.ti,()=>[doc.w,doc.h]),nt=newBy.get(p3Binding(T))||(newBy.size===1?[...newBy.values()][0]:null),ot=oldBy.get(S.material)||oldBy.get(S.name)||(oldBy.size===1?[...oldBy.values()][0]:null);
       if(!nt||!ot||!dims){report.low.push(S.name);continue;}
       loadSet(n/jobs.length,'Looking up “'+S.name+'”…');
-      const r=await rpBuildMap(src.mesh,newM,ot,nt,dims[0],dims[1],f=>loadSet((n+f*.8)/jobs.length),tolFrac);let area=0;for(let i=0;i<r.inside.length;i++)area+=r.inside[i];
+      const r=await rpBuildMap(srcM,newM,ot,nt,dims[0],dims[1],f=>loadSet((n+f*.8)/jobs.length),tolFrac);let area=0;for(let i=0;i<r.inside.length;i++)area+=r.inside[i];
       if(area<50||r.got<area*RP_MIN_COVER){report.low.push(S.name);n++;continue;}
       const tex=rpMapTex(r.map,dims[0],dims[1]);
       try{if(!P_RPMAP)P_RPMAP=program(FS_RPMAP);
@@ -164,7 +168,7 @@ async function trRun(src,jobs,keys,tolFrac,newM){let n=0;const newBy=rpTrisByMat
 async function dlgTransfer(){if(ui.mode!=='p3d'||!p3.imported){toast('Open a 3D Paint project with an imported model first. The paint lands on that model.');return;}
   const fs=await pickFiles('.gouache3d',false,'3D Paint projects',['gouache3d']);if(!fs||!fs[0])return;
   let src;loadStart('Reading “'+fs[0].name+'”');try{src=await trReadProject(fs[0]);}catch(e){loadEnd();console.warn(e);toast(e.message||'That project could not be read.');return;}loadEnd();
-  if(src.ua||p3.ua){toast('Transfers between UDIM projects are not supported yet.');trFree(src);return;}
+  if(p3.udim||src.sets.some(S=>S.tile)){toast('Projects with one texture set per UDIM tile (the older way) are not supported. UDIM projects with the tiles inside one set are.');trFree(src);return;}
   const allKeys=[...new Set(src.sets.flatMap(S=>Object.keys(S.maps)))].filter(k=>doc.maps.includes(k)),pick=new Set(allKeys.filter(k=>['base','normal','rough','metal','height','ao','emis'].includes(k)||allKeys.length<8));
   const rows=src.sets.map((S,si)=>{const ti=Math.max(0,p3.sets.findIndex(T=>p3Binding(T)===S.material||T.name===S.name));return {si,ti:p3.sets.length?(ti>=0?ti:0):0,on:true};});
   let tol=3;

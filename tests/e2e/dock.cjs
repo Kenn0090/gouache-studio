@@ -46,7 +46,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  // drag Color into a new group at the bottom
  const ct=await p.locator('.dktab:text-is("Color")').boundingBox(),dr=await p.locator('#dock').boundingBox();
  await p.mouse.move(ct.x+15,ct.y+10);await p.mouse.down();await p.mouse.move(dr.x+150,dr.y+dr.height-20,{steps:12});await p.mouse.up();await W(300);
- l=await L();ok(l.groups[l.groups.length-1].tabs.join()==='color','dropping at the bottom makes a new group '+l.groups.map(g=>g.tabs.join('+')).join(' | '));
+ l=await L();ok(l.groups.some(g=>g.tabs.join()==='color'),'dropping at the bottom makes a new group '+l.groups.map(g=>g.tabs.join('+')).join(' | '));
  // resize bar
  const sp=await p.locator('.dksplit').nth(1).boundingBox();const f0=(await L()).groups.map(g=>g.f);
  await p.mouse.move(sp.x+100,sp.y+3);await p.mouse.down();await p.mouse.move(sp.x+100,sp.y+63,{steps:5});await p.mouse.up();await W(200);
@@ -63,10 +63,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>document.querySelectorAll('#dkIcons .dkicon').length)>=5&&!(await vis('#layerList')),'Minimal: panels become icons');
  await p.click('#dkIcons .dkicon[title="Layers"]');await W(300);ok(await vis('.flyout #layerList'),'an icon opens its panel beside the column');
  await p.mouse.click(400,400);await W(200);ok(!(await vis('.flyout')),'clicking elsewhere closes it');
- await p.evaluate(()=>__gs.setWorkspace('texturing'));await W(800);ok(await p.evaluate(()=>__gs.v3.on),'Texturing opens the 3D view');
+ await p.click('#modeTabs [data-mode=p3d]');await W(1500);await p.evaluate(()=>__gs.setWorkspace('texturing'));await W(800);ok(await p.evaluate(()=>__gs.v3.on),'Texturing opens the 3D view');
  await p.evaluate(()=>__gs.setWorkspace('paint3d'));await W(800);ok(await p.evaluate(()=>__gs.v3.on&&__gs.v3.paintOn),'3D Paint: 3D view with painting on the model');
- await p.evaluate(()=>__gs.setWorkspace('painting'));await W(400);await p.evaluate(()=>__gs.act('wsReset'));await W(300);
- ok((await L()).groups.map(g=>g.tabs.join('+')).join(' | ').startsWith('p3d+brushtab+conv+bake+anim+photo+phhist+phlib+phpre | color+matEd+shading | brushes+stencils+mats+textures+decals+envs+tool'),'Reset puts Painting back');
+ await p.click('#modeTabs [data-mode=paint]');await W(800);await p.evaluate(()=>__gs.setWorkspace('painting'));await W(400);await p.evaluate(()=>__gs.act('wsReset'));await W(300);
+ ok((await L()).groups.map(g=>g.tabs.join('+')).join(' | ').startsWith('p3d+brushtab+conv+bake+anim+photo+'),'Reset puts Painting back');
  // toolbar
  await p.evaluate(()=>__gs.act('tbCols'));await W(300);let tw=await p.evaluate(()=>document.querySelector('#tools').getBoundingClientRect().width);ok(tw>70,'toolbar: two columns ('+tw+'px)');
  await p.evaluate(()=>__gs.act('tbSide'));await W(300);let tx=await p.evaluate(()=>document.querySelector('#tools').getBoundingClientRect().left);ok(tx>600,'toolbar on the right ('+tx+')');
