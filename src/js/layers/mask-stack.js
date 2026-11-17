@@ -39,6 +39,8 @@ const MS_KINDS={
   id:{title:'ID colour',p:()=>({cols:[],tol:.08,soft:.04,inv:false})},
   dir:{title:'Direction',p:()=>({axis:'up',angle:50,soft:15,inv:false})},
   grad:{title:'Gradient',p:()=>({axis:'up',from:0,to:1,inv:false})},
+  folder:{title:'Folder',p:()=>({})},
+  layerref:{title:'Layer',p:()=>({name:'',map:'base',inv:false})},
   volume:{title:'Volume noise',p:()=>({type:'clouds',scale:4,intensity:1,macro:1,micro:1,mwAmt:0,mwDet:2,uwAmt:0,uwDet:4,samp:5,seed:5,level:0,inv:false})},
   noise:{title:'Noise',p:()=>({type:'grunge',scale:6,contrast:1.5,level:0,seed:1,tri:true,inv:false})},
   image:{title:'Picture',p:()=>({tile:1,rot:0,contrast:0,tri:false,inv:false,name:''})},
@@ -55,7 +57,7 @@ const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','box
 const MS_OWN_FILTERS={grow:'Grow / shrink',warp:'Warp',slope:'Slope blur'};
 let msSeq=0;
 function msRow(kind,o){const r=Object.assign({id:'r'+(++msSeq),kind,on:true,mode:'normal',op:1,p:MS_KINDS[kind]&&MS_KINDS[kind].p?MS_KINDS[kind].p():{}},o||{});return r;}
-function msRowTitle(r){if(msIsRowMask(r))return r.name||'Row mask';if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
+function msRowTitle(r){if(r.kind==='paint'&&r.p&&r.p.forRow)return r.name||'Row mask';if(r.kind==='layerref')return 'Layer “'+(r.p.name||'?')+'”';if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
   if(r.kind==='gen')return (MS_GENS.find(g=>g[0]===r.p.g)||['','Generator'])[1];
   if(r.kind==='noise')return (MS_NOISES.find(g=>g[0]===r.p.type)||['','Noise'])[1];
   if(r.kind==='mesh')return msMeshName(r.p.k);
@@ -121,7 +123,7 @@ float hv(vec3 p){ p=fract(p*vec3(0.1031,0.1030,0.0973)+uSeed*0.137); p+=dot(p,p.
 float vnv(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.0-2.0*f);
   return mix(mix(mix(hv(i),hv(i+vec3(1,0,0)),f.x),mix(hv(i+vec3(0,1,0)),hv(i+vec3(1,1,0)),f.x),f.y),mix(mix(hv(i+vec3(0,0,1)),hv(i+vec3(1,0,1)),f.x),mix(hv(i+vec3(0,1,1)),hv(i+vec3(1,1,1)),f.x),f.y),f.z); }
 float wv(vec3 p){ vec3 i=floor(p),f=fract(p); float d=8.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; d=min(d,dot(r,r)); } return sqrt(d); }
-vec3 vwarp(vec3 q,float amt,float det){ vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
+vec3 vwarp(vec3 q,float amt,float det){ if(amt<=0.0) return q; vec3 w=vec3(vnv(q*det+1.3),vnv(q*det+7.1),vnv(q*det+13.7))-0.5; return q+w*amt*2.4; }
 /* nearest and second nearest feature point, and which cell the nearest belongs to */
 vec3 wc(vec3 p){ vec3 i=floor(p),f=fract(p); float d1=8.0,d2=8.0,id=0.0; for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){ vec3 g=vec3(x,y,z); vec3 r=g+vec3(hv(i+g),hv(i+g+11.1),hv(i+g+23.7))-f; float d=dot(r,r); if(d<d1){ d2=d1; d1=d; id=hv(i+g+5.5); } else if(d<d2) d2=d; } return vec3(sqrt(d1),sqrt(d2),id); }
 float ridge(float v){ float r=1.0-abs(2.0*v-1.0); return r*r; }
@@ -129,19 +131,19 @@ float vfbm(vec3 p,int oct,float g,int mode){ float a=0.5,s=0.0,w=0.0; for(int i=
 void main(){ vec2 uv=gl_FragCoord.xy/uSz; vec3 q=surfQ(uv)*uScale+vec3(0.37,0.61,0.83);
   q=vwarp(q,uVMwA,uVMwD*0.3);
   vec3 qm=vwarp(q*3.0,uVUwA,uVUwD);
-  float macro=0.5,micro=0.5;
-  if(uVType==1){ macro=1.0-clamp(wv(q)*1.15,0.0,1.0); micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
-  else if(uVType==2){ macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
-  else if(uVType==3){ macro=vfbm(q,2,0.5,1); micro=vfbm(qm,uVOct,0.55,1); }
-  else if(uVType==4){ macro=vfbm(q,2,0.5,2); micro=vfbm(qm,uVOct,0.55,2); }
-  else if(uVType==5){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.0,0.14,a.y-a.x); micro=1.0-smoothstep(0.0,0.18,b.y-b.x); }
-  else if(uVType==6){ vec3 a=wc(q),b=wc(qm); macro=a.z; micro=0.5*b.z+0.5*(1.0-clamp(b.x*1.2,0.0,1.0)); }
-  else if(uVType==7){ float t=vfbm(q*0.8,3,0.5,0); macro=0.5+0.5*sin(6.2831*(q.x*0.5+1.8*t)); float t2=vfbm(qm,3,0.5,0); micro=pow(0.5+0.5*sin(6.2831*(qm.x*0.8+2.4*t2)),3.0); }
-  else if(uVType==8){ float r=length(q.xz)+0.35*vfbm(q*vec3(1.0,0.35,1.0),3,0.5,0); macro=0.5+0.5*sin(r*6.2831*1.3); micro=vfbm(vec3(qm.x*0.4,qm.y*5.0,qm.z*0.4),uVOct,0.55,0); }
-  else if(uVType==9){ vec3 a=wc(q),b=wc(qm); macro=1.0-smoothstep(0.12,0.34,a.x*(0.55+0.9*a.z)); micro=1.0-smoothstep(0.12,0.34,b.x*(0.55+0.9*b.z)); }
-  else if(uVType==10){ macro=0.5+0.5*sin(6.2831*q.x); micro=0.5+0.5*sin(6.2831*qm.x*1.0+vnv(qm)*3.0); }
-  else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } macro=s/w;
-    a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } micro=s/max(w,1e-4); }
+  float macro=0.5,micro=0.5; bool nm=uVMac>0.0,nu=uVMic>0.0;/* (0.98.9) what is switched off is not computed */
+  if(uVType==1){ if(nm)macro=1.0-clamp(wv(q)*1.15,0.0,1.0); if(nu)micro=1.0-clamp(wv(qm)*1.15,0.0,1.0); }
+  else if(uVType==2){ if(nm)macro=(vnv(q)+vnv(q+5.3)+vnv(q+9.1)+vnv(q+14.7))*0.25; if(nu)micro=(vnv(qm)+vnv(qm+3.9)+vnv(qm+8.3)+vnv(qm+12.1))*0.25; if(nm)macro=0.5+(macro-0.5)*2.0; micro=0.5+(micro-0.5)*2.0; }
+  else if(uVType==3){ if(nm)macro=vfbm(q,2,0.5,1); if(nu)micro=vfbm(qm,uVOct,0.55,1); }
+  else if(uVType==4){ if(nm)macro=vfbm(q,2,0.5,2); if(nu)micro=vfbm(qm,uVOct,0.55,2); }
+  else if(uVType==5){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=1.0-smoothstep(0.0,0.14,a.y-a.x); if(nu)micro=1.0-smoothstep(0.0,0.18,b.y-b.x); }
+  else if(uVType==6){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=a.z; micro=0.5*b.z+0.5*(1.0-clamp(b.x*1.2,0.0,1.0)); }
+  else if(uVType==7){ float t=vfbm(q*0.8,3,0.5,0); if(nm)macro=0.5+0.5*sin(6.2831*(q.x*0.5+1.8*t)); float t2=vfbm(qm,3,0.5,0); if(nu)micro=pow(0.5+0.5*sin(6.2831*(qm.x*0.8+2.4*t2)),3.0); }
+  else if(uVType==8){ float r=length(q.xz)+0.35*vfbm(q*vec3(1.0,0.35,1.0),3,0.5,0); if(nm)macro=0.5+0.5*sin(r*6.2831*1.3); if(nu)micro=vfbm(vec3(qm.x*0.4,qm.y*5.0,qm.z*0.4),uVOct,0.55,0); }
+  else if(uVType==9){ vec3 a=nm?wc(q):vec3(0.0),b=nu?wc(qm):vec3(0.0); if(nm)macro=1.0-smoothstep(0.12,0.34,a.x*(0.55+0.9*a.z)); if(nu)micro=1.0-smoothstep(0.12,0.34,b.x*(0.55+0.9*b.z)); }
+  else if(uVType==10){ if(nm)macro=0.5+0.5*sin(6.2831*q.x); micro=0.5+0.5*sin(6.2831*qm.x*1.0+vnv(qm)*3.0); }
+  else { float a=0.5,s=0.0,w=0.0; vec3 p=q; for(int i=0;i<2;i++){ s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.5; } if(nm)macro=s/w;
+    a=0.5;s=0.0;w=0.0;p=qm; for(int i=0;i<8;i++){ if(i>=uVOct)break; s+=a*vnv(p); w+=a; p=p*2.03+vec3(1.7,9.2,3.1); a*=0.55; } if(nu)micro=s/max(w,1e-4); }
   float n=0.5+(macro-0.5)*uVMac*uVInt+(micro-0.5)*uVMic*uVInt*0.7;
   float m=clamp(n+uVLvl,0.0,1.0); if(uNeg==1) m=1.0-m; o=vec4(vec3(m),1.0); }`;
 const FS_MSBLEND=`uniform sampler2D uA; uniform sampler2D uB; uniform int uMode; uniform float uOp;
@@ -517,7 +519,7 @@ function msSurf(){const tri=typeof fillPosMaps==='function'&&v3.mesh&&(ui.mode==
   if(!tri)return Object.assign({uPos:dummy,uNrm:dummy,uHasPos:{int:0},uBmin:[0,0,0],uBsize:[1,1,1]},B);
   const m=v3.mesh;if(!m._bb){const p=m.pos,mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];for(let i=0;i<p.length;i+=3)for(let j=0;j<3;j++){mn[j]=Math.min(mn[j],p[i+j]);mx[j]=Math.max(mx[j],p[i+j]);}m._bb={mn,sz:mx.map((v,j)=>v-mn[j])};}
   return Object.assign({uPos:tri.pos.tex,uNrm:tri.nrm.tex,uHasPos:{int:1},uBmin:m._bb.mn,uBsize:m._bb.sz},B);}
-function msCtx(){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=msDocMap('normal',ctx);
+function msCtx(needDoc){const ctx={tmp:[],doc:{},surf:msSurf()};const dn=needDoc===false?null:msDocMap('normal',ctx);/* (0.98.9) the document's normal map is only composited for rows that read it */
   Object.assign(ctx.surf,{uDocN:dn?dn.tex:dummy,uHasDocN:{int:dn?1:0},uSz:[doc.w,doc.h],uWorld:{int:0}},pxfUniforms('uv',null));return ctx;}
 /* (0.95.5, Kenn: "make them wider like Painter") edges and cavities reach further than the sharp line the curvature map marks:
    the edge and cavity parts are blurred (wider with the row's Width) and laid over the sharp ones, so wear and dirt spread
@@ -617,6 +619,8 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const o=out();run(P_MSMESH,o,{uT:t.tex,uPart:{int:curvy?(p.part==='edges'?1:p.part==='cavities'?2:0):0},uBal:p.bal||0,uCon:p.con||0,uNeg:{int:p.inv?1:0},uLo:p.lo||0,uHi:p.hi==null?1:p.hi,uGam:p.gam||1});return {t:o,pooled:true};}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
+  if(r.kind==='layerref'){const o=allNodes(doc.root).find(n=>n.name===p.name&&isLayer(n)&&n!==L);if(!o)return null;const k=p.map&&doc.maps.includes(p.map)?p.map:'base';
+    if(o._fillLive&&o._fillLive[k])ensureMapTarget(o,k);const T=mapT(o,k);if(!T||T.empty)return null;return lum(T.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
     run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uContrast:p.contrast??0,uKeepA:{int:p.decal?1:0},uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
       tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
@@ -724,35 +728,58 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
 function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
 /* a row's own mask: white where unpainted (the row shows), painted black hides it, painted white shows it */
 const FS_MSRMK=`uniform sampler2D uS; uniform sampler2D uM; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uS,p,0); vec4 m=texelFetch(uM,p,0); float cov=clamp(m.a,0.0,1.0); float v=cov>1e-5?m.r/cov:1.0; o=s*mix(1.0,clamp(v,0.0,1.0),cov); }`;
-const msIsRowMask=r=>!!(r&&r.kind==='paint'&&r.p&&r.p.forRow);
-const msRowMaskOf=(S,r)=>S.find(x=>msIsRowMask(x)&&x.p.forRow===r.id)||null;
+/* (0.98.9, Kenn: "set up the masks like Marmoset") the stack is one flat list, but a row can sit INSIDE a folder (par = the folder's id) or INSIDE another row's own mask
+   stack (mkOf = that row's id); both nest as deep as you like. Old files marked a row's single paint mask with p.forRow: that still reads as mkOf. */
+const msKeyOf=r=>r.mkOf?'m:'+r.mkOf:r.par?'f:'+r.par:(r.p&&r.p.forRow?'m:'+r.p.forRow:'root');
+const msIsRowMask=r=>msKeyOf(r)[0]==='m';
+const msIn=(S,key)=>S.filter(r=>msKeyOf(r)===key);
+const msMaskRowsOf=(S,r)=>msIn(S,'m:'+r.id);
+const msRowMaskOf=(S,r)=>msMaskRowsOf(S,r)[0]||null;
+/* the row at the top level that holds this one (a painted row inside a folder or a mask redoes its holder) */
+function msTopOf(S,row){let g=0;while(row&&msKeyOf(row)!=='root'&&g++<64){const k=msKeyOf(row);const up=S.find(x=>x.id===k.slice(2));if(!up)break;row=up;}return row;}
+/* every row that lives inside this one (folder children and mask rows, all the way down) */
+function msInside(S,id){const out=[],ids=new Set([id]);let grew=true;while(grew){grew=false;for(const r of S){if(ids.has(r.id))continue;const k=msKeyOf(r);if(k!=='root'&&ids.has(k.slice(2))){ids.add(r.id);out.push(r);grew=true;}}}return out;}
+function msSetBox(row,c){delete row.mkOf;delete row.par;if(row.p&&row.p.forRow)delete row.p.forRow;if(c&&c.mkOf)row.mkOf=c.mkOf;else if(c&&c.par)row.par=c.par;}
+const msBoxOf=r=>r.mkOf||(r.p&&r.p.forRow)?{mkOf:r.mkOf||r.p.forRow}:r.par?{par:r.par}:null;
 function msAddRowMask(L,rowId,black){if(!msHas(L))return null;let comp=null;
-  msRecord(L,'Add a mask to the row',()=>{const S=L.mask.stack,par=S.find(r=>r.id===rowId);if(!par||msRowMaskOf(S,par))return false;
-    comp=msNewPaintRow(L);comp.p={forRow:rowId};comp.name='Mask of '+msRowTitle(par);if(black)clearTarget(comp.t,[0,0,0,1]);S.splice(S.indexOf(par)+1,0,comp);L.mask._rows.add(comp);});
+  msRecord(L,'Add a mask to the row',()=>{const S=L.mask.stack,par=S.find(r=>r.id===rowId);if(!par||msMaskRowsOf(S,par).length)return false;
+    comp=msNewPaintRow(L);comp.mkOf=rowId;comp.name='Mask of '+msRowTitle(par);if(black)clearTarget(comp.t,[0,0,0,1]);S.splice(S.indexOf(par)+1,0,comp);L.mask._rows.add(comp);});
   if(comp){ui.msSel={L,where:'m',id:comp.id};L.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);}return comp;}
-function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,c=S.find(r=>msIsRowMask(r)&&r.p.forRow===rowId);if(!c)return false;S.splice(S.indexOf(c),1);});}
-function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth;
-  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx():{tmp:[]};
+function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,gone=new Set(msMaskRowsOf(S,S.find(r=>r.id===rowId)||{id:'-'}).flatMap(r=>[r,...msInside(S,r.id)]));if(!gone.size)return false;L.mask.stack=S.filter(r=>!gone.has(r));if(L.mask.stack.length===0)L.mask.stack=[];});}
+/* a folder around a row (the row keeps its place) */
+function msGroupRow(L,rowId){let f=null;msRecord(L,'Group into a folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId);if(!r)return false;f=msRow('folder',{name:'Folder'});msSetBox(f,msBoxOf(r));S.splice(S.indexOf(r),0,f);msSetBox(r,{par:f.id});});
+  if(f){ui.msSel={L,where:'m',id:f.id};renderLayers();}return f;}
+function msUngroupRow(L,rowId){msRecord(L,'Take out of the folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId),f=r&&r.par&&S.find(x=>x.id===r.par);if(!r||!f)return false;msSetBox(r,msBoxOf(f));const i=S.indexOf(r);S.splice(i,1);S.splice(S.indexOf(f)+1,0,r);});}
+function msIntoFolder(L,rowId,folderId){msRecord(L,'Move into a folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId),f=S.find(x=>x.id===folderId);if(!r||!f||f.kind!=='folder'||r===f||msInside(S,r.id).includes(f))return false;msSetBox(r,{par:f.id});});}
+function msEval(L,ov,guard){const M=L.mask,S=M.stack,d=M.target.depth;
+  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx(S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor','noise','volume','image','mesh','ref','grad','folder','layerref'].includes(r.kind))):{tmp:[]};
   let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
   let from=0;
-  /* (0.98.6) a row's own mask is a companion Paint row (p.forRow = the row's id): painting it redoes its parent row */
-  const prow=ov&&ov.row&&ov.row.p&&ov.row.p.forRow?(S.find(x=>x.id===ov.row.p.forRow)||ov.row):ov&&ov.row;
+  const prow=ov&&ov.row?msTopOf(S,ov.row):null;/* (0.98.6) painting a row inside a folder or a mask redoes the row that holds it */
   if(!ov||!ov.row)msPreFree(M);
   else if(ov.upTo==null){const idx=S.indexOf(prow);
     if(idx>1){const key=msKey(L)+'|'+idx;
       if(!M._pre||M._pre.key!==key||M._pre.t.depth!==d){msPreFree(M);const pre=msEval(L,{row:S[idx],t:null,upTo:idx},guard);M._pre={key,t:makeTarget(doc.w,doc.h,d)};blit(pre,M._pre.t,0,0,doc.w,doc.h,0,0);release(pre);}
       blit(M._pre.t,acc,0,0,doc.w,doc.h,0,0);from=idx;}}
-  try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false||msIsRowMask(r))continue;let s=null;
-    if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
+  try{acc=msRun(L,S,'root',acc,ctx,d,ov,guard,from,ov?ov.upTo:null);}
+  finally{msCtxFree(ctx);}
+  return acc;}
+/* one container of rows (the top level, a folder, or a row's own mask), blended in order onto acc */
+function msRun(L,S,key,acc,ctx,d,ov,guard,from,upTo){const P=msProgs();
+  for(let ri=from||0;ri<S.length;ri++){const r=S[ri];if(upTo!=null&&ri>=upTo)break;if(r.on===false||msKeyOf(r)!==key)continue;let s=null;
+    if(r.kind==='folder'){const init=acquireD(d);clearTarget(init,[0,0,0,1]);s={t:msRun(L,S,'f:'+r.id,init,ctx,d,ov,guard),pooled:true};}
+    else if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
     else if(r.kind==='gen'&&msWeatherKind(r.p.g))s=msWeatherSource(r,ctx,d,L,guard,acc);
     else s=msSource(r,ctx,d,ov,L,guard);
-    if(!s)continue;{const cm=msRowMaskOf(S,r);if(cm&&cm.on!==false){const ct=ov&&ov.row===cm&&ov.t?ov.t:cm.t;if(ct){if(!P.rmk)P.rmk=program(FS_MSRMK);const o2=acquireD(d);run(P.rmk,o2,{uS:s.t.tex,uM:ct.tex});if(s.pooled)release(s.t);s={t:o2,pooled:true};}}}
-    const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
-  finally{msCtxFree(ctx);}
+    if(!s)continue;
+    /* the row's own mask: its rows, evaluated from white, multiply the row's picture */
+    if(msMaskRowsOf(S,r).some(x=>x.on!==false)){const init=acquireD(d);clearTarget(init,[1,1,1,1]);const mres=msRun(L,S,'m:'+r.id,init,ctx,d,ov,guard);
+      if(!P.rmk)P.rmk=program(FS_MSRMK);const o2=acquireD(d);run(P.rmk,o2,{uS:s.t.tex,uM:mres.tex});release(mres);if(s.pooled)release(s.t);s={t:o2,pooled:true};}
+    const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}
   return acc;}
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
 function msKey(L){const M=doc.meshMaps||{};return [L.lookVer||0,JSON.stringify(L.mask.stack,(k,x)=>k==='t'||k[0]==='_'?undefined:x),Object.keys(M).map(k=>k+(M[k].tex?1:0)).join(),doc.w,doc.h,
-  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
+  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref'||r.kind==='layerref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
 let msEpoch=0;let P_MSMESH=null;let P_MSALPHA=null;
 function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key===k)return;L.mask._key=k;const r=msEval(L,null,guard);blit(r,L.mask.target,0,0,doc.w,doc.h,0,0);release(r);if(L.mask.thumb)thumbQ.add(L);}
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
@@ -778,11 +805,17 @@ function msAdd(L,kind,o,label,initialMask){if(!isLayer(L)&&!(L&&L.type==='group'
     msMakeStack(L);
     row=kind==='paint'?msNewPaintRow(L):msRow(kind,o);if(kind==='paint'&&o)Object.assign(row,o,{t:row.t});
     if(kind==='filter'&&row.fx&&!row.v&&FX[row.fx])row.v=fxDefaults(FX[row.fx]);
-    const S=L.mask.stack,sel=ui.msSel&&ui.msSel.L===L&&ui.msSel.where==='m'?S.findIndex(x=>x.id===ui.msSel.id):-1;S.splice(sel>=0?sel+1:S.length,0,row);
+    /* a new row goes next to the selected one, in its folder or its own mask; a folder that is selected takes it inside */
+    const S=L.mask.stack,selR=ui.msSel&&ui.msSel.L===L&&ui.msSel.where==='m'?S.find(x=>x.id===ui.msSel.id):null;
+    if(selR){if(selR.kind==='folder')msSetBox(row,{par:selR.id});else msSetBox(row,msBoxOf(selR));S.splice(S.indexOf(selR)+1,0,row);}else S.push(row);
     (L.mask._rows||(L.mask._rows=new Set())).add(row);L.editMask=true;});
   if(row)msSelect(L,'m',row.id);return row;}
-function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;S.splice(i,1);if(where==='m'){const j=S.findIndex(r=>msIsRowMask(r)&&r.p.forRow===id);if(j>=0)S.splice(j,1);}});
+function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;const gone=where==='m'?new Set([S[i],...msInside(S,id)]):new Set([S[i]]);if(where==='m')L.mask.stack=S.filter(r=>!gone.has(r));else L.cfx=S.filter(r=>!gone.has(r));});
   if(ui.msSel&&ui.msSel.id===id)ui.msSel=null;renderMatEd(true);}
+/* dragging a row onto another: in the same folder or mask it takes that place; onto a folder from outside it goes inside; onto a row elsewhere it joins that row's folder or mask */
+function msDropRow(L,id,targetId){msRecord(L,'Move row',()=>{const S=L.mask.stack,r=S.find(x=>x.id===id),t=S.find(x=>x.id===targetId);if(!r||!t||r===t||msInside(S,r.id).includes(t))return false;
+  if(msKeyOf(t)!==msKeyOf(r)){if(t.kind==='folder')msSetBox(r,{par:t.id});else msSetBox(r,msBoxOf(t));}
+  S.splice(S.indexOf(r),1);S.splice(Math.max(0,S.indexOf(t)),0,r);});}
 function msMove(L,where,id,to){msRecord(L,'Move row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;const [r]=S.splice(i,1);S.splice(clamp(to,0,S.length),0,r);});}
 /* Flatten mask: keep the result, drop the rows */
 function msFlatten(L){if(!msHas(L))return;msUpdate(L);msRecord(L,'Flatten mask',()=>{L.mask.stack=null;});}
@@ -795,7 +828,7 @@ function msSelect(L,where,id){ui.msSel={L,where,id};if(where==='m'){L.editMask=t
 function msRowOf(sel){if(!sel||!sel.L)return null;const S=sel.where==='m'?(sel.L.mask&&sel.L.mask.stack):sel.L.cfx;return S?S.find(r=>r.id===sel.id)||null:null;}
 /* where painting on a stacked mask goes: the selected Paint row, else the top Paint row, else a new one on top */
 function msPaintRow(L){const S=L.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.kind==='paint'&&ui.msSel.L===L&&S.includes(cur))return cur;
-  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false&&!msIsRowMask(S[i]))return S[i];
+  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false&&msKeyOf(S[i])==='root')return S[i];
   const r=msNewPaintRow(L);S.push(r);ui.msSel={L,where:'m',id:r.id};renderLayers();return r;}
 
 /* ---- content effects in compositing ---- */
@@ -871,10 +904,9 @@ function maskFillTo(L,v){if(!L)return;if(!L.mask){if(doc.active!==L)selectOnly(L
    another layer's mask or effects: one undo step covering both layers */
 function msMoveRowToLayer(src,where,id,dst){if(!src||!dst||src===dst)return false;const S0=where==='m'?(src.mask&&src.mask.stack):src.cfx;const r=S0&&S0.find(x=>x.id===id);if(!r)return false;
   if(where==='m'&&!isLayer(dst)&&dst.type!=='group'){toast('Pick a layer or a group.');return false;}
-  const from=hist.undo.length,comp=where==='m'?msRowMaskOf(S0,r):null;
-  const ok=msRecord(src,'Move row to another layer',()=>{const i=S0.indexOf(r);if(i<0)return false;S0.splice(i,1);if(comp){const j=S0.indexOf(comp);if(j>=0)S0.splice(j,1);}
-    if(where==='m'&&src.mask._rows){src.mask._rows.delete(r);if(comp)src.mask._rows.delete(comp);}});
+  const from=hist.undo.length,moved=where==='m'?[r,...msInside(S0,r.id)]:[r],gone=new Set(moved);
+  const ok=msRecord(src,'Move row to another layer',()=>{const i=S0.indexOf(r);if(i<0)return false;const keep=S0.filter(x=>!gone.has(x));if(where==='m'){src.mask.stack=keep;if(src.mask._rows)for(const x of moved)src.mask._rows.delete(x);}else src.cfx=keep;});
   if(!ok)return false;
-  msRecord(dst,'Move row to another layer',()=>{if(where==='m'){if(!dst.mask){dst.mask=makeMask(0);dst.mask.stack=[];dst.mask._rows=new Set();}msMakeStack(dst);dst.mask.stack.push(r);if(comp)dst.mask.stack.push(comp);(dst.mask._rows||(dst.mask._rows=new Set())).add(r);if(comp)dst.mask._rows.add(comp);dst.editMask=true;}
+  msRecord(dst,'Move row to another layer',()=>{if(where==='m'){if(!dst.mask){dst.mask=makeMask(0);dst.mask.stack=[];dst.mask._rows=new Set();}msMakeStack(dst);msSetBox(r,null);dst.mask.stack.push(...moved);(dst.mask._rows||(dst.mask._rows=new Set()));for(const x of moved)dst.mask._rows.add(x);dst.editMask=true;}
     else{dst.cfx=dst.cfx||[];dst.cfx.push(r);}dst.fxFold=false;});
   undoMerge(from,'Move row to another layer');selectOnly(dst);dst.editMask=where==='m';ui.msSel={L:dst,where,id:r.id};renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return true;}

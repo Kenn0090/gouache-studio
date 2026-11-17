@@ -1,4 +1,4 @@
-## Gouache Studio 0.98.8
+## Gouache Studio 0.98.9
 
-- Volume noise has eight new types: Ridged, Billow, Cracks, Crystal, Marble, Wood rings, Spots and Stripes.
-- The wide blur across the model no longer leaves a lattice pattern; it is still quick.
+- Mask stack like Marmoset's: folders inside a mask (nested, with their own blend mode, opacity and mask), a full stack of rows for any row's own mask, and any layer usable as a mask row. Rows nest and indent under the layer.
+- Volume noise is lighter on every slider move, and Scale goes up to 200 on the slider (type any number).

@@ -3,19 +3,26 @@
    its blend mode and opacity, and ✕. Click a row to change it in Properties; drag rows to reorder; ▾ on the layer
    folds them. FX ▾ adds to the mask when the mask thumbnail is selected, else to the layer's content. */
 function msRowsEl(n){const out=[];if(!(msHas(n)||(n.cfx&&n.cfx.length))||n.fxFold)return out;
-  const mk=(where,S)=>{for(let i=S.length-1;i>=0;i--){const r=S[i];if(where==='m'&&msIsRowMask(r))continue;const cm=where==='m'?msRowMaskOf(S,r):null,on=ui.msSel&&ui.msSel.L===n&&(ui.msSel.id===r.id),onM=!!(cm&&ui.msSel&&ui.msSel.L===n&&ui.msSel.id===cm.id);
+  /* (0.98.9, Kenn: "like Marmoset") rows nest: a folder shows its rows indented under it, and a row's own mask shows its stack indented under the row */
+  const one=(where,S,r,depth)=>{const hasMask=where==='m'&&msMaskRowsOf(S,r).length>0,on=ui.msSel&&ui.msSel.L===n&&(ui.msSel.id===r.id),selR=ui.msSel&&ui.msSel.L===n&&S.find(x=>x.id===ui.msSel.id),inMask=!!(hasMask&&selR&&msInside(S,r.id).includes(selR));
     const eye=el('button',{class:'eye',title:r.on!==false?'Hide':'Show','aria-label':(r.on!==false?'Hide ':'Show ')+msRowTitle(r)});eye.innerHTML=r.on!==false?eyeOn:eyeOff;
     eye.addEventListener('pointerdown',e=>e.stopPropagation());eye.addEventListener('click',e=>{e.stopPropagation();msRecord(n,(r.on!==false?'Hide ':'Show ')+msRowTitle(r).toLowerCase(),()=>{r.on=r.on===false;});});
     const del=el('button',{class:'msdel',text:'✕',title:'Delete','aria-label':'Delete '+msRowTitle(r)});del.addEventListener('pointerdown',e=>e.stopPropagation());del.addEventListener('click',e=>{e.stopPropagation();msRemove(n,where,r.id);});
     const modeBtn=el('button',{class:'msmode',text:(MS_MODES.find(m=>m[0]===(r.mode||'normal'))||MS_MODES[0])[2],title:'Blend mode: click to change','aria-label':'Blend mode of '+msRowTitle(r)+': click to change'});
     modeBtn.addEventListener('pointerdown',e=>e.stopPropagation());modeBtn.addEventListener('click',e=>{e.stopPropagation();msModeMenu(e,n,r,modeBtn);});
-    const row=el('div',{class:'msrow '+(where==='m'?'m':'c')+(on?' on':'')+(r.on===false?' hid':''),role:'option',tabindex:'0','aria-selected':String(!!on),title:where==='m'?'In the mask: click to change it in Properties, drag to reorder':'On the layer: click to change it in Properties, drag to reorder'},
-      eye,el('span',{class:'mskind',text:where==='m'?'▣':'fx','aria-hidden':'true'}),el('span',{class:'lname',text:msRowTitle(r)}),
-      ...(where==='m'?[rowMaskBtn(n,r,cm,onM)]:[]),modeBtn,el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
-    row._ms={L:n,where,id:r.id};row.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();rowMoveMenu(e,n,where,r);});
+    const fold=r.kind==='folder'?el('button',{class:'msfold',type:'button',text:r.fold?'▸':'▾',title:r.fold?'Open the folder':'Fold the folder away','aria-label':(r.fold?'Open ':'Fold ')+msRowTitle(r)}):null;
+    if(fold){fold.addEventListener('pointerdown',e=>e.stopPropagation());fold.addEventListener('click',e=>{e.stopPropagation();r.fold=!r.fold;renderLayers();});}
+    const inside=depth>0?(msKeyOf(r)[0]==='m'?' inmask':' infolder'):'';
+    const row=el('div',{class:'msrow '+(where==='m'?'m':'c')+(on?' on':'')+(r.on===false?' hid':'')+(r.kind==='folder'?' folder':'')+inside,style:depth?'margin-left:'+(depth*14)+'px':'',role:'option',tabindex:'0','aria-selected':String(!!on),title:where==='m'?'In the mask: click to change it in Properties, drag to reorder, right-click for folders and moving':'On the layer: click to change it in Properties, drag to reorder'},
+      eye,...(fold?[fold]:[]),el('span',{class:'mskind',text:where==='m'?(r.kind==='folder'?'▤':'▣'):'fx','aria-hidden':'true'}),el('span',{class:'lname',text:msRowTitle(r)}),
+      ...(where==='m'?[rowMaskBtn(n,r,hasMask,inMask)]:[]),modeBtn,el('span',{class:'msop',text:String(Math.round((r.op==null?1:r.op)*100))}),del);
+    row._ms={L:n,where,id:r.id,key:where==='m'?msKeyOf(r):'c'};row.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();rowMoveMenu(e,n,where,r);});
     row.addEventListener('pointerdown',e=>msRowDown(e,row));
     row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();msSelect(n,where,r.id);}if(e.key==='Delete'){e.preventDefault();e.stopPropagation();msRemove(n,where,r.id);}});
-    out.push(row);}};
+    out.push(row);};
+  const walk=(where,S,key,depth)=>{const list=where==='m'?msIn(S,key):S;for(let i=list.length-1;i>=0;i--){const r=list[i];one(where,S,r,depth);
+      if(where==='m'){if(r.kind==='folder'&&!r.fold)walk(where,S,'f:'+r.id,depth+1);if(!r.mkFold&&msMaskRowsOf(S,r).length)walk(where,S,'m:'+r.id,depth+1);}}};
+  const mk=(where,S)=>walk(where,S,'root',0);
   /* (0.97.1, Kenn: "like Painter") only the selected layer shows rows: its mask's rows when the mask is selected, else its own effects;
      clicking the same thumbnail again folds them away (layerPointerDown) */
   if(n!==doc.active)return out;if(n.editMask&&msHas(n))mk('m',n.mask.stack);else if(!n.editMask&&n.cfx&&n.cfx.length)mk('c',n.cfx);return out;}
@@ -30,7 +37,7 @@ function msRowDown(e,row){if(e.button!==0)return;e.stopPropagation();const {L,wh
   const up=ev=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);row.classList.remove('drag');
     if(!moved){msSelect(L,where,id);return;}
     const t=document.elementFromPoint(ev.clientX,ev.clientY),o=t&&t.closest('.msrow');if(!o||!o._ms||o._ms.L!==L||o._ms.where!==where||o._ms.id===id)return;
-    const S=where==='m'?L.mask.stack:L.cfx,to=S.findIndex(r=>r.id===o._ms.id);msMove(L,where,id,to);};
+    if(where==='m'){msDropRow(L,id,o._ms.id);return;}const S=L.cfx,to=S.findIndex(r=>r.id===o._ms.id);msMove(L,where,id,to);};
   window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);}
 
 /* ---- FX ▾ ---- */
@@ -53,6 +60,8 @@ function fxAddMenu(e){const L=doc.active;if(!L||!(isLayer(L)||L.type==='group')|
       it('ID colour',()=>{const r=msAdd(L,'id');if(r){ui.viewMask=true;maskTool('id');}}),
       it('Direction (facing up…)',add('dir')),it('Gradient',add('grad')),it('3D gradient (points around the model)',add('g3d')),
       it('Volume noise (3D, no seams)',add('volume')),
+      it('Folder (group rows together)',add('folder')),
+      it('Another layer, by brightness…',add('layerref')),
       it('Noise',sub('Noise',MS_NOISES.map(([k,t])=>it(t,add('noise',{p:Object.assign(MS_KINDS.noise.p(),{type:k})})))),true),
       it('Picture…',add('image')),
       it('From anchor',sub('From anchor',msAnchorNames().length?msAnchorNames().map(nm=>it(nm,add('anchor',{p:{name:nm,ch:'height',inv:false}}))):[el('p',{class:'note',style:'padding:6px 10px;max-width:240px',text:'No anchor points yet. Select a layer’s own thumbnail, press ✦ and choose Anchor point.'})]),true),
@@ -73,7 +82,7 @@ function msImageDrop(L,r){const drop=el('div',{class:'fxddrop',id:'msImageDrop',
 /* ---- Properties: the selected row's settings ---- */
 function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   const ed=fn=>msEdit(L,r,fn);const S=(id,label,key,min,max,step,fmt,fallback)=>makeSlider({id,label,min,max,step,
-    numericMax:['scale','scratchScale','tile','gtile','gcon','contrast'].includes(key)||(key==='r'&&r.own==='warp')||
+    numericMax:['scale','scratchScale','tile','gtile','gcon','contrast'].includes(key)||(r.kind==='volume'&&['intensity','macro','micro','mwDet','uwDet'].includes(key))||(key==='r'&&r.own==='warp')||
       (p.g==='builder'&&MS_BUILDER_INPUTS.some(([input])=>input===key))?Infinity:undefined,
     value:p[key]??fallback??min,fmt:fmt||(v=>String(Math.round(v*100)/100)),onInput:v=>ed(x=>{x.p[key]=v;})}).el;
   const sel=(id,label,opts,key)=>{const s=el('select',{id,'aria-label':label},...opts.map(([v,t])=>el('option',{value:v,text:t})));s.value=p[key];s.onchange=()=>{ed(x=>{x.p[key]=s.value;});renderLayers();};return el('div',{class:'frow'},el('label',{text:label}),s);};
@@ -131,11 +140,14 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
   if(r.kind==='grad')box.append(sel('ms_axis','Towards',[['up','Top'],['down','Bottom'],['x','Right'],['-x','Left'],['z','Front'],['-z','Back']],'axis'),S('ms_from','From','from',0,1,.01,pct),S('ms_to','To','to',0,1,.01,pct),inv());
   if(r.kind==='noise')box.append(sel('ms_type','Pattern',MS_NOISES,'type'),S('ms_scale','Size','scale',.5,40,.5),S('ms_con','Contrast','contrast',.2,8,.05),S('ms_lvl','Level','level',-1,1,.01),S('ms_seed','Seed','seed',1,99,1,v=>String(v)),
     inv(),pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]));
-  if(r.kind==='volume')box.append(sel('ms_vtype','Pattern',MS_VOL_TYPES,'type'),S('ms_vint','Intensity','intensity',0,3,.01,pct),S('ms_vscale','Scale','scale',.5,64,.5),
+  if(r.kind==='volume')box.append(sel('ms_vtype','Pattern',MS_VOL_TYPES,'type'),S('ms_vint','Intensity','intensity',0,3,.01,pct),makeSlider({id:'ms_vscale',label:'Scale',min:.1,max:200,step:.1,numericMin:.01,numericMax:Infinity,value:p.scale??4,fmt:v=>String(Math.round(v*100)/100),onInput:v=>ed(x=>{x.p.scale=v;})}).el,
     el('div',{class:'sub',text:'Contrast'}),S('ms_vmac','Macro','macro',0,3,.01,pct),S('ms_vmic','Micro','micro',0,3,.01,pct),
     el('div',{class:'sub',text:'Warp'}),S('ms_vmwa','Macro amount','mwAmt',0,1,.01,pct),S('ms_vmwd','Macro detail','mwDet',.5,8,.1),S('ms_vuwa','Micro amount','uwAmt',0,1,.01,pct),S('ms_vuwd','Micro detail','uwDet',1,16,.1),
     el('div',{class:'sub',text:'Quality'}),S('ms_vsamp','Sampling (detail levels)','samp',1,8,1,v=>String(v)),S('ms_vlvl','Level','level',-.5,.5,.01),S('ms_vseed','Seed','seed',1,99,1,v=>String(v)),inv(),
     pxfBox(L,r,[['world','World (no seams)'],['uv','UV']]),el('p',{class:'note',text:'Noise filled through the model\u2019s 3D space, so it ignores the UVs and has no seams. Move, turn and scale it with the gizmo in the 3D view.'}));
+  if(r.kind==='layerref'){const ls=allNodes(doc.root).filter(x=>isLayer(x)&&x!==L).map(x=>x.name),maps=doc.maps.map(k=>[k,MAP_DEFS[k]?MAP_DEFS[k].label:k]);
+    box.append(sel('ms_lname','Layer',[['','Choose…'],...ls.map(x=>[x,x])],'name'),sel('ms_lmap','Read its',maps,'map'),inv(),el('p',{class:'note',text:'The layer\u2019s picture, read by brightness, drives this mask row. Anything that is clear in the layer counts as black.'}));}
+  if(r.kind==='folder')box.append(el('p',{class:'note',text:'A folder blends the rows inside it together first, then blends the result with the rows below by its own blend mode and opacity. It can have a mask of its own too (the circle button).'}));
   if(r.kind==='image')box.append(el('div',{class:'row wrap'},el('span',{class:'note',text:p.name||'No picture'}),el('button',{class:'btn sm',text:'Choose picture…',onclick:()=>msPickImage(L,r)})),msImageDrop(L,r),
     makeSlider({id:'ms_imgContrast',label:'Contrast',min:-1,max:4,step:.01,value:p.contrast??0,fmt:pct,onInput:v=>ed(x=>{x.p.contrast=v;})}).el,
     S('ms_tile','Tile','tile',.25,16,.25,v=>v+'×'),inv(),pxfBox(L,r,PXF_MODES));
@@ -352,19 +364,21 @@ function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:
   hook('lNrm',()=>toast('A mask holds one grey picture, so a normal layer does not apply here. Select the layer itself to add one.'));}
 
 /* (0.98.6, Kenn: "any mask row can get its own mask") the small mask button on a row: add one, then click it to paint it; right-click deletes it */
-function rowMaskBtn(n,r,cm,sel){const b=el('button',{class:'msrmk'+(cm?' has':'')+(sel?' on':''),type:'button',text:cm?'◐':'◌','aria-label':cm?'Paint this row\u2019s mask':'Add a mask to this row',title:cm?'This row\u2019s own mask: click to paint it, right-click to delete it':'Add a mask to this row (so it only shows where you want)'});
+function rowMaskBtn(n,r,hasMask,sel){const b=el('button',{class:'msrmk'+(hasMask?' has':'')+(sel?' on':''),type:'button',text:hasMask?'◐':'◌','aria-label':hasMask?'Show or hide this row\u2019s mask':'Add a mask to this row',title:hasMask?'This row\u2019s own mask stack: click to fold it, right-click to delete it. Select one of its rows and use the + button to add more.':'Add a mask to this row (a stack of its own, so it only shows where you want)'});
   b.addEventListener('pointerdown',e=>e.stopPropagation());
-  b.addEventListener('click',e=>{e.stopPropagation();if(cm){ui.msSel={L:n,where:'m',id:cm.id};n.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return;}
+  b.addEventListener('click',e=>{e.stopPropagation();if(hasMask){r.mkFold=!r.mkFold;if(!r.mkFold){const f=msMaskRowsOf(n.mask.stack,r)[0];if(f){ui.msSel={L:n,where:'m',id:f.id};}}renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return;}
     const pop=$('#menuPop');closeMenu();const rc=b.getBoundingClientRect();
     pop.replaceChildren(...[['White mask (shows everywhere, paint black to hide)',false],['Black mask (hidden, paint white to show)',true]].map(([t,k])=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;msAddRowMask(n,r.id,k);}},el('span'),el('span',{text:t}),el('span'))));
     pop.hidden=false;pop.style.left=Math.max(4,Math.min(rc.left,innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(rc.bottom+2,innerHeight-pop.offsetHeight-8))+'px';
     const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);});
-  b.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();if(cm)msRemoveRowMask(n,r.id);});
+  b.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();if(hasMask)msRemoveRowMask(n,r.id);});
   return b;}
 
 /* right-click a row: move it (and its own mask) to another layer */
 function rowMoveMenu(e,n,where,r){const pop=$('#menuPop');closeMenu();
   const layers=allNodes(doc.root).filter(x=>x!==n&&(isLayer(x)||x.type==='group')&&!x.fx).slice(0,60);
-  const items=[el('div',{class:'mh',text:'Move “'+msRowTitle(r)+'” to'}),...(layers.length?layers.map(x=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;msMoveRowToLayer(n,where,r.id,x);}},el('span'),el('span',{text:x.name||'Layer'}),el('span'))):[el('div',{class:'mh',text:'No other layers'})])];
+  const S=where==='m'&&n.mask?n.mask.stack:[],folders=S.filter(f=>f.kind==='folder'&&f!==r&&!msInside(S,r.id).includes(f));
+  const mi=(t,f)=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;f();}},el('span'),el('span',{text:t}),el('span'));
+  const items=[...(where==='m'?[el('div',{class:'mh',text:'Folders'}),mi('Put in a new folder',()=>msGroupRow(n,r.id)),...(r.par?[mi('Take out of the folder',()=>msUngroupRow(n,r.id))]:[]),...folders.slice(0,12).map(f=>mi('Move into “'+msRowTitle(f)+'”',()=>msIntoFolder(n,r.id,f.id))),el('div',{class:'msep'})]:[]),el('div',{class:'mh',text:'Move “'+msRowTitle(r)+'” to'}),...(layers.length?layers.map(x=>el('button',{class:'mi',role:'menuitem',onclick:()=>{pop.hidden=true;msMoveRowToLayer(n,where,r.id,x);}},el('span'),el('span',{text:x.name||'Layer'}),el('span'))):[el('div',{class:'mh',text:'No other layers'})])];
   pop.replaceChildren(...items);pop.hidden=false;pop.style.left=Math.max(4,Math.min(e.clientX,innerWidth-pop.offsetWidth-8))+'px';pop.style.top=Math.max(4,Math.min(e.clientY,innerHeight-pop.offsetHeight-8))+'px';
   const off=ev=>{if(!pop.contains(ev.target)){pop.hidden=true;document.removeEventListener('pointerdown',off,true);}};setTimeout(()=>document.addEventListener('pointerdown',off,true),0);}

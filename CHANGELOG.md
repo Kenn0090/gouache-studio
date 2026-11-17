@@ -1,3 +1,9 @@
+## 0.98.9
+
+- **Mask stack like Marmoset's.** A mask can now hold **folders**: a folder blends the rows inside it first, then blends that with the rows below by its own blend mode and opacity, and it can have its own mask. Rows go inside the selected folder when you add them; right-click a row for "Put in a new folder", "Take out of the folder" and "Move into…", or drag a row onto a folder. Any row can have **a full mask stack of its own** (the ◌ button; it becomes ◐ once it has one): add as many rows of any kind as you like inside it. **Another layer, by brightness…** reads a whole layer (base colour, roughness, height…) as a mask row. Everything nests as deep as you like and shows indented under the layer, and folders fold with ▾. Files from 0.98.6 and 0.98.7 with a row's single paint mask still open correctly.
+- **Volume noise is lighter.** What is switched off (the warps, the macro or micro part) is no longer calculated, and the document's normal map is no longer composited on every slider move.
+- **Volume noise scale.** The Scale slider goes from 0.1 to 200, and you can type any number into it (also for Intensity, Macro, Micro and the Detail sliders).
+
 ## 0.98.8
 
 - **More volume noise types.** Ridged (sharp mountain ridges), Billow (soft rounded lumps), Cracks (lines where cells meet), Crystal (angular facets), Marble (flowing veins), Wood rings (growth rings that follow the gizmo's axis), Spots (round blotches) and Stripes (warpable bands). All fill 3D space, so none has a seam, and they use the same contrast, warp, sampling and seed controls as Clouds, Cells and Gaussian.
