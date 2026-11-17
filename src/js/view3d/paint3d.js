@@ -44,7 +44,7 @@ function buildP3Panel(){p3BakePanel();if(typeof stBrushRender==='function')stBru
   if(!sizes.includes(side)&&!(tileBox&&tileBox.tiles.length>1&&!tileBox.lay&&side<p3.size))sizes.push(side);
   /* (0.97.32, Kenn) the texture size first, so it is not a scroll away; with UV tiles it is the size of each tile */
   const kfmt=n=>n>=1024?(Math.round(n/102.4)/10)+'K':String(n),nT=tileBox?tileBox.tiles.length:0;
-  const sizeBox=el('div',{class:'p3sizebox',id:'p3SizeBox'},el('div',{class:'p3sizehead'},el('span',{class:'p3sizettl',text:nT>1?'Texture size per UV tile':'Texture size'}),el('span',{class:'p3sizenow',id:'p3SizeNow',text:p3Resolution()})),
+  const sizeBox=el('div',{class:'p3sizebox',id:'p3SizeBox'},el('div',{class:'p3sizehead'},el('span',{class:'p3sizettl',text:nT>1?'Size of all tiles (or pick each tile below)':'Texture size'}),el('span',{class:'p3sizenow',id:'p3SizeNow',text:p3Resolution()})),
     seg(sizes.sort((a,b)=>a-b).map(n=>[n,kfmt(n)]),side,v=>p3Resize(+v),'Texture size'),
     nT>1?el('p',{class:'note p3sizenote',text:tileBox.lay?'Tiles with their own size (in the list below) keep it; the others follow this size.':(side<p3.size?'The '+nT+' tiles share one canvas, so each is painted at '+side+' px here (the graphics card allows '+udimLim()+' px across). Give the important tiles their own size below to make the others smaller.':'Every tile is painted at '+side+' px. Give a tile its own size in the list below.')}):'');
   box.append(sizeBox,el('div',{class:'sub',text:'Model'}),models,s.model==='imported'&&v3.imported?upTurnRow():'',s.model==='imported'&&v3.imported?smoothingRow('p3Sm_'):'',s.model==='matpreview'?el('button',{class:'btn sm',id:'p3PreviewMaps',text:'Load preview material and mesh maps',onclick:()=>studioPreviewMaps()}):'',
@@ -425,8 +425,14 @@ function flipLabel(kind,names,i){const host=document.getElementById('pane3d')||d
     el('div',{class:'flhint',text:(kind==='Mesh map'?'B / Shift+B':'C / Shift+C')+(ui.mode==='p3d'?' · Esc for Lit':'')}));
   {const bar=host.querySelector('.v3bar'),hr=host.getBoundingClientRect();b.style.top=Math.round((bar?bar.getBoundingClientRect().bottom-hr.top:0)+12)+'px';}/* just below the 3D bar, however many rows it has */
   b.classList.remove('fade');void b.offsetWidth;b.classList.add('show');clearTimeout(b._t);const go=++b._n||(b._n=1);requestAnimationFrame(()=>requestAnimationFrame(()=>{if(b._n===go)b._t=setTimeout(()=>{b.classList.add('fade');},1400);}));}/* the clock starts once the new view is on screen */
-function p3CycleChannel(dir){const K=p3ChannelKeys(),i=K.indexOf(p3ChannelView());if(!K.length)return;p3SetChannelView(K[(i<0?(dir>0?0:K.length-1):(i+dir+K.length)%K.length)]);
-  const j=K.indexOf(p3ChannelView());flipLabel('Channel',K.map(p3ChannelLabel),Math.max(0,j));}
+function p3CycleChannel(dir){const K=p3ChannelKeys();if(!K.length)return;const A=doc.active,hasM=!!(A&&A.mask);
+  /* (0.98.4, Georgian) the active layer's mask is one more stop in the cycle, after the last channel */
+  const inMask=!!(ui.viewMask&&A&&A.editMask);let i=inMask?K.length:K.indexOf(p3ChannelView());
+  const n=K.length+(hasM?1:0),j=i<0?(dir>0?0:n-1):(i+dir+n)%n;
+  const labels=[...K.map(p3ChannelLabel),...(hasM?['Mask']:[])];
+  if(j===K.length&&hasM){A.editMask=true;ui.viewMask=true;v3s().channelView=null;v3.dirty=true;renderLayers();requestRender(true);}
+  else{if(inMask){ui.viewMask=false;A.editMask=false;renderLayers();}p3SetChannelView(K[j]);}
+  flipLabel('Channel',labels,Math.max(0,j));}
 function p3ChannelControl(){const s=el('select',{id:'p3ChannelView','aria-label':'Viewport channel',title:'C: next channel · Shift+C: previous · B: baked maps · Esc: Lit'},el('option',{value:'',text:'Lit'}),el('option',{value:'world',text:'World normals'}),...p3ChannelKeys().map(k=>el('option',{value:k,text:p3ChannelLabel(k)})));s.value=p3ChannelView()||(v3s().worldNormalView?'world':'');s.onchange=()=>{const k=s.value;s.blur();if(k==='world')p3SetWorldNormalView(true);else if(k)p3SetChannelView(k);else p3ShowLit();};return s;}
 /* B / Shift+B: the set's baked mesh maps, unlit, like the Bake tab. */
 const p3mm={k:null};

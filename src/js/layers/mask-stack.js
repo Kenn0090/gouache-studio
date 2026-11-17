@@ -498,7 +498,7 @@ function msWideCurv(curv,p,ctx){if(!curv||p.wide===false)return curv;const w=p.w
   if(ctx.wide.has(curv)&&ctx.wide.get(curv).has(key))return ctx.wide.get(curv).get(key);
   if(!P_MSWIDE)P_MSWIDE={a:program(FS_MSWIDE1),b:program(FS_MSWIDE2)};
   const sharp=acquireD(16),blur=acquireD(16),out=acquireD(16),r=Math.max(1.5,(.01+w*.05)*Math.max(doc.w,doc.h));
-  run(P_MSWIDE.a,sharp,{uC:curv.tex,uSz:[doc.w,doc.h],uBoost:1});gaussian(sharp,blur,r);
+  run(P_MSWIDE.a,sharp,{uC:curv.tex,uSz:[doc.w,doc.h],uBoost:1});if(!(typeof meshConnectedBlur==='function'&&meshConnectedBlur(sharp,blur,r,r)))gaussian(sharp,blur,r);/* (0.98.4) the blur walks across seams, so islands do not cut the spread */
   /* how strong this model's edges are: the 98th percentile of the spread-out edge and cavity amounts, so faint maps are brought up to the same range as strong ones */
   const gain=msWideGain(curv,blur);run(P_MSWIDE.b,out,{uS:sharp.tex,uB:blur.tex,uGain:gain});
   release(sharp);release(blur);ctx.tmp.push(out);if(!ctx.wide.has(curv))ctx.wide.set(curv,new Map());ctx.wide.get(curv).set(key,out);return out;}
@@ -571,12 +571,17 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
       void main(){ float a=1.0; if(uHasT==1)a=texture(uT,vUV).a; if(uHasO==1)a*=dot(texture(uO,vUV).rgb,vec3(0.299,0.587,0.114)); o=vec4(vec3(uNeg==1?1.0-a:a),1.0); }`);
     const o=out();run(P_MSALPHA,o,{uT:T&&!T.empty?T.tex:dummy,uHasT:{int:T&&!T.empty?1:0},uO:O&&!O.empty?O.tex:dummy,uHasO:{int:O&&!O.empty?1:0},uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
   const lum=(tex,inv)=>{const o=out();run(P.src,o,Object.assign({uKind:{int:0},uT:tex,uNeg:{int:inv?1:0},uSeed:0},ctx.surf));return {t:o,pooled:true};};
-  if(r.kind==='mesh'){const t=msMeshTex(p.k)||msDocMap(p.k,ctx);if(!t)return null;
+  if(r.kind==='mesh'){let t=msMeshTex(p.k)||msDocMap(p.k,ctx);if(!t)return null;
     /* (0.96.1, Kenn: "with controls … like in Painter") balance, contrast and, for curvature, which part */
-    if(!P_MSMESH)P_MSMESH=program(`in vec2 vUV; uniform sampler2D uT; uniform int uPart; uniform float uBal; uniform float uCon; uniform int uNeg;
+    if(!P_MSMESH)P_MSMESH=program(`in vec2 vUV; uniform sampler2D uT; uniform int uPart; uniform float uBal; uniform float uCon; uniform int uNeg; uniform float uLo; uniform float uHi; uniform float uGam;
       void main(){ float v=dot(texture(uT,vUV).rgb,vec3(0.299,0.587,0.114)); if(uPart==1)v=clamp((v-0.5)*2.0,0.0,1.0); else if(uPart==2)v=clamp((0.5-v)*2.0,0.0,1.0);
+        v=clamp((v-uLo)/max(1e-3,uHi-uLo),0.0,1.0); v=pow(v,uGam);
         float k=uCon>=0.0?1.0+uCon*4.0:1.0+uCon*0.95; v=clamp((v-0.5)*k+0.5+uBal*0.5,0.0,1.0); o=vec4(vec3(uNeg==1?1.0-v:v),1.0); }`);
-    const curvy=/curv(?!Edge|Crease)/.test(p.k),o=out();run(P_MSMESH,o,{uT:t.tex,uPart:{int:curvy?(p.part==='edges'?1:p.part==='cavities'?2:0):0},uBal:p.bal||0,uCon:p.con||0,uNeg:{int:p.inv?1:0}});return {t:o,pooled:true};}
+    const curvy=/curv(?!Edge|Crease)/.test(p.k);
+    /* (0.98.4, Kenn: "rework the curvature generator, use the baked map better, add the big/medium/small controls") the baked curvature
+       goes through the detail bands (big / medium / small) and a width that spreads edges and cavities across seams, before the part is taken */
+    if(curvy){const t1=cbGen(t,p,ctx);if(t1)t=t1;if(p.width>0&&p.wide!==false){const w=msWideCurv(t,{width:p.width,wide:true},ctx);if(w)t=w;}}
+    const o=out();run(P_MSMESH,o,{uT:t.tex,uPart:{int:curvy?(p.part==='edges'?1:p.part==='cavities'?2:0):0},uBal:p.bal||0,uCon:p.con||0,uNeg:{int:p.inv?1:0},uLo:p.lo||0,uHi:p.hi==null?1:p.hi,uGam:p.gam||1});return {t:o,pooled:true};}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();

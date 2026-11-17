@@ -27,13 +27,14 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* Keep the wrap active at grazing angles; only reject surfaces clearly facing away. */
   /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
      must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
-  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; if(dot(normalize(mat3(uMir)*gn),viewDir)<=uCullCos)discard; } }
+  float fadeG=1.0;/* (0.98.4) paint thins out toward the grazing limit instead of stopping at a hard edge */
+  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; float fc=dot(normalize(mat3(uMir)*gn),viewDir); if(fc<=uCullCos)discard; fadeG=smoothstep(uCullCos,uCullCos+0.25,fc); } }
   /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
      the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
      from the brush size) lets paint reach just behind a raised edge, nothing further. */
   if(uAlign==1){if(dot(n,viewDir)<-0.035||(z>0.0&&d>z*1.006+uWrapTol))discard;}
   else if(z<=0.0||d>z*1.006+0.004)discard;
-  vec4 t=texture(uStroke,s);
+  vec4 t=texture(uStroke,s)*fadeG;
   /* stencil: 1 = mask (light parts let paint through), 2 = colour (paints the picture itself) */
   if(uSt>0){ vec2 pp=s*uScr-uStC; float cr=cos(uStRot),sr=sin(uStRot); vec2 l=vec2(cr*pp.x-sr*pp.y,sr*pp.x+cr*pp.y)/(2.0*uStHalf)+0.5;
     if(uStTile==1) l=fract(l); else if(l.x<0.0||l.y<0.0||l.x>1.0||l.y>1.0)discard;

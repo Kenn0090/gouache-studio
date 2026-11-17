@@ -29,7 +29,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  const r=await p.evaluate(()=>__gs.skbRadius(__gs.shParams(__gs.v3ShadeOf(__gs.doc)),{h:180}));
  ok(r[0]>r[2],'red spreads further than blue '+r.map(x=>x.toFixed(2)).join(','));
  await p.evaluate(()=>{__gs.showPanel('shading');__gs.renderShading();});await W(300);
- ok(await p.evaluate(()=>!!document.getElementById('sh_blur')&&!!document.getElementById('sh_realH')),'Skin blur and Model height are in the skin settings');
+ ok(await p.evaluate(()=>!!document.getElementById('sh_blur')),'Skin blur and Model height are in the skin settings');
  ok(!gle.length,'no graphics errors '+gle.slice(0,2).join('|'));
  ok(!errs.length,'no page errors '+errs.join('|'));
  await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

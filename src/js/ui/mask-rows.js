@@ -117,6 +117,7 @@ function msRowEditor(box,L,where,r){const title=msRowTitle(r),p=r.p||(r.p={});
     const curvy=/curv(?!Edge|Crease)/.test(p.k);
     box.append(sel('ms_k','Map',ks.map(k=>[k,msMeshName(k)]),'k'),
       ...(curvy?[el('div',{class:'sub',text:'Use'}),seg([['both','Both'],['edges','Edges'],['cavities','Cavities']],p.part||'both',v=>{ed(x=>{x.p.part=v;});},'Curvature part')]:[]),
+      ...(curvy?[S('ms_width','Width (spread edges and cavities)','width',0,1,.01,pct),...curvBandsSliders(()=>r.p.cb,(k,v)=>msEdit(L,r,row=>{row.p.cb=Object.assign({},row.p.cb||{},{[k]:v});},'Curvature detail'),'msCb_'),S('ms_lo','Black point','lo',0,.95,.01,pct),S('ms_hi','White point','hi',.05,1,.01,pct),S('ms_gam','Sharpness curve','gam',.3,3,.05)]:[]),
       S('ms_bal','Balance','bal',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),S('ms_con','Contrast','con',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)),inv(),
     el('p',{class:'note',text:msMeshTex(p.k)?'A baked map of this texture set.':'Not baked yet: using the document’s own map, if it has one.'}));}
   if(r.kind==='id'){const sw=(p.cols||[]).map((c,i)=>el('button',{class:'idsw',style:'background:'+toHex(c),title:'Remove this colour','aria-label':'Remove colour '+toHex(c),onclick:()=>{ed(x=>x.p.cols.splice(i,1));renderMatEd(true);}}));
@@ -335,3 +336,11 @@ function msGrungeBox(r,p,ed,S){const box=el('div',{class:'dlg-grid msgrunge',id:
   if(p.gimg)box.append(el('div',{class:'gslot-sl'},S('ms_gtile','Tiling','gtile',.25,16,.05,v=>v.toFixed(2)+'×'),S('ms_grot','Rotation','grot',0,360,1,v=>Math.round(v)+'°'),S('ms_gcon','Contrast','gcon',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%'),S('ms_glev','Level','glev',-1,1,.01,v=>(v>0?'+':'')+Math.round(v*100)+'%')));
   box.title='Breakup sets how strongly the grunge eats into the mask. With the World projection it is laid over the model from three sides, so it has no seams.';
   return box;}
+
+/* (0.98.4, Georgian) with a mask selected, the layer buttons work on the mask: paint, fill and filter rows go into it; with the layer selected they make new layers as before */
+{const inMask=()=>{const n=doc.active;return !!(n&&n.mask&&n.editMask&&(isLayer(n)||n.type==='group')&&!n.fx&&ui.mode!=='anim');};
+  const hook=(id,f)=>{const b=document.getElementById(id);if(b)b.addEventListener('click',e=>{if(!inMask())return;e.stopImmediatePropagation();e.preventDefault();f(e);},true);};
+  hook('lAdd',()=>{msAdd(doc.active,'paint');renderLayers();});
+  hook('lFill',()=>{msAdd(doc.active,'fill');renderLayers();});
+  hook('lFx',e=>fxAddMenu(e));hook('lAdj',e=>fxAddMenu(e));
+  hook('lNrm',()=>toast('A mask holds one grey picture, so a normal layer does not apply here. Select the layer itself to add one.'));}
