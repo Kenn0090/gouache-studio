@@ -10,6 +10,10 @@ const welcomeOn=()=>!prefs.noWelcome;
 /* where to start: each tab of the app (Kenn: choose the starting section right after the splash) */
 const WELCOME_MODES=[['paint','2D Paint','Paint textures on a flat canvas; the 3D preview is optional','▨'],['photo','Photo','Edit photos like Lightroom','◑'],['p3d','3D Paint','Paint directly on a model with texture sets and materials','◈'],['anim','Animation','Flipbooks and sprite sheets','▶'],
   ['bake','Bake','Bake maps from a high-poly model','◎'],['convert','Convert','Normal, height, AO and more from a photo','◐'],['brush','Brush','Draw your own brush tips','✎']];
+/* (0.98.11, Kenn: maximising the window while it opened in 3D Paint left a black, half-drawn window) wait until the window has stopped changing size, say what is loading, let it paint, then switch */
+function welcomeStartMode(m){let last='',same=0,n=0;const lab=(WELCOME_MODES.find(x=>x[0]===m)||[m,m])[1];
+  const go=()=>{if(ui.mode!=='paint')return;try{toast('Opening '+lab+'…');}catch(e){}requestAnimationFrame(()=>requestAnimationFrame(()=>setTimeout(()=>{if(ui.mode==='paint')setMode(m);},60)));};
+  const poll=()=>{const cur=innerWidth+'x'+innerHeight+'@'+screenX+','+screenY;same=cur===last?same+1:0;last=cur;n++;if(same>=3||n>30)go();else setTimeout(poll,150);};poll();}
 function welcomeGo(m,remember){if(remember){prefs.startMode=m;savePrefs();}closeWelcome();if(ui.mode!==m)setMode(m);}
 function closeWelcome(){const w=document.getElementById('welcome');if(w){w.remove();if(typeof aiOfferOnce==='function')setTimeout(aiOfferOnce,700);}document.removeEventListener('keydown',welcomeKey,true);}
 function welcomeKey(e){if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeWelcome();}}
@@ -43,5 +47,5 @@ function bootDone(){const s=document.getElementById('splash');const go=()=>{if(s
   const t0=window.__gsT0||0,wait=Math.max(0,700-(performance.now()-t0));setTimeout(go,wait);
   const test=/[?&]debug\b/.test(location.search);
   /* the section picked with "Always start in" */
-  if(!test&&prefs.startMode&&prefs.startMode!=='paint'&&WELCOME_MODES.some(x=>x[0]===prefs.startMode))setTimeout(()=>{if(ui.mode==='paint')setMode(prefs.startMode);},wait+20);if(!test&&!prefs.setupDone){setTimeout(()=>showSetup(true),wait+50);return;}applyLevel();if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
+  if(!test&&prefs.startMode&&prefs.startMode!=='paint'&&WELCOME_MODES.some(x=>x[0]===prefs.startMode))setTimeout(()=>welcomeStartMode(prefs.startMode),wait+20);if(!test&&!prefs.setupDone){setTimeout(()=>showSetup(true),wait+50);return;}applyLevel();if(test?/[?&]welcome\b/.test(location.search):welcomeOn())setTimeout(showWelcome,wait+50);}
 Object.assign(actions,{welcome:()=>showWelcome(),examples:()=>showWelcome()});
