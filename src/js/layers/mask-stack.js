@@ -39,6 +39,8 @@ const MS_KINDS={
   id:{title:'ID colour',p:()=>({cols:[],tol:.08,soft:.04,inv:false})},
   dir:{title:'Direction',p:()=>({axis:'up',angle:50,soft:15,inv:false})},
   grad:{title:'Gradient',p:()=>({axis:'up',from:0,to:1,inv:false})},
+  folder:{title:'Folder',p:()=>({})},
+  layerref:{title:'Layer',p:()=>({name:'',map:'base',inv:false})},
   volume:{title:'Volume noise',p:()=>({type:'clouds',scale:4,intensity:1,macro:1,micro:1,mwAmt:0,mwDet:2,uwAmt:0,uwDet:4,samp:5,seed:5,level:0,inv:false})},
   noise:{title:'Noise',p:()=>({type:'grunge',scale:6,contrast:1.5,level:0,seed:1,tri:true,inv:false})},
   image:{title:'Picture',p:()=>({tile:1,rot:0,contrast:0,tri:false,inv:false,name:''})},
@@ -55,7 +57,7 @@ const MS_FILTERS=['levels','curves','threshold','posterize','invert','blur','box
 const MS_OWN_FILTERS={grow:'Grow / shrink',warp:'Warp',slope:'Slope blur'};
 let msSeq=0;
 function msRow(kind,o){const r=Object.assign({id:'r'+(++msSeq),kind,on:true,mode:'normal',op:1,p:MS_KINDS[kind]&&MS_KINDS[kind].p?MS_KINDS[kind].p():{}},o||{});return r;}
-function msRowTitle(r){if(msIsRowMask(r))return r.name||'Row mask';if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
+function msRowTitle(r){if(r.kind==='paint'&&r.p&&r.p.forRow)return r.name||'Row mask';if(r.kind==='layerref')return 'Layer “'+(r.p.name||'?')+'”';if(r.kind==='filter')return r.own?MS_OWN_FILTERS[r.own]:(FX[r.fx]?FX[r.fx].title:'Filter');
   if(r.kind==='gen')return (MS_GENS.find(g=>g[0]===r.p.g)||['','Generator'])[1];
   if(r.kind==='noise')return (MS_NOISES.find(g=>g[0]===r.p.type)||['','Noise'])[1];
   if(r.kind==='mesh')return msMeshName(r.p.k);
@@ -617,6 +619,8 @@ function msSource(r,ctx,depth,ov,L,guard){const P=msProgs(),p=r.p,out=()=>acquir
     const o=out();run(P_MSMESH,o,{uT:t.tex,uPart:{int:curvy?(p.part==='edges'?1:p.part==='cavities'?2:0):0},uBal:p.bal||0,uCon:p.con||0,uNeg:{int:p.inv?1:0},uLo:p.lo||0,uHi:p.hi==null?1:p.hi,uGam:p.gam||1});return {t:o,pooled:true};}
   if(r.kind==='ref'){const o=r._ref&&r._ref.mask&&inDoc(r._ref)?r._ref:(allNodes(doc.root).find(n=>n.name===p.name&&n.mask&&n!==L)||null);if(!o||o===L||(guard||[]).includes(o))return null;r._ref=o;
     if(msHas(o))msUpdate(o,[...(guard||[]),L]);return lum(o.mask.target.tex,p.inv);}
+  if(r.kind==='layerref'){const o=allNodes(doc.root).find(n=>n.name===p.name&&isLayer(n)&&n!==L);if(!o)return null;const k=p.map&&doc.maps.includes(p.map)?p.map:'base';
+    if(o._fillLive&&o._fillLive[k])ensureMapTarget(o,k);const T=mapT(o,k);if(!T||T.empty)return null;return lum(T.tex,p.inv);}
   if(r.kind==='image'){if(!r.t)return null;if(!P_FILLIMG)P_FILLIMG=program(FS_FILLIMG);const pm=pxfRowMode(r),tri=pxfIs3D(pm)&&typeof fillPosMaps==='function'?fillPosMaps():null,o=out();
     run(P_FILLIMG,o,Object.assign({uSrc:r.t.tex,uTile:Math.max(.05,p.tile||1),uRot:(p.rot||0)*Math.PI/180,uContrast:p.contrast??0,uKeepA:{int:p.decal?1:0},uGrey:{int:1},uPos:tri?tri.pos.tex:dummy,uNrm:tri?tri.nrm.tex:dummy,uSharp:4,uHStr:1,uHeight:{int:0},uNormal:{int:0},uRep:{int:p.rep===false?0:1},uFront:{int:p.front?1:0}},
       tri?pxfUniforms(pm,p.xf):pxfUniforms('uv',pxfIs3D(pm)?null:p.xf)));
@@ -724,35 +728,58 @@ function msFilter(r,acc){const o=acquireD(acc.depth);
 function msPreFree(M){if(M._pre){disposeTarget(M._pre.t);M._pre=null;}}
 /* a row's own mask: white where unpainted (the row shows), painted black hides it, painted white shows it */
 const FS_MSRMK=`uniform sampler2D uS; uniform sampler2D uM; void main(){ ivec2 p=ivec2(gl_FragCoord.xy); vec4 s=texelFetch(uS,p,0); vec4 m=texelFetch(uM,p,0); float cov=clamp(m.a,0.0,1.0); float v=cov>1e-5?m.r/cov:1.0; o=s*mix(1.0,clamp(v,0.0,1.0),cov); }`;
-const msIsRowMask=r=>!!(r&&r.kind==='paint'&&r.p&&r.p.forRow);
-const msRowMaskOf=(S,r)=>S.find(x=>msIsRowMask(x)&&x.p.forRow===r.id)||null;
+/* (0.98.9, Kenn: "set up the masks like Marmoset") the stack is one flat list, but a row can sit INSIDE a folder (par = the folder's id) or INSIDE another row's own mask
+   stack (mkOf = that row's id); both nest as deep as you like. Old files marked a row's single paint mask with p.forRow: that still reads as mkOf. */
+const msKeyOf=r=>r.mkOf?'m:'+r.mkOf:r.par?'f:'+r.par:(r.p&&r.p.forRow?'m:'+r.p.forRow:'root');
+const msIsRowMask=r=>msKeyOf(r)[0]==='m';
+const msIn=(S,key)=>S.filter(r=>msKeyOf(r)===key);
+const msMaskRowsOf=(S,r)=>msIn(S,'m:'+r.id);
+const msRowMaskOf=(S,r)=>msMaskRowsOf(S,r)[0]||null;
+/* the row at the top level that holds this one (a painted row inside a folder or a mask redoes its holder) */
+function msTopOf(S,row){let g=0;while(row&&msKeyOf(row)!=='root'&&g++<64){const k=msKeyOf(row);const up=S.find(x=>x.id===k.slice(2));if(!up)break;row=up;}return row;}
+/* every row that lives inside this one (folder children and mask rows, all the way down) */
+function msInside(S,id){const out=[],ids=new Set([id]);let grew=true;while(grew){grew=false;for(const r of S){if(ids.has(r.id))continue;const k=msKeyOf(r);if(k!=='root'&&ids.has(k.slice(2))){ids.add(r.id);out.push(r);grew=true;}}}return out;}
+function msSetBox(row,c){delete row.mkOf;delete row.par;if(row.p&&row.p.forRow)delete row.p.forRow;if(c&&c.mkOf)row.mkOf=c.mkOf;else if(c&&c.par)row.par=c.par;}
+const msBoxOf=r=>r.mkOf||(r.p&&r.p.forRow)?{mkOf:r.mkOf||r.p.forRow}:r.par?{par:r.par}:null;
 function msAddRowMask(L,rowId,black){if(!msHas(L))return null;let comp=null;
-  msRecord(L,'Add a mask to the row',()=>{const S=L.mask.stack,par=S.find(r=>r.id===rowId);if(!par||msRowMaskOf(S,par))return false;
-    comp=msNewPaintRow(L);comp.p={forRow:rowId};comp.name='Mask of '+msRowTitle(par);if(black)clearTarget(comp.t,[0,0,0,1]);S.splice(S.indexOf(par)+1,0,comp);L.mask._rows.add(comp);});
+  msRecord(L,'Add a mask to the row',()=>{const S=L.mask.stack,par=S.find(r=>r.id===rowId);if(!par||msMaskRowsOf(S,par).length)return false;
+    comp=msNewPaintRow(L);comp.mkOf=rowId;comp.name='Mask of '+msRowTitle(par);if(black)clearTarget(comp.t,[0,0,0,1]);S.splice(S.indexOf(par)+1,0,comp);L.mask._rows.add(comp);});
   if(comp){ui.msSel={L,where:'m',id:comp.id};L.editMask=true;renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);}return comp;}
-function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,c=S.find(r=>msIsRowMask(r)&&r.p.forRow===rowId);if(!c)return false;S.splice(S.indexOf(c),1);});}
-function msEval(L,ov,guard){const M=L.mask,S=M.stack,P=msProgs(),d=M.target.depth;
-  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx(S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor','noise','volume','image','mesh','ref','grad'].includes(r.kind))):{tmp:[]};
+function msRemoveRowMask(L,rowId){msRecord(L,'Delete the row\u2019s mask',()=>{const S=L.mask.stack,gone=new Set(msMaskRowsOf(S,S.find(r=>r.id===rowId)||{id:'-'}).flatMap(r=>[r,...msInside(S,r.id)]));if(!gone.size)return false;L.mask.stack=S.filter(r=>!gone.has(r));if(L.mask.stack.length===0)L.mask.stack=[];});}
+/* a folder around a row (the row keeps its place) */
+function msGroupRow(L,rowId){let f=null;msRecord(L,'Group into a folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId);if(!r)return false;f=msRow('folder',{name:'Folder'});msSetBox(f,msBoxOf(r));S.splice(S.indexOf(r),0,f);msSetBox(r,{par:f.id});});
+  if(f){ui.msSel={L,where:'m',id:f.id};renderLayers();}return f;}
+function msUngroupRow(L,rowId){msRecord(L,'Take out of the folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId),f=r&&r.par&&S.find(x=>x.id===r.par);if(!r||!f)return false;msSetBox(r,msBoxOf(f));const i=S.indexOf(r);S.splice(i,1);S.splice(S.indexOf(f)+1,0,r);});}
+function msIntoFolder(L,rowId,folderId){msRecord(L,'Move into a folder',()=>{const S=L.mask.stack,r=S.find(x=>x.id===rowId),f=S.find(x=>x.id===folderId);if(!r||!f||f.kind!=='folder'||r===f||msInside(S,r.id).includes(f))return false;msSetBox(r,{par:f.id});});}
+function msEval(L,ov,guard){const M=L.mask,S=M.stack,d=M.target.depth;
+  const ctx=S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor'].includes(r.kind))?msCtx(S.some(r=>r.on!==false&&!['paint','fill','filter','alpha','id','anchor','noise','volume','image','mesh','ref','grad','folder','layerref'].includes(r.kind))):{tmp:[]};
   let acc=acquireD(d);clearTarget(acc,[0,0,0,1]);
   let from=0;
-  /* (0.98.6) a row's own mask is a companion Paint row (p.forRow = the row's id): painting it redoes its parent row */
-  const prow=ov&&ov.row&&ov.row.p&&ov.row.p.forRow?(S.find(x=>x.id===ov.row.p.forRow)||ov.row):ov&&ov.row;
+  const prow=ov&&ov.row?msTopOf(S,ov.row):null;/* (0.98.6) painting a row inside a folder or a mask redoes the row that holds it */
   if(!ov||!ov.row)msPreFree(M);
   else if(ov.upTo==null){const idx=S.indexOf(prow);
     if(idx>1){const key=msKey(L)+'|'+idx;
       if(!M._pre||M._pre.key!==key||M._pre.t.depth!==d){msPreFree(M);const pre=msEval(L,{row:S[idx],t:null,upTo:idx},guard);M._pre={key,t:makeTarget(doc.w,doc.h,d)};blit(pre,M._pre.t,0,0,doc.w,doc.h,0,0);release(pre);}
       blit(M._pre.t,acc,0,0,doc.w,doc.h,0,0);from=idx;}}
-  try{for(let ri=from;ri<S.length;ri++){const r=S[ri];if(ov&&ov.upTo!=null&&ri>=ov.upTo)break;if(r.on===false||msIsRowMask(r))continue;let s=null;
-    if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
+  try{acc=msRun(L,S,'root',acc,ctx,d,ov,guard,from,ov?ov.upTo:null);}
+  finally{msCtxFree(ctx);}
+  return acc;}
+/* one container of rows (the top level, a folder, or a row's own mask), blended in order onto acc */
+function msRun(L,S,key,acc,ctx,d,ov,guard,from,upTo){const P=msProgs();
+  for(let ri=from||0;ri<S.length;ri++){const r=S[ri];if(upTo!=null&&ri>=upTo)break;if(r.on===false||msKeyOf(r)!==key)continue;let s=null;
+    if(r.kind==='folder'){const init=acquireD(d);clearTarget(init,[0,0,0,1]);s={t:msRun(L,S,'f:'+r.id,init,ctx,d,ov,guard),pooled:true};}
+    else if(r.kind==='filter'){const f=msFilter(r,acc);if(!f)continue;s={t:f,pooled:true};}
     else if(r.kind==='gen'&&msWeatherKind(r.p.g))s=msWeatherSource(r,ctx,d,L,guard,acc);
     else s=msSource(r,ctx,d,ov,L,guard);
-    if(!s)continue;{const cm=msRowMaskOf(S,r);if(cm&&cm.on!==false){const ct=ov&&ov.row===cm&&ov.t?ov.t:cm.t;if(ct){if(!P.rmk)P.rmk=program(FS_MSRMK);const o2=acquireD(d);run(P.rmk,o2,{uS:s.t.tex,uM:ct.tex});if(s.pooled)release(s.t);s={t:o2,pooled:true};}}}
-    const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}}
-  finally{msCtxFree(ctx);}
+    if(!s)continue;
+    /* the row's own mask: its rows, evaluated from white, multiply the row's picture */
+    if(msMaskRowsOf(S,r).some(x=>x.on!==false)){const init=acquireD(d);clearTarget(init,[1,1,1,1]);const mres=msRun(L,S,'m:'+r.id,init,ctx,d,ov,guard);
+      if(!P.rmk)P.rmk=program(FS_MSRMK);const o2=acquireD(d);run(P.rmk,o2,{uS:s.t.tex,uM:mres.tex});release(mres);if(s.pooled)release(s.t);s={t:o2,pooled:true};}
+    const o=acquireD(d);run(P.blend,o,{uA:acc.tex,uB:s.t.tex,uMode:{int:msModeIx(r.mode)},uOp:r.op==null?1:r.op});if(s.pooled)release(s.t);release(acc);acc=o;}
   return acc;}
 /* keep L.mask.target up to date: redone when the rows, the layer, the mesh maps or the model change */
 function msKey(L){const M=doc.meshMaps||{};return [L.lookVer||0,JSON.stringify(L.mask.stack,(k,x)=>k==='t'||k[0]==='_'?undefined:x),Object.keys(M).map(k=>k+(M[k].tex?1:0)).join(),doc.w,doc.h,
-  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
+  v3.mesh&&(ui.mode==='p3d'||v3.on)?v3.mesh.name+v3.mesh.idx.length+(typeof p3Range==='function'&&ui.mode==='p3d'?p3Range().start:0):'',msEpoch,msUsesDoc(L)?msDocVer:'',L.mask.stack.some(r=>r.kind==='anchor'||(r.kind==='gen'&&r.p.anchor))?L.mask.stack.map(r=>{const A=msAnchor(r.kind==='anchor'?r.p.name:r.p.anchor);return A?A.lookVer||0:'';}).join(':'):'',(L.mask.stack.find(r=>r.kind==='ref'||r.kind==='layerref')?allNodes(doc.root).map(n=>n.mask&&n.mask._key?n.lookVer:'').join(','):'')].join('|');}
 let msEpoch=0;let P_MSMESH=null;let P_MSALPHA=null;
 function msUpdate(L,guard){if(!msHas(L))return;const k=msKey(L);if(L.mask._key===k)return;L.mask._key=k;const r=msEval(L,null,guard);blit(r,L.mask.target,0,0,doc.w,doc.h,0,0);release(r);if(L.mask.thumb)thumbQ.add(L);}
 function msUpdateAll(){for(const n of allNodes(doc.root))if(msHas(n))msUpdate(n);}
@@ -778,11 +805,17 @@ function msAdd(L,kind,o,label,initialMask){if(!isLayer(L)&&!(L&&L.type==='group'
     msMakeStack(L);
     row=kind==='paint'?msNewPaintRow(L):msRow(kind,o);if(kind==='paint'&&o)Object.assign(row,o,{t:row.t});
     if(kind==='filter'&&row.fx&&!row.v&&FX[row.fx])row.v=fxDefaults(FX[row.fx]);
-    const S=L.mask.stack,sel=ui.msSel&&ui.msSel.L===L&&ui.msSel.where==='m'?S.findIndex(x=>x.id===ui.msSel.id):-1;S.splice(sel>=0?sel+1:S.length,0,row);
+    /* a new row goes next to the selected one, in its folder or its own mask; a folder that is selected takes it inside */
+    const S=L.mask.stack,selR=ui.msSel&&ui.msSel.L===L&&ui.msSel.where==='m'?S.find(x=>x.id===ui.msSel.id):null;
+    if(selR){if(selR.kind==='folder')msSetBox(row,{par:selR.id});else msSetBox(row,msBoxOf(selR));S.splice(S.indexOf(selR)+1,0,row);}else S.push(row);
     (L.mask._rows||(L.mask._rows=new Set())).add(row);L.editMask=true;});
   if(row)msSelect(L,'m',row.id);return row;}
-function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;S.splice(i,1);if(where==='m'){const j=S.findIndex(r=>msIsRowMask(r)&&r.p.forRow===id);if(j>=0)S.splice(j,1);}});
+function msRemove(L,where,id){msRecord(L,'Delete '+(where==='m'?'mask':'effect')+' row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;const gone=where==='m'?new Set([S[i],...msInside(S,id)]):new Set([S[i]]);if(where==='m')L.mask.stack=S.filter(r=>!gone.has(r));else L.cfx=S.filter(r=>!gone.has(r));});
   if(ui.msSel&&ui.msSel.id===id)ui.msSel=null;renderMatEd(true);}
+/* dragging a row onto another: in the same folder or mask it takes that place; onto a folder from outside it goes inside; onto a row elsewhere it joins that row's folder or mask */
+function msDropRow(L,id,targetId){msRecord(L,'Move row',()=>{const S=L.mask.stack,r=S.find(x=>x.id===id),t=S.find(x=>x.id===targetId);if(!r||!t||r===t||msInside(S,r.id).includes(t))return false;
+  if(msKeyOf(t)!==msKeyOf(r)){if(t.kind==='folder')msSetBox(r,{par:t.id});else msSetBox(r,msBoxOf(t));}
+  S.splice(S.indexOf(r),1);S.splice(Math.max(0,S.indexOf(t)),0,r);});}
 function msMove(L,where,id,to){msRecord(L,'Move row',()=>{const S=where==='m'?L.mask.stack:L.cfx;const i=S.findIndex(r=>r.id===id);if(i<0)return false;const [r]=S.splice(i,1);S.splice(clamp(to,0,S.length),0,r);});}
 /* Flatten mask: keep the result, drop the rows */
 function msFlatten(L){if(!msHas(L))return;msUpdate(L);msRecord(L,'Flatten mask',()=>{L.mask.stack=null;});}
@@ -795,7 +828,7 @@ function msSelect(L,where,id){ui.msSel={L,where,id};if(where==='m'){L.editMask=t
 function msRowOf(sel){if(!sel||!sel.L)return null;const S=sel.where==='m'?(sel.L.mask&&sel.L.mask.stack):sel.L.cfx;return S?S.find(r=>r.id===sel.id)||null:null;}
 /* where painting on a stacked mask goes: the selected Paint row, else the top Paint row, else a new one on top */
 function msPaintRow(L){const S=L.mask.stack,cur=msRowOf(ui.msSel);if(cur&&cur.kind==='paint'&&ui.msSel.L===L&&S.includes(cur))return cur;
-  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false&&!msIsRowMask(S[i]))return S[i];
+  for(let i=S.length-1;i>=0;i--)if(S[i].kind==='paint'&&S[i].on!==false&&msKeyOf(S[i])==='root')return S[i];
   const r=msNewPaintRow(L);S.push(r);ui.msSel={L,where:'m',id:r.id};renderLayers();return r;}
 
 /* ---- content effects in compositing ---- */
@@ -871,10 +904,9 @@ function maskFillTo(L,v){if(!L)return;if(!L.mask){if(doc.active!==L)selectOnly(L
    another layer's mask or effects: one undo step covering both layers */
 function msMoveRowToLayer(src,where,id,dst){if(!src||!dst||src===dst)return false;const S0=where==='m'?(src.mask&&src.mask.stack):src.cfx;const r=S0&&S0.find(x=>x.id===id);if(!r)return false;
   if(where==='m'&&!isLayer(dst)&&dst.type!=='group'){toast('Pick a layer or a group.');return false;}
-  const from=hist.undo.length,comp=where==='m'?msRowMaskOf(S0,r):null;
-  const ok=msRecord(src,'Move row to another layer',()=>{const i=S0.indexOf(r);if(i<0)return false;S0.splice(i,1);if(comp){const j=S0.indexOf(comp);if(j>=0)S0.splice(j,1);}
-    if(where==='m'&&src.mask._rows){src.mask._rows.delete(r);if(comp)src.mask._rows.delete(comp);}});
+  const from=hist.undo.length,moved=where==='m'?[r,...msInside(S0,r.id)]:[r],gone=new Set(moved);
+  const ok=msRecord(src,'Move row to another layer',()=>{const i=S0.indexOf(r);if(i<0)return false;const keep=S0.filter(x=>!gone.has(x));if(where==='m'){src.mask.stack=keep;if(src.mask._rows)for(const x of moved)src.mask._rows.delete(x);}else src.cfx=keep;});
   if(!ok)return false;
-  msRecord(dst,'Move row to another layer',()=>{if(where==='m'){if(!dst.mask){dst.mask=makeMask(0);dst.mask.stack=[];dst.mask._rows=new Set();}msMakeStack(dst);dst.mask.stack.push(r);if(comp)dst.mask.stack.push(comp);(dst.mask._rows||(dst.mask._rows=new Set())).add(r);if(comp)dst.mask._rows.add(comp);dst.editMask=true;}
+  msRecord(dst,'Move row to another layer',()=>{if(where==='m'){if(!dst.mask){dst.mask=makeMask(0);dst.mask.stack=[];dst.mask._rows=new Set();}msMakeStack(dst);msSetBox(r,null);dst.mask.stack.push(...moved);(dst.mask._rows||(dst.mask._rows=new Set()));for(const x of moved)dst.mask._rows.add(x);dst.editMask=true;}
     else{dst.cfx=dst.cfx||[];dst.cfx.push(r);}dst.fxFold=false;});
   undoMerge(from,'Move row to another layer');selectOnly(dst);dst.editMask=where==='m';ui.msSel={L:dst,where,id:r.id};renderLayers();if(typeof renderMatEd==='function')renderMatEd(true);return true;}
