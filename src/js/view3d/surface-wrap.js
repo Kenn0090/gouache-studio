@@ -2,7 +2,8 @@
    Tangent | Wrap used to project the brush from the camera: it stopped where the surface turned away, left a gap on walls the camera cannot
    see and broke at seams. Now the brush is measured on the model itself. The stroke runs on the texture like UV alignment, but each dab
    asks every texel where it sits in space (the position picture) and paints by its distance from the dab's centre there. */
-const swOn=()=>ui.mode==='p3d'&&v3s().paintAlign==='wrap'&&v3s().surfWrap!==false;
+/* (0.98.15, Kenn: "the tangent wrap isn't working, go back to the previous version") off unless you turn it on under Projection */
+const swOn=()=>ui.mode==='p3d'&&v3s().paintAlign==='wrap'&&v3s().surfWrap===true;
 /* plain brush and eraser only; stencils, UDIM sets made by tile and the other tools keep the camera projection */
 function swUsable(){if(!swOn()||!['brush','erase'].includes(ui.tool))return false;if(typeof st3!=='undefined'&&st3.img&&st3.mode!=='off')return false;
   if(typeof p3!=='undefined'&&p3.udim)return false;const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos||!C.nrm)return false;return !!(typeof uvmBuild==='function'&&uvmBuild());}
