@@ -26,13 +26,14 @@ function curvBandsOn(o){const w=cbOf(o);return CB_KEYS.some(([k])=>Math.abs(w[k]
 /* the six blur sizes, as a share of the texture: .2%, .4%, .8%, 1.6%, 3.2%, 6.4%; `scale` moves them all */
 function cbRadii(o,W,H){const s=Math.max(W,H),k=o&&o.scale!=null?o.scale:1;return [0,1,2,3,4,5].map(i=>Math.max(1+i*.5,s*.002*Math.pow(2,i)*k));}
 /* a new doc-size target with the bands mixed (the caller releases it: pooled) */
-function curvBands(src,o,depth){if(!src||!src.tex)return null;if(!P_CBAND)P_CBAND=program(FS_CBAND);const w=cbOf(o),W=doc.w,H=doc.h,d=depth||16;
-  const c=acquireD(16),g=[0,1,2,3,4,5].map(()=>acquireD(16)),out=acquireD(d);
+function curvBands(src,o,depth,scales){if(!src||!src.tex)return null;if(!P_CBAND)P_CBAND=program(FS_CBAND);const w=cbOf(o),W=doc.w,H=doc.h,d=depth||16,own=!(scales&&scales.length===6);
+  const c=acquireD(16),g=own?[0,1,2,3,4,5].map(()=>acquireD(16)):[],out=acquireD(d);
   try{copyScaled(src,c);const R=cbRadii(o,W,H);/* (0.98.10, Georgian: the blurs did not go over the UVs) on a model the blur walks across the seams */
     const bl=(from,to,r)=>{if(!(typeof meshConnectedBlur==='function'&&meshConnectedBlur(from,to,r/2.2*1.0,r/2.2*1.0,false)))gaussian(from,to,r);};
-    for(let i=0;i<6;i++)bl(i?g[i-1]:c,g[i],i?Math.sqrt(R[i]*R[i]-R[i-1]*R[i-1]):R[0]);/* each blur continues from the last, so the sizes add up */
-    run(P_CBAND,out,{uT0:c.tex,uT1:g[0].tex,uT2:g[1].tex,uT3:g[2].tex,uT4:g[3].tex,uT5:g[4].tex,uT6:g[5].tex,uW0:[w.sharp,w.fine,w.soft,w.medium],uW1:[w.large,w.big,w.huge],uSz:[W,H]});out.ver=(out.ver||0)+1;/* a new picture for anything that remembers per picture */}
-  finally{release(c);g.forEach(release);}
+    if(own)for(let i=0;i<6;i++)bl(i?g[i-1]:c,g[i],i?Math.sqrt(R[i]*R[i]-R[i-1]*R[i-1]):R[0]);/* each blur continues from the last, so the sizes add up */
+    const T=own?g:scales;
+    run(P_CBAND,out,{uT0:c.tex,uT1:T[0].tex,uT2:T[1].tex,uT3:T[2].tex,uT4:T[3].tex,uT5:T[4].tex,uT6:T[5].tex,uW0:[w.sharp,w.fine,w.soft,w.medium],uW1:[w.large,w.big,w.huge],uSz:[W,H]});out.ver=(out.ver||0)+1;/* a new picture for anything that remembers per picture */}
+  finally{release(c);if(own)g.forEach(release);}
   return out;}
 /* the sliders: three strengths and the size that splits them */
 function curvBandsSliders(get,set,idp){const w=cbOf(get()),o=get()||{};
@@ -54,7 +55,7 @@ function cbGen(curv,p,ctx){if(!curv||!p||!curvBandsOn(p.cb))return curv;const ou
       const cards=box.querySelector('#msCards');if(row&&row.parentElement===box)row.after(card);else if(row)row.parentElement.after(card);else if(cards)cards.prepend(card);else box.append(card);}}catch(e){console.warn('curvature detail',e);}
   return out;};}
 /* ---- the Bake tab's curvature map: bake-tab.js bakeDerive splits the measured curvature before the maps are made ---- */
-function cbBake(raw,o){const C=bakeCfg;o=o||C.curvBands;if(!raw||!curvBandsOn(o))return raw;const t=curvBands(raw,o,16);if(!t)return raw;
+function cbBake(raw,o,scales){const C=bakeCfg;o=o||C.curvBands;if(!raw||!curvBandsOn(o))return raw;const t=curvBands(raw,o,16,scales);if(!t)return raw;
   const n=makeTarget(doc.w,doc.h,16,false);blit(t,n,0,0,doc.w,doc.h,0,0);release(t);disposeTarget(raw);return n;}
 /* in place, into a target of any depth (Convert tab, converters) */
 function cbInto(t,o){if(!t||!curvBandsOn(o))return;const r=curvBands(t,o,t.depth);if(!r)return;blit(r,t,0,0,doc.w,doc.h,0,0);release(r);}
