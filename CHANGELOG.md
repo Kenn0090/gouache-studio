@@ -1,3 +1,14 @@
+## 0.98.16
+
+Big 3D Paint projects (8192 × 4096 and up) use much less memory, to stop the crashes and graphics card resets Georgian reported.
+
+- **Autosave can no longer push the app over its memory limit.** Each picture leaves the app's memory as soon as it is packed instead of all waiting until the end, texture sets you have not opened since the last save reuse that save's copy instead of being read back again, and autosave waits (and tells you to save and restart) when the app's memory is already nearly full.
+- **No more whole-picture read before a stroke at 8K.** Pictures bigger than 4096 × 4096 no longer keep a full copy of themselves for "rebuild from strokes" (a size change scales them instead, which is fine from 8K down). Before, every stroke after a fill, filter or undo read the whole 8K picture back from the card first, and the undo history kept those copies alive. Stroke records also have a size limit now.
+- **Documents set aside free their work pictures.** Each document keeps canvas-sized work pictures for painting (about half a gigabyte each at 8192 × 4096, more for 16-bit maps). Texture sets you are not painting, the Paint document while you are in 3D Paint, other document tabs and the Bake and Convert documents no longer keep theirs; they come back when you return.
+- **Grey maps in the 3D view take a quarter of the memory** from 4096 × 4096 up (roughness, metal, height and the other grey maps are kept as one channel there).
+- **Seam-aware warps and slope blurs run in pieces** on big canvases, so no single job runs long enough for Windows to reset the graphics card.
+- **Graphics card report** now also shows pictures that were dropped without being freed, to catch hidden memory use.
+
 ## 0.98.15
 
 - **Tangent | Wrap is the camera projection again.** The surface wrap from 0.98.14 is now an off-by-default switch, **Surface wrap (beta)**, under Projection, so painting behaves as it did before unless you turn it on.
