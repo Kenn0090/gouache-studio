@@ -8,7 +8,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(async()=>{const g=__gs;g.setMode('paint');g.p3.started=false;await g.p3NewProject(128,{modelKey:'sphere'});const L=g.paintLayers().find(x=>x.fill);
    L.fill.maps.base.c=[.7,.5,.4];if(L.fill.maps.rough){L.fill.maps.rough.on=true;L.fill.maps.rough.v=.4;}g.fillRender(L);
-   const s=g.v3s();s.env='none';s.sunI=3;s.sunAz=40;s.sunEl=40;s.envBg=false;s.rtSamples=6;
+   const s=g.v3s();s.env='none';s.sunI=3;s.sunAz=40;s.sunEl=40;s.envBg=false;s.rtSamples=6;s.rtMove=1;
    Object.assign(g.v3.cam,{yaw:0,pitch:0,dist:3,tx:0,ty:0,tz:0});g.v3.rt=true;g.v3.mapsDirty=true;g.v3.dirty=true;g.requestRender(true);});
  await p.waitForTimeout(3000);
  const render=async kind=>{await p.evaluate(k=>{const g=__gs;g.shadeEdit(x=>{x.kind=k;});g.v3.dirty=true;g.requestRender(true);},kind);await p.waitForTimeout(1500);

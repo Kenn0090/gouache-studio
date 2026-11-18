@@ -14,8 +14,9 @@ function pcNavOf(e,paint){if(!paint||!pcOn()||!MESH_TOOLS.includes(ui.tool))retu
   /* (0.95.6) Ctrl + left-drag smooths the paint now, so flow and rotation moved to Ctrl + middle-drag */
   if(!(e.ctrlKey||e.metaKey)||e.altKey)return null;
   /* (0.98.17, Kenn) Ctrl + left-drag smooths by default; flow and opacity are on Ctrl + Shift + left-drag (Preferences can swap them) */
-  if(e.button===0)return (prefs.ctrlDrag==='flowop')!==!!e.shiftKey?'bfo':null;
-  if(e.shiftKey)return null;return e.button===2?'bsize':e.button===1?'bflow':null;}/* (0.98.13, Kenn) Ctrl + left-drag: flow across, opacity up and down */
+  if(e.button===0)return prefs.ctrlLeft!==false&&(prefs.ctrlDrag==='flowop')!==!!e.shiftKey?'bfo':null;
+  /* (0.98.19) each Ctrl drag has its own switch; a pen tip pressed with the side button held counts as the tip, not as Ctrl + right-drag */
+  if(e.shiftKey)return null;if(e.button===2)return prefs.ctrlRight!==false&&!(e.pointerType==='pen'&&(e.buttons&1))?'bsize':null;return e.button===1?'bflow':null;}/* (0.98.13, Kenn) Ctrl + left-drag: flow across, opacity up and down */
 function pcAdjust(d,e,hit,flat){const B=d.b0||(d.b0={size:brush.size,hardness:brush.hardness,flow:brush.flow,opacity:brush.opacity==null?1:brush.opacity,angle:brush.angle||0}),dx=e.clientX-d.x0,dy=e.clientY-d.y0;
   if(d.how==='bsize'){brush.size=clamp(Math.round(B.size*Math.exp(dx/160)),1,brushMax());brush.hardness=clamp(+(B.hardness-dy/220).toFixed(3),0,1);brushRememberSize();}
   else if(d.how==='bfo'){brush.flow=clamp(+(B.flow+dx/280).toFixed(3),.01,1);brush.opacity=clamp(+(B.opacity-dy/280).toFixed(3),.01,1);}
@@ -43,7 +44,7 @@ window.addEventListener('keydown',e=>{if(!pcOn()||isTypingTarget(e.target)||e.ct
 
 /* the same two drags on the flat texture of 3D Paint (the canvas side of Split), as in Painter's 2D view */
 (()=>{const cvEl=document.getElementById('gl');if(!cvEl)return;let d2=null;
-  const flatOk=e=>pcOn()&&['brush','erase','dodge','burn','smudge'].includes(ui.tool)&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.button===1||e.button===2)&&!document.getElementById('modal')?.offsetParent;
+  const flatOk=e=>pcOn()&&['brush','erase','dodge','burn','smudge'].includes(ui.tool)&&(e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey&&(e.button===1||(e.button===2&&prefs.ctrlRight!==false&&!(e.pointerType==='pen'&&(e.buttons&1))))&&!document.getElementById('modal')?.offsetParent;
   cvEl.addEventListener('pointerdown',e=>{if(!flatOk(e))return;e.preventDefault();e.stopImmediatePropagation();try{cvEl.setPointerCapture(e.pointerId);}catch(er){}
     d2={how:e.button===2?'bsize':'bflow',id:e.pointerId,x0:e.clientX,y0:e.clientY};},true);
   window.addEventListener('pointermove',e=>{if(!d2||e.pointerId!==d2.id)return;if(!e.buttons){d2=null;pcEnd();return;}e.stopImmediatePropagation();pcAdjust(d2,e,cvEl,true);},true);

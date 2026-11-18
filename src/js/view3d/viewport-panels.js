@@ -9,8 +9,8 @@
      Camera   view angle and focal length, depth of field, and sticky focus: click a point of the model and it stays sharp as the
               camera moves
      Post FX  the effects laid over the picture (bloom, ambient occlusion, colour grade, vignette, grain…) */
-const VP_PANELS={v3lights:{sec:'vpLightsSec',body:'vpLightsBody',title:'Lights'},v3cam:{sec:'vpCamSec',body:'vpCamBody',title:'Camera'},v3post:{sec:'vpPostSec',body:'vpPostBody',title:'Post FX'}};
-const VP_BTN={v3lights:['v3LightsBtn','Lights','Add and move lights; studio lighting'],v3cam:['v3CamBtn','Camera','Focal length, depth of field and sticky focus'],v3post:['v3PostBtn','Post FX','Bloom, occlusion, colour grade, vignette, grain…']};
+const VP_PANELS={v3lights:{sec:'vpLightsSec',body:'vpLightsBody',title:'Lights'},v3cam:{sec:'vpCamSec',body:'vpCamBody',title:'Camera'},v3post:{sec:'vpPostSec',body:'vpPostBody',title:'Post FX'},v3rt:{sec:'vpRtSec',body:'vpRtBody',title:'Ray tracing'}};
+const VP_BTN={v3lights:['v3LightsBtn','Lights','Add and move lights; studio lighting'],v3cam:['v3CamBtn','Camera','Focal length, depth of field and sticky focus'],v3post:['v3PostBtn','Post FX','Bloom, occlusion, colour grade, vignette, grain…'],v3rt:['v3RtBtn','Ray tracing','Ray-traced view: samples, bounces, denoiser, firefly clamp, render size']};
 function vpInit(){for(const [id,P] of Object.entries(VP_PANELS)){if(dkSecs[id])continue;
     const sec=el('section',{class:'sec',id:P.sec,'aria-labelledby':'h_'+P.sec},el('div',{class:'sec-h',id:'h_'+P.sec},el('span',{text:P.title})),el('div',{id:P.body,class:'dlg-grid'}));
     dkSecs[id]=sec;(dk.park||document.body).append(sec);}
@@ -23,7 +23,7 @@ function vpS(id,label,key,min,max,step,fmt){const s=v3s();return makeSlider({id,
 const vpKey=()=>ui.mode+'|'+(ui.mode==='p3d'&&typeof p3!=='undefined'?p3.cur:'');
 function vpRender(which){if(!dk.L)return;for(const id of which?[which]:Object.keys(VP_PANELS)){const body=dkSecs[id]&&dkSecs[id].querySelector('#'+VP_PANELS[id].body);if(!body)continue;
   if(!panelShown(id)||!dkIn(id)){body.replaceChildren();body._k='';continue;}
-  try{body.replaceChildren(...(id==='v3lights'?vpLightsBody():id==='v3cam'?vpCamBody():vpPostBody()).filter(Boolean));body._k=vpKey();}catch(e){console.warn('viewport panel '+id,e);}}}
+  try{body.replaceChildren(...(id==='v3lights'?vpLightsBody():id==='v3cam'?vpCamBody():id==='v3rt'?vpRtBody():vpPostBody()).filter(Boolean));body._k=vpKey();}catch(e){console.warn('viewport panel '+id,e);}}}
 function vpSync(){if(!dk.L)return;for(const id of Object.keys(VP_PANELS)){const body=dkSecs[id]&&dkSecs[id].querySelector('#'+VP_PANELS[id].body);if(!body)continue;const on=panelShown(id)&&dkIn(id);
   if(on&&(!body.childElementCount||body._k!==vpKey()))vpRender(id);else if(!on&&body.childElementCount)vpRender(id);}}
 /* ---- Lights ---- */
@@ -71,3 +71,16 @@ function vpBtnSync(){for(const [id,[bid]] of Object.entries(VP_BTN)){const b=doc
 {const f=dkRender;dkRender=function(){const r=f.apply(this,arguments);try{vpSync();vpBtnSync();}catch(e){}return r;};}
 /* the light gizmo shows whenever the Lights panel is open in 3D Paint */
 {const f=lgzActive;lgzActive=function(){const R=f.apply(this,arguments);if(R||ui.mode!=='p3d'||!panelShown('v3lights'))return R;const C=bakeCfg&&bakeCfg.rig;return v3.on&&C&&C.show!==false&&C.lights&&C.lights.some(L=>L.type!=='sky')?C:null;};}
+
+/* ---- Ray tracing (0.98.19, Kenn: "raytracing controls so we can adjust the graininess we need like a denoiser") ---- */
+function vpRtBody(){const s=v3s(),O=rtOpts(),redo=()=>{v3.dirty=true;requestRender();};
+  const on=el('button',{class:'btn sm'+(v3.rt?' on':''),type:'button',id:'vpRtOn','aria-pressed':String(!!v3.rt),text:v3.rt?'Ray traced view: on':'Ray traced view: off',onclick:()=>{const b=document.querySelector('#v3Shade .segb:nth-child('+(v3.rt?1:3)+')');if(b)b.click();else{v3.rt=!v3.rt;redo();}vpRender('v3rt');}});
+  const sizeSel=(id,label,key,val,opts)=>el('label',{class:'frow'},el('span',{text:label}),el('select',{id,onchange:e=>{v3s()[key]=+e.target.value;redo();}},...opts.map(([v,t])=>el('option',{value:String(v),text:t,selected:Math.abs(v-val)<1e-3}))));
+  return [on,
+    makeSlider({id:'vpRtSpp',label:'Samples',min:16,max:4096,step:16,value:s.rtSamples||qual('rt'),fmt:v=>String(Math.round(v)),onInput:v=>{v3s().rtSamples=Math.round(v);redo();}}).el,
+    makeSlider({id:'vpRtBounces',label:'Light bounces',min:1,max:8,step:1,value:O.bounces,fmt:v=>String(v),onInput:v=>{v3s().rtBounces=v;redo();}}).el,
+    makeSlider({id:'vpRtDenoise',label:'Denoiser',min:0,max:1,step:.05,value:O.dn,def:.5,fmt:v=>v>0?Math.round(v*100)+'%':'Off',onInput:v=>{v3s().rtDenoise=v;redo();}}).el,
+    makeSlider({id:'vpRtClamp',label:'Firefly clamp',min:0,max:50,step:1,value:s.rtClamp??12,def:12,fmt:v=>v>0?String(v):'Off',onInput:v=>{v3s().rtClamp=v;redo();}}).el,
+    sizeSel('vpRtMove','Size while moving','rtMove',O.move,[[1,'Full'],[.5,'Half'],[.25,'Quarter']]),
+    sizeSel('vpRtStill','Size when still','rtStill',O.still,[[1,'Full'],[.5,'Half']]),
+    el('p',{class:'note',text:'The denoiser smooths the grain but keeps edges and texture detail; it smooths less as samples add up. The firefly clamp removes bright specks (lower is cleaner but a little darker in the brightest spots).'})];}

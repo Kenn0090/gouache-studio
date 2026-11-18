@@ -192,7 +192,7 @@ const SHIFT_SMOOTH_TOOLS=['brush','erase','dodge','burn','material'];
 const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pressure:e.pressure,pointerType:e.pointerType,tiltX:e.tiltX,tiltY:e.tiltY,twist:e.twist,timeStamp:e.timeStamp,button:0,buttons:1,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey});
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
   /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
-  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&(prefs.ctrlDrag==='flowop')===!!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
+  if(ui.mode==='p3d'&&prefs.ctrlLeft!==false&&(e.ctrlKey||e.metaKey)&&(prefs.ctrlDrag==='flowop')===!!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
   /* (0.97.27, Kenn: "clone stamp isn't working") clone, heal, smudge and liquify read the paint around them, which UV alignment cannot
      do: they use Tangent | Wrap by themselves instead of refusing */
   if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active)&&!MESH_WRAP_ONLY.includes(ui.tool))return meshDownUV(hit,e);

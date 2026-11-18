@@ -3,7 +3,7 @@
 const {chromium}=require('playwright');
 let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
 (async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await (await b.newContext({viewport:{width:1440,height:900}})).newPage();
- await p.addInitScript(()=>{window.__p3Ready=true;window.__p3rFrame=5000;try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
+ await p.addInitScript(()=>{window.__p3Ready=true;window.__p3rFrame=5000;window.__p3NoWarm=true;/* the test stroke has its own test, warm9819 */try{localStorage.setItem('gs.p3d',JSON.stringify({size:256,layout:'3d'}));}catch(e){}});
  await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
  const errs=[];p.on('pageerror',e=>errs.push(e.message));
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);

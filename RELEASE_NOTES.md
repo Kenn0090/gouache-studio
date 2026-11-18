@@ -1,3 +1,9 @@
+## Gouache Studio 0.98.19
+
+- 3D Paint warms up with a hidden test stroke while it loads, so the first strokes no longer freeze.
+- Ctrl + right-drag and Ctrl + left-drag each have their own on/off switch in Preferences.
+- New Ray tracing panel: samples, bounces, a denoiser that keeps edges, firefly clamp, and a smaller trace while the view moves.
+
 ## Gouache Studio 0.98.18
 
 - Ray-traced view: every shader now shows there. Skin has real light under the surface (ears glow against a backlight); Wax too.
