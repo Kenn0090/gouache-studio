@@ -10,7 +10,8 @@ async function encodeP3Project(){if(ui.mode!=='p3d')throw new Error('Open the 3D
   const sets=[];tabDocs.hold=true;ghProject=true;
   try{for(let i=0;i<p3.sets.length;i++){const S=p3.sets[i];let bytes;ghCrumb('save: texture set '+(i+1)+' of '+p3.sets.length,true);
       if(i===p3.cur)bytes=await encodeGouacheNow({lean:true});
-      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=await encodeGouacheNow({lean:true});}finally{S.state=docState();setDocState(mine);}}
+      else if(S.state&&S._enc&&S._enc.state===S.state)bytes=S._enc.blob;/* (0.98.16) a set that has not been open since its last save is not read back again */
+      else if(S.state){const mine=docState();setDocState(S.state);try{bytes=await encodeGouacheNow({lean:true});}finally{S.state=docState();setDocState(mine);}if(bytes)S._enc={blob:bytes,state:S.state};}
       sets.push(Object.assign({name:S.name,material:p3Binding(S),tile:S.tile||null,meshEditID:S.meshEditID,hid:!!S.hidden},bytes?put(bytes):{empty:true}));}}
   finally{tabDocs.hold=false;ghProject=false;requestRender(true);}
   let mesh=null;if(v3s().model==='imported'&&v3.imported){ghCrumb('save: packing the model ('+Math.round((v3.imported.idx?v3.imported.idx.length:0)/3)+' triangles)',true);const c=await streamThrough(meshPack(v3.imported),'deflate-raw');mesh=Object.assign({name:v3.imported.name},put(c));}

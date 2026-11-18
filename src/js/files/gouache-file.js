@@ -42,7 +42,9 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   /* (0.57) saving is a pipeline: pictures are read back one at a time, and each goes to a packing worker straight away (a few run at once)
      while the next is being read. File positions are given out at the end, in the order the pictures were made. */
   const later=[],flying=new Set(),cap=Math.max(2,Math.min((pxWorkerState.pool.length||1)+1,doc.w*doc.h>=8e6?3:99));/* (0.76.1) at most 3 big pictures in flight on a 4096 px canvas */
-  const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return c.bytes;});later.push({e,r,label:gfLabel});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
+  /* (0.98.16, Georgian's autosave crash) each packed picture leaves the page's memory as soon as it is ready: a Blob is kept by the
+     browser (on disk when large) instead of in the page, so a big project no longer holds every picture at once while saving */
+  const defer=(pr,r)=>{const e=pr.then(c=>{r.n=c.bytes.length;if(c.f)r.f=c.f;return opts.space?c.bytes:new Blob([c.bytes]);});later.push({e,r,label:gfLabel});const tr=e.then(()=>{},()=>{}).then(()=>flying.delete(tr));flying.add(tr);return r;};
   const throttle=async()=>{const t0=performance.now();while(flying.size>=cap)await Promise.race([...flying]);stats.pack+=performance.now()-t0;};
   const pack=async(t,x,y,w,h,lossy)=>{await throttle();ghCrumb('save: picture '+(stats.images+1)+' ('+w+'×'+h+', '+Math.round(stats.bytes/1048576)+' MB read so far)');const time=performance.now(),raw=await readRegionAsync(t,x,y,w,h);stats.read+=performance.now()-time;stats.bytes+=raw.byteLength;stats.images++;
     return {pr:pxPack(raw,w,h,t.depth,lossy,true)};};
@@ -89,7 +91,7 @@ async function encodeGouacheData(opts,stats){opts=opts||{};const blobs=[];let of
   gfLabel='Project shelf (saved assets)';
   const projectAssets=paEncode(bytes=>defer(Promise.resolve({bytes}),{}));
   /* every picture is packed now: give each its place in the file, in the order it was made */
-  {const t0=performance.now();for(const d of later){const bytes=await d.e;if(opts.space){opts.space.push({label:(opts.prefix||'')+(d.label||'?'),bytes:bytes.length});continue;}d.r.o=off;off+=bytes.length;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
+  {const t0=performance.now();for(const d of later){const bytes=await d.e,n=bytes.size!==undefined?bytes.size:bytes.length;if(opts.space){opts.space.push({label:(opts.prefix||'')+(d.label||'?'),bytes:n});continue;}d.r.o=off;off+=n;blobs.push(bytes);}stats.pack+=performance.now()-t0;}
   const head={persp:doc.persp||undefined,session:opts.lean?undefined:gfSession(),p3:!!doc.p3,meshMaps,meshMapInfo:doc.meshMapInfo,projectAssets,bakeMaps,cage:cageClone(doc.cage),v3d:doc.v3d||null,v3shade:doc.v3shade||null,guides:doc.guides&&doc.guides.length?doc.guides:undefined,dpi:doc.dpi||undefined,mesh:meshRec,app:'Gouache Studio',v:GF_VERSION,w:doc.w,h:doc.h,depth:doc.depth,wrap:doc.wrap,name:doc.name,
     maps:doc.maps,map:doc.map,view:doc.view,mapDef:doc.mapDef,workflow:doc.workflow,nrmStr:doc.nrmStr,heightReference:doc.p3?doc.heightReference:undefined,light:doc.light,tex:texCfg,kids,active,anim,layers:all.length};
   const hj=new TextEncoder().encode(JSON.stringify(head)),pre=new Uint8Array(16);pre.set(GF_MAGIC,0);const dv=new DataView(pre.buffer);dv.setUint32(8,GF_VERSION,true);dv.setUint32(12,hj.length,true);
