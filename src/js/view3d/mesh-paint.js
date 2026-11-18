@@ -75,8 +75,10 @@ function v3ViewProj(w,h){const s=v3s(),eye=v3Eye(),V=m4look(eye,[v3.cam.tx,v3.ca
 /* the screen buffer the brush stamps into, and how far away the model is at each pixel */
 function meshSpaceFree(M){if(!M)return;for(const t of M.mvFree||[])gl.deleteTexture(t);disposeTarget(M.buf);gl.deleteFramebuffer(M.fb);gl.deleteTexture(M.dt);gl.deleteRenderbuffer(M.rb);}
 function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p(),g=v3.gpu;if(!g)return null;let M=replayCache?replayCache.mesh:v3.mp;if(M&&M.mvFree){for(const t of M.mvFree)gl.deleteTexture(t);M.mvFree=null;}
-  if(!M||M.w!==w||M.h!==h||M.buf.depth!==depth){meshSpaceFree(M);
-    M={w,h,buf:makeTarget(w,h,depth,false)};M.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);
+  /* (0.98.15, Kenn: banding in soft brushes) the stroke is built in a 16-bit picture even in an 8-bit document, so a soft falloff keeps all its steps until it is committed */
+  const bd=typeof canFloat!=='undefined'&&canFloat?Math.max(16,depth):depth;
+  if(!M||M.w!==w||M.h!==h||M.buf.depth!==bd){meshSpaceFree(M);
+    M={w,h,buf:makeTarget(w,h,bd,false)};M.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,M.fb);
     M.dt=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,M.dt);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,null);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,M.dt,0);M.rb=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,M.rb);gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT24,w,h);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,M.rb);gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(replayCache)replayCache.mesh=M;else v3.mp=M;}
