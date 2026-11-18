@@ -1937,3 +1937,15 @@ body.m-p3d .lblendrow:has(#lChanLock:not([hidden])){grid-template-columns:minmax
 .lsplit{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .ltemp{display:grid;gap:4px}
 .lnamerow{padding:0 2px}
+
+/* (0.98.17) 3D Paint waits until it is ready */
+#p3Ready{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--ground) 55%,transparent);backdrop-filter:blur(2px);cursor:progress}
+#p3Ready[hidden]{display:none}
+#p3Ready .p3r-box{min-width:380px;max-width:min(560px,92vw);background:var(--ground);border:1px solid var(--line-2);border-radius:10px;padding:14px 16px;box-shadow:0 10px 34px rgba(0,0,0,.5);cursor:default}
+#p3Ready .p3r-t{font-weight:600;font-size:14px;color:var(--text)}
+#p3Ready .p3r-why{font-size:11.5px;color:var(--muted);margin:2px 0 9px}
+#p3Ready .p3r-bar{height:6px;border-radius:3px;background:var(--line-2);overflow:hidden}
+#p3Ready .p3r-bar>div{height:100%;width:0;background:var(--accent);transition:width .2s}
+#p3Ready .p3r-list{list-style:none;margin:9px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:11.5px;color:var(--muted)}
+#p3Ready .p3r-list li.done{color:var(--text)}
+#p3Ready .p3r-skip{margin-top:10px;float:right}

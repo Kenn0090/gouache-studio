@@ -26,11 +26,11 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(after.size>=40*1.9&&after.size<=40*2.3&&after.hard>.5+.15&&after.hard<.5+.25,'right moves size up (×~2.1) and up moves hardness up '+JSON.stringify(after));
  ok(after.hidden,'the ring goes away on release');
  // Ctrl + left-drag: flow and rotation
- await p.mouse.move(cx,cy);await p.keyboard.down('Control');await p.mouse.down();await p.mouse.move(cx+40,cy+20,{steps:4});await p.mouse.move(cx+80,cy+40,{steps:4});await W(200);
+ await p.mouse.move(cx,cy);await p.keyboard.down('Control');await p.mouse.down({button:'middle'});await p.mouse.move(cx+40,cy+20,{steps:4});await p.mouse.move(cx+80,cy+40,{steps:4});await W(200);
  const d2=await p.evaluate(()=>document.querySelector('.pcadj .pclbl').textContent);
- await p.mouse.up();await p.keyboard.up('Control');await W(300);
+ await p.mouse.up({button:'middle'});await p.keyboard.up('Control');await W(300);
  const fr=await p.evaluate(()=>({flow:__gs.brush.flow,angle:__gs.brush.angle}));
- ok(/Flow \d+% · Rotation/.test(d2)&&fr.flow>.6&&fr.flow<.75&&fr.angle!==0,'Ctrl + left-drag changes flow and rotation '+JSON.stringify(fr)+' '+d2);
+ ok(/Flow \d+% · Rotation/.test(d2)&&fr.flow>.6&&fr.flow<.75&&fr.angle!==0,'Ctrl + middle-drag changes flow and rotation '+JSON.stringify(fr)+' '+d2);
  ok(await p.evaluate(()=>__gs.hist.undo.length)===undo0,'and nothing was painted by either drag');
  // F keys
  const key=async k=>{await p.mouse.move(cx,cy);await p.keyboard.press(k);await W(300);};

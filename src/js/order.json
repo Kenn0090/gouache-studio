@@ -122,6 +122,7 @@
     "view3d/eye-shader",
     "view3d/skin-marmoset",
     "view3d/skin-blur",
+    "view3d/chpack-free",
     "view3d/post",
     "view3d/panner",
     "view3d/mesh-paint",
@@ -298,6 +299,7 @@
     "ui/scripts",
     "ui/paint-report",
     "view3d/resize-report",
+    "ui/p3-ready",
     "core/boot"
   ]
 }

@@ -1,3 +1,11 @@
+## Gouache Studio 0.98.17
+
+- 3D Paint shows a progress screen while it loads and waits until it is ready.
+- Ctrl + drag smooths the paint again (Smooth or Blend, set in Preferences); flow and opacity moved to Ctrl + Shift + drag.
+- Big textures: while painting, only the painted channels refresh on the model; the rest catch up when you let go.
+- Switching shaders no longer leaks graphics memory; Skin uses a third less memory at 8K.
+- Backface culling has an Edge falloff, so paint fades out near the angle instead of a hard edge.
+
 ## Gouache Studio 0.98.16
 
 - Big 3D Paint projects use much less memory: fixes for crashes during autosave and graphics card resets at 8K.
