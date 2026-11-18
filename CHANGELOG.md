@@ -1,3 +1,15 @@
+## 0.98.20
+
+The 3D Paint brush rebuilt from the causes up (Kenn: "inconsistent brush sizes", "the alignment not matching perfectly", "painting on edges isn't working properly"). Every change below was measured on test models with real UV layouts (a box with its faces packed at four densities, a tube with a seam, a stretched side and two caps).
+
+- **The surface brush is the default** (Projection › Alignment › Tangent | Wrap, like Substance Painter and Marmoset). Projects that were on the old default (UV) move to it; UV and Camera are still there.
+- **One brush size on the model.** The brush's size used to come from how densely the texture is packed where a stroke started: the same brush measured 0.97× on one face, 1.31× on the next and up to 5.7× (spilling out of the island) on a sparse one. Now every dab is the brush's size on the model (measured 0.93–1.03× everywhere), and the gaps between dabs follow the packing under the pointer, so strokes stay even.
+- **The outline is drawn on the model.** A ring on the surface itself shows exactly where the paint will go and follows the surface, instead of a flat circle on the screen that was 20–28 % smaller than the paint.
+- **Seams and edges.** Strokes carry straight over UV seams, round hard edges and over a rim onto a cap without gaps (before: the stroke across a seam could leave nothing, and half of each dab was missing at a seam). Crossing a seam no longer restarts the stroke (no ink blob or taper in the middle of a line, one undo step).
+- **How far paint goes round an edge** follows Projection › Backface culling: at 90° it wraps round a square edge, a smaller angle keeps it off the face round the corner, with the Edge falloff fading it instead of cutting.
+- **No paint in empty texture.** UV alignment is now kept to the model and to the brush's reach in space (it used to paint into the empty space between islands and onto neighbouring islands).
+- Fixed: the first dab of every stroke (a single click) was drawn flat, not on the surface; dabs near the texture's border fell back to a flat stamp; a big brush gave up on the surface; dodge, burn and the material brush now use the surface brush too.
+
 ## 0.98.19
 
 From Kenn's painting report and requests.

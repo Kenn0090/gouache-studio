@@ -49,11 +49,12 @@ function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C
   const half=(s.o.size||brush.size)/2*(s.rs||1),Rw=swBaseR(s.o,c,x,y)*(r/Math.max(half,1e-3)),Rx=Rw*(ext/Math.max(r,1e-3));
   if(clipOnly){const R=Math.max(Rx,Rw*1.3);return {rect:null,u:{uSurf:{int:2},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf?s.surf.right:[1,0,0],uSW:R}};}
   const c0=[0,1,2].map(k=>Math.floor((c[k]-Rx-U.lo[k])/U.cell)),c1=[0,1,2].map(k=>Math.floor((c[k]+Rx-U.lo[k])/U.cell));
-  if((c1[0]-c0[0]+1)*(c1[1]-c0[1]+1)*(c1[2]-c0[2]+1)>20000)return null;
   let x0=1e9,y0=1e9,x1=-1,y1=-1;const R2=Rx*Rx;
-  for(let i=c0[0];i<=c1[0];i++)for(let j=c0[1];j<=c1[1];j++)for(let k=c0[2];k<=c1[2];k++)for(let q=U.head[U.hash(i,j,k)];q>=0;q=U.next[q]){
-    const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)continue;const X=(q%U.G+.5)/U.G*doc.w,Y=((q/U.G)|0)+.5;const Yp=Y/U.H*doc.h;
-    if(X<x0)x0=X;if(X>x1)x1=X;if(Yp<y0)y0=Yp;if(Yp>y1)y1=Yp;}
+  const take=q=>{const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)return;const X=(q%U.G+.5)/U.G*doc.w,Yp=(((q/U.G)|0)+.5)/U.H*doc.h;
+    if(X<x0)x0=X;if(X>x1)x1=X;if(Yp<y0)y0=Yp;if(Yp>y1)y1=Yp;};
+  /* (0.98.20) a big brush reaches more cells than is worth visiting one by one (it gave up and fell back to a flat stamp): look at every sample instead */
+  if((c1[0]-c0[0]+1)*(c1[1]-c0[1]+1)*(c1[2]-c0[2]+1)>20000){for(let q=0;q<U.G*U.H;q++)if(U.P[q*4+3]>=.5)take(q);}
+  else for(let i=c0[0];i<=c1[0];i++)for(let j=c0[1];j<=c1[1];j++)for(let k=c0[2];k<=c1[2];k++)for(let q=U.head[U.hash(i,j,k)];q>=0;q=U.next[q])take(q);
   if(x1<0)return null;const pad=e*1.5+2;x0=Math.max(0,Math.floor(x0-pad));y0=Math.max(0,Math.floor(y0-pad));x1=Math.min(doc.w,Math.ceil(x1+pad));y1=Math.min(doc.h,Math.ceil(y1+pad));
   if(x1<=x0||y1<=y0)return null;
   if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:[x0,y0,x1,y1]});
