@@ -9,7 +9,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
  await p.evaluate(async()=>{const g=__gs;g.setMode('paint');g.p3.started=false;await g.p3NewProject(128,{modelKey:'sphere'});const L=g.paintLayers().find(x=>x.fill);
    L.fill.maps.base.c=[.8,.6,.5];if(L.fill.maps.rough){L.fill.maps.rough.on=true;L.fill.maps.rough.v=.6;}g.fillRender(L);
-   const s=g.v3s();s.env='none';s.sunI=30;s.sunAz=180;s.sunEl=0;s.envBg=false;s.rtSamples=24;
+   const s=g.v3s();s.env='none';s.sunI=30;s.sunAz=180;s.sunEl=0;s.envBg=false;s.rtSamples=24;s.rtMove=1;
    Object.assign(g.v3.cam,{yaw:0,pitch:0,dist:3,tx:0,ty:0,tz:0});g.v3.rt=true;g.v3.mapsDirty=true;g.v3.dirty=true;g.requestRender(true);});
  const render=async(kind,depth)=>{await p.evaluate(([k,d])=>{const g=__gs;g.shadeEdit(x=>{x.kind=k;x.p=x.p||{};x.p.skin=Object.assign({},x.p.skin||{},{depth:d,scatter:1});});g.v3.dirty=true;g.requestRender(true);},[kind,depth]);await p.waitForTimeout(2500);
    for(let i=0;i<240;i++){await p.waitForTimeout(500);const n=await p.evaluate(()=>{__gs.v3.dirty=true;__gs.requestRender(true);return __gs.rt.view?__gs.rt.view.n:0;});if(n>=24)break;}

@@ -1,3 +1,11 @@
+## 0.98.19
+
+From Kenn's painting report and requests.
+
+- **No more freezes in the first strokes.** Kenn's report showed thirteen 0.4-second freezes in the first 20 seconds of painting, outside the app's own work: the graphics driver finishing each drawing program the first time a stroke uses it. The 3D Paint ready screen now paints a faint hidden test stroke (and a smoothing one) so that happens behind it, then undoes both: no paint and no history are left. It gives up after 20 seconds.
+- **Separate Ctrl drag switches.** Preferences has one switch for Ctrl + right-drag (size and hardness) and one for Ctrl + left-drag (smoothing, or flow and opacity). A pen tip pressed while the side button is held counts as the tip, so it no longer resizes the brush by mistake.
+- **Ray tracing panel** (a button on the 3D view, like Lights and Camera): Samples, Light bounces, a Denoiser that smooths the grain but keeps edges and texture detail (it smooths less as samples add up), a Firefly clamp for bright specks, and the trace size while moving (Full, Half, Quarter) and when still. The denoiser also applies to screenshots and the Render window.
+
 ## 0.98.18
 
 Every viewer shader now shows in the ray-traced view.

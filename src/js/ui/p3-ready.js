@@ -41,9 +41,10 @@ function p3ReadyWork(){if(!p3r.ms){try{if(typeof msProgs==='function')msProgs();
 /* (0.98.19, Kenn's painting report: thirteen 0.4 s freezes in the first 20 s of painting, outside the app's own steps) the graphics
    driver finishes each drawing program the first time a stroke uses it. A faint test stroke on the model (and a smoothing one) does that
    behind this screen; both are undone and leave no history. Skipped when the active layer is not a plain paint layer. */
-function p3WarmOk(){const L=doc.active,hit=document.getElementById('v3Hit');return !!(v3.on&&v3.mesh&&hit&&hit.offsetWidth>8&&L&&!L.fill&&!L.maskOf&&!L.children&&!L.adj&&!L.filter&&!L.locked&&MESH_TOOLS.includes(ui.tool)&&!stroke&&typeof meshDown==='function');}
+function p3WarmOk(){if(window.__p3NoWarm)return false;const L=doc.active,hit=document.getElementById('v3Hit');return !!(v3.on&&v3.mesh&&hit&&hit.offsetWidth>8&&L&&!L.fill&&!L.maskOf&&!L.children&&!L.adj&&!L.filter&&!L.locked&&MESH_TOOLS.includes(ui.tool)&&!stroke&&typeof meshDown==='function');}
 function p3ReadyWarm(){const w=p3r.w||(p3r.w={step:0});
-  try{if(w.step===0){if(!p3WarmOk()){p3r.warm='done';return;}const hit=document.getElementById('v3Hit'),R=hit.getBoundingClientRect();
+  try{if(w.step>0&&performance.now()-w.t0>20000){p3ReadyWarmEnd();return;}/* never hold the screen more than 20 s for it */
+    if(w.step===0){if(!p3WarmOk()){p3r.warm='done';return;}w.t0=performance.now();const hit=document.getElementById('v3Hit'),R=hit.getBoundingClientRect();
       w.hit=hit;w.cx=R.left+R.width/2;w.cy=R.top+R.height/2;w.dx=Math.max(4,R.width*.04);w.u0=hist.undo.length;w.redo=hist.redo.slice();w.anchor=typeof brushLineAnchor!=='undefined'?brushLineAnchor:null;
       w.op=brush.opacity;brush.opacity=.01;w.pass=0;w.step=1;}
     const ev=(x,b)=>({clientX:x,clientY:w.cy,button:0,buttons:b,pointerId:987654,pointerType:'mouse',pressure:.5,ctrlKey:w.pass===1,metaKey:false,shiftKey:prefs.ctrlDrag==='flowop'&&w.pass===1,altKey:false,isPrimary:true,
