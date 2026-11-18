@@ -210,7 +210,7 @@ function meshDownUV(hit,e,surf){if(typeof bk!=='undefined'&&bk.busy)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
   o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;
   /* (0.98.20) the size in texture pixels comes from the brush's size on the model and the packing right here (surface-wrap.js) */
-  const um=typeof uvmBuild==='function'&&ui.mode==='p3d'&&!p3.udim?uvmBuild():null;if(um){const c=uvmPos(q[0],q[1]),w=swWpt(q[0],q[1]);if(c&&w)o.cageRs=Math.max(.02,swBaseR(o,c,q[0],q[1])/w/((o.size||brush.size)/2));}o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
+  const um0=typeof uvmBuild==='function'&&ui.mode==='p3d'&&!p3.udim?uvmBuild():null,um=um0&&!um0.overlap?um0:null;if(um){const c=uvmPos(q[0],q[1]),w=swWpt(q[0],q[1]);if(c&&w)o.cageRs=Math.max(.02,swBaseR(o,c,q[0],q[1])/w/((o.size||brush.size)/2));}o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
   v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:q[0],y:q[1],t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};/* (0.98.20) the stroke knows from its first dab that it is on the surface (a single click was a plain flat stamp before) */o.surfStroke=surf?{right:swRight()}:null;o.uvClipStroke=!surf&&!!um;beginStroke(et.L,q[0],q[1],p,o);if(surf&&stroke)stroke.paintReplay=null;if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
@@ -245,12 +245,12 @@ function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(
 /* (0.98.20) with the surface brush (Tangent | Wrap, and UV alignment, which now has the same size on the model) the outline is a ring
    drawn on the model itself (FS_3DRING): it follows the surface and shows exactly where the dab ends. Off the model: the flat circle. */
 function meshRingOn(){if(ui.mode!=='p3d'||!['brush','erase','dodge','burn','material'].includes(ui.tool)||p3.udim||v3.rt)return false;const s=v3s(),a=s.paintAlign||'wrap';
-  if(a==='wrap')return typeof swUsable==='function'&&swUsable();return a==='uv'&&typeof uvmBuild==='function'&&!!uvmBuild();}
+  if(a==='wrap')return typeof swUsable==='function'&&swUsable();if(a!=='uv'||typeof uvmBuild!=='function')return false;const U=uvmBuild();return !!(U&&!U.overlap);}
 function meshRingCursor(hit,e){const was=v3.ring;v3.ring=null;let ok=false;
   try{if(meshRingOn()){const q=meshUVAt(hit,e),c=q&&uvmPos(q[0],q[1]);if(c){const k=Math.max(1,doc.w/uvm.G),a=uvmPos(q[0]+k,q[1])||uvmPos(q[0]-k,q[1]),b=uvmPos(q[0],q[1]+k)||uvmPos(q[0],q[1]-k),ey=v3Eye();
       let n=a&&b?[(a[1]-c[1])*(b[2]-c[2])-(a[2]-c[2])*(b[1]-c[1]),(a[2]-c[2])*(b[0]-c[0])-(a[0]-c[0])*(b[2]-c[2]),(a[0]-c[0])*(b[1]-c[1])-(a[1]-c[1])*(b[0]-c[0])]:null,l=n?Math.hypot(...n):0;
       const v=[ey[0]-c[0],ey[1]-c[1],ey[2]-c[2]];if(l<1e-12){n=v;l=Math.hypot(...v);}n=n.map(x=>x/l);if(n[0]*v[0]+n[1]*v[1]+n[2]*v[2]<0)n=n.map(x=>-x);
-      const R=swBaseR({size:brush.size},c,q[0],q[1]);if(R>0){v3.ring={c,n,r:R};ok=true;}}}}catch(er){}
+      const R=swBaseR({size:brush.size},c,q[0],q[1]);if(R>0){v3.ring={c,n,r:R,q,size:brush.size};ok=true;}}}}catch(er){}
   if(ok||was){v3.dirty=true;requestRender();}return ok;}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}

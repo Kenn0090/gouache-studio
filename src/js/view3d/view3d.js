@@ -662,7 +662,7 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   if(F.overlays!==false&&!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
-  if(F.overlays!==false&&!wireOnly&&!bake&&v3.ring&&v3.paintOn){const q=v3.ring;gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
+  if(F.overlays!==false&&!wireOnly&&!bake&&v3.ring&&v3.paintOn){const q=v3.ring;/* [ and ] resize the ring at once */if(q.size!==brush.size&&q.q){q.r=swBaseR({size:brush.size},q.c,q.q[0],q.q[1]);q.size=brush.size;}gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
     useProg(P3.ring,Object.assign({},common,{uRing:[q.c[0],q.c[1],q.c[2],q.r],uRingN:q.n}));gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.depthMask(true);gl.disable(gl.BLEND);}
   if(F.overlays!==false&&typeof udimFlashDraw==='function')udimFlashDraw(g,common);
   if(F.overlays!==false&&!bake)sel3HoverDraw(g,common,F);

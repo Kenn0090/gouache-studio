@@ -6,7 +6,7 @@
 const swOn=()=>ui.mode==='p3d'&&v3s().paintAlign==='wrap'&&v3s().surfWrap!==false;/* (0.98.20) on by default */
 /* plain brush and eraser only; stencils, UDIM sets made by tile and the other tools keep the camera projection */
 function swUsable(){if(!swOn()||!['brush','erase','dodge','burn','material'].includes(ui.tool))return false;/* (0.98.20) dodge, burn and the material brush too */if(typeof st3!=='undefined'&&st3.img&&st3.mode!=='off')return false;
-  if(typeof p3!=='undefined'&&p3.udim)return false;const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos||!C.nrm)return false;return !!(typeof uvmBuild==='function'&&uvmBuild());}
+  if(typeof p3!=='undefined'&&p3.udim)return false;const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos||!C.nrm)return false;const U=typeof uvmBuild==='function'&&uvmBuild();return !!(U&&!U.overlap);}
 /* the camera's right-hand direction in space, to orient the brush tip */
 function swRight(){let e=null,t=null;try{e=v3Eye();t=[v3.cam.tx||0,v3.cam.ty||0,v3.cam.tz||0];}catch(_){}if(!e||!t)return [1,0,0];
   const f=[t[0]-e[0],t[1]-e[1],t[2]-e[2]],r=[f[1]*0-f[2]*1,f[2]*0-f[0]*0,f[0]*1-f[1]*0],l=Math.hypot(r[0],r[1],r[2])||1;return [r[0]/l,r[1]/l,r[2]/l];}
