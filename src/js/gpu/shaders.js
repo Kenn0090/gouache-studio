@@ -39,7 +39,7 @@ float pap_h(vec2 p,int t,float sc){ vec2 q=p/sc; float h=0.5;
   return h; }
 `;
 const CH_BRUSH=PAPER_GLSL+`
-uniform float uTiltK; uniform highp sampler2D uTiltD; uniform int uSurf; uniform highp sampler2D uPosT; uniform highp sampler2D uNrmT; uniform vec3 uSC; uniform vec3 uSR; uniform float uSW;
+uniform float uTiltK; uniform highp sampler2D uTiltD; uniform int uSurf; uniform vec2 uSurfCull; uniform highp sampler2D uPosT; uniform highp sampler2D uNrmT; uniform vec3 uSC; uniform vec3 uSR; uniform float uSW;
 uniform vec2 uCenter; uniform float uRadius; uniform float uHard; uniform float uGrain; uniform vec2 uGrainScale; uniform vec2 uPeriod;
 uniform int uUseDual; uniform sampler2D uDual; uniform vec2 uDualSize; uniform vec2 uDualOff; uniform int uDualMode; uniform float uDualAmt;
 float hash(vec2 p, vec2 per){ p=mod(p,per); return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -102,14 +102,19 @@ float pt_field(vec2 pix, int id, float S, float seed){ vec2 p=pix/S;
   if(id==12) return min(pt_specks(p*1.5,seed,0.42,2.2),pt_specks(p*2.9+3.7,seed+4.0,0.4,1.8)+0.15);               /* salt and speckles */
   if(id==13) return pt_specks(p,seed,0.46,3.4);               /* splatter */
   return 1.0; }
-float brushMask(vec2 pix){
+float gSurfFade=1.0;
+float brushMask(vec2 pix){gSurfFade=1.0;
   float r=max(uRadius,0.01);
   vec2 dv=pix-uCenter;
   /* (0.98.13, Kenn: wrap like Painter) Surface wrap: the brush is measured ON the model. Each texel knows where it sits in space (the position picture), so the brush
      reaches round edges, behind walls and over seams, and keeps its shape: the distance from the dab's centre is taken in space and laid out in the tangent plane there. */
+  /* (0.98.20) UV alignment, clipped: only texels of the model within the brush's reach in space (not empty texture, not a neighbouring island) */
+  if(uSurf==2){ ivec2 ts=textureSize(uPosT,0); vec4 P=texelFetch(uPosT,clamp(ivec2(pix),ivec2(0),ts-1),0); if(P.a<0.5||length(P.xyz-uSC)>uSW) return 0.0; }
   if(uSurf==1){ ivec2 ts=textureSize(uPosT,0), ip=clamp(ivec2(pix),ivec2(0),ts-1); vec4 P=texelFetch(uPosT,ip,0); if(P.a<0.5) return 0.0;
-    vec3 Nc=texelFetch(uNrmT,clamp(ivec2(uCenter),ivec2(0),ts-1),0).xyz, Nt=texelFetch(uNrmT,ip,0).xyz; if(dot(Nt,Nc)<-0.15) return 0.0;
-    vec3 d=P.xyz-uSC; float L=length(d); if(abs(dot(d,Nc))>0.85*uSW) return 0.0;/* a surface well off the tangent plane at the dab (the far wall behind a thin part) takes no paint */ vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);
+    vec3 Nc=texelFetch(uNrmT,clamp(ivec2(uCenter),ivec2(0),ts-1),0).xyz, Nt=texelFetch(uNrmT,ip,0).xyz;
+    /* (0.98.20, Marmoset's Occlusion + falloff) how far round an edge the paint goes: Projection's culling angle, faded over the Edge falloff instead of cut */
+    float nd=dot(Nt,Nc); gSurfFade=uSurfCull.x<-1.5?1.0:smoothstep(uSurfCull.x-uSurfCull.y*0.5,uSurfCull.x+uSurfCull.y*0.5,nd); if(gSurfFade<=0.0) return 0.0;
+    vec3 d=P.xyz-uSC; float L=length(d),hp=abs(dot(d,Nc))/max(uSW,1e-9); if(hp>0.95) return 0.0; gSurfFade*=1.0-smoothstep(0.7,0.95,hp);/* a surface well off the tangent plane at the dab (the far wall behind a thin part) takes no paint */ vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);
     vec2 pl=vec2(dot(d,T),dot(d,B)); float pn=length(pl); dv=(pn>1e-9?pl/pn*L:vec2(0.0))*(uRadius/max(uSW,1e-9)); }
   /* (0.98.13, Kenn: wrap like Painter) on the model, where the surface leans away from the view the brush is squeezed on screen by the lean, so it is round ON the surface instead of stretched.
      The lean comes from how the distance to the camera changes across the screen at the dab (zero when the surface faces the pixel's ray). */
@@ -141,6 +146,7 @@ float brushMask(vec2 pix){
       if(uSprayRing.y>0.0){ float an=atan(q.y,q.x); core*=clamp(1.0+uSprayRing.y*0.9*sin(3.0*an+7.0*d+uSprayRing.z),0.0,2.0); tail*=1.0+uSprayRing.y*0.3*sin(3.0*an+7.0*d+uSprayRing.z); }
  m=sprayMask(pix,max(core,tail)*(1.0-smoothstep(mix(0.9,0.97,uSprayRing.x),1.0,d))); if(uSprayFleck>0.0) m=max(m,sprayFleckMask(pix,d)); }
   }
+  m*=gSurfFade;
   if(m<=0.0) return 0.0; /* nothing to grain or knock out (most of a bristle tip's square is empty) */
   if(uPaper.z>0.0){ float ph=pap_h(pix,int(uPaper.x+0.5),max(uPaper.y,0.2)); m*=clamp(1.0-uPaper.z*(1.0-smoothstep(0.40,0.60,ph)),0.0,1.0); } /* the paint only catches on the peaks of the paper */
   if(uTexSet.y>0.0){ float tv=texture(uTexImg,fract(pix/max(uTexSet.x,4.0))).r; if(uTexSet.z>0.5) tv=1.0-tv; tv=clamp((tv-0.5)*uTexSet.w+0.5,0.0,1.0); m*=mix(1.0,tv,uTexSet.y); } /* the paint only shows where the picture is light */

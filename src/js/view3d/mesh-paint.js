@@ -195,7 +195,7 @@ function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;
   if(ui.mode==='p3d'&&prefs.ctrlLeft!==false&&(e.ctrlKey||e.metaKey)&&(prefs.ctrlDrag==='flowop')===!!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
   /* (0.97.27, Kenn: "clone stamp isn't working") clone, heal, smudge and liquify read the paint around them, which UV alignment cannot
      do: they use Tangent | Wrap by themselves instead of refusing */
-  if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active)&&!MESH_WRAP_ONLY.includes(ui.tool))return meshDownUV(hit,e);
+  if(ui.mode==='p3d'&&(s.paintAlign||'wrap')==='uv'&&!npWorldPaint(doc.active)&&!MESH_WRAP_ONLY.includes(ui.tool))return meshDownUV(hit,e);
   /* (0.98.13) Tangent | Wrap with the plain brush or eraser: the brush is measured on the surface (surface-wrap.js) */
   if(ui.mode==='p3d'&&s.paintAlign==='wrap'&&!npWorldPaint(doc.active)&&typeof swUsable==='function'&&swUsable()){const r=meshDownUV(hit,e,true);if(r)return true;}
   return meshDown0(hit,e);}
@@ -208,18 +208,24 @@ function meshShiftUp(e){const P=v3.shiftPend;if(!P||(e&&e.pointerId!==P.id))retu
 function meshDownUV(hit,e,surf){if(typeof bk!=='undefined'&&bk.busy)return true;if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   if(typeof npSync==='function')npSync();const et=editTarget();if(lockStop(et))return true;const o=paintOpts(et);if(!o)return true;
   const q=meshUVAt(hit,e);if(!q)return false;const r=hit.getBoundingClientRect(),k=v3TexelPx(hit,e);
-  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
-  v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:q[0],y:q[1],t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};beginStroke(et.L,q[0],q[1],p,o);if(surf&&stroke){stroke.surf={right:swRight()};stroke.paintReplay=null;}if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
+  o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;
+  /* (0.98.20) the size in texture pixels comes from the brush's size on the model and the packing right here (surface-wrap.js) */
+  const um0=typeof uvmBuild==='function'&&ui.mode==='p3d'&&!p3.udim?uvmBuild():null,um=um0&&!um0.overlap?um0:null;if(um){const c=uvmPos(q[0],q[1]),w=swWpt(q[0],q[1]);if(c&&w)o.cageRs=Math.max(.02,swBaseR(o,c,q[0],q[1])/w/((o.size||brush.size)/2));}o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
+  v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:q[0],y:q[1],t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};/* (0.98.20) the stroke knows from its first dab that it is on the surface (a single click was a plain flat stamp before) */o.surfStroke=surf?{right:swRight()}:null;o.uvClipStroke=!surf&&!!um;beginStroke(et.L,q[0],q[1],p,o);if(surf&&stroke)stroke.paintReplay=null;if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
 function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){const q=meshUVAt(hit,ev);if(!q)continue;
     /* (0.97.8) Smoothing and Lazy mouse work with UV alignment too (they were skipped): the point is smoothed in texels, the lazy string is in brush pixels */
-    let x=q[0],y=q[1];const pr=simPress(m,x,y,ev.timeStamp,pressureOf(ev,e));m.rx=x;m.ry=y;m.rp=pr;
+    let x=q[0],y=q[1];const pr=simPress(m,x,y,ev.timeStamp,pressureOf(ev,e));m.rx=x;m.ry=y;m.rp=pr;if(stroke.surf||stroke.uvClip)swAdapt(stroke,x,y);
     if(brush.lazy>0&&!ev.shiftKey){const z=lazyStep(m,x,y,brush.lazy*(stroke.o.cageRs||1));if(!z)continue;x=z[0];y=z[1];}
     strokeSmooth(m,x,y,pr,brush.smoothing,ev.timeStamp,ev.shiftKey);
     const jump=Math.hypot(m.sx-m.last[0],m.sy-m.last[1]),reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
-    if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;const sf=!!(stroke&&stroke.surf);endStroke(true);m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;beginStroke(L,q[0],q[1],pr,o);if(sf&&stroke){stroke.surf={right:swRight()};stroke.paintReplay=null;}m.last=q;continue;}
+    /* (0.98.20) crossed a seam with the surface brush: the SAME stroke carries on from the other island (each dab is measured on the model,
+       so nothing is lost at the seam); restarting it put a stroke start (the pen's ink blob, a taper) in the middle of the line, and made
+       two undo steps */
+    if(jump>reach&&(stroke.surf||stroke.uvClip)&&typeof strokeJump==='function'){m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;m.last=q;swAdapt(stroke,q[0],q[1]);strokeJump(q[0],q[1],pr);continue;}
+    if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;const sf=!!(stroke&&stroke.surf),uc=!!(stroke&&stroke.uvClip),rs0=stroke.rs;endStroke(true);m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;o.cageRs=rs0;o.surfStroke=sf?{right:swRight()}:null;o.uvClipStroke=uc;beginStroke(L,q[0],q[1],pr,o);if(stroke){if(sf)stroke.paintReplay=null;swAdapt(stroke,q[0],q[1]);}m.last=q;continue;}
     addPoint(m.sx,m.sy,m.sp);m.last=[m.sx,m.sy];}}
 function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
   if(ui.mode==='p3d'&&p3.udim){const pk=v3PickAt(hit,e),R=pk&&v3.mesh?.setRanges?.[pk.set],i=pk&&pk.tile&&p3.sets.findIndex(S=>p3Binding(S)===(R&&R.name)&&S.tile&&S.tile.id===pk.tile.id);if(i>=0&&i!==p3.cur)p3SwitchSet(i,true);}
@@ -236,10 +242,20 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
 function meshMove(hit,e){if(v3.shiftPend&&meshShiftMove(hit,e))return;const m=v3.mstroke;if(m&&m.uv&&e.pointerId===m.id){meshMoveUV(hit,e);return;}if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=simPress(m,x/m.rs,y/m.rs,ev.timeStamp,pressureOf(ev,e));if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
 function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;if(stroke){if(brush.smoothing>0&&m.rx!==undefined)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
+/* (0.98.20) with the surface brush (Tangent | Wrap, and UV alignment, which now has the same size on the model) the outline is a ring
+   drawn on the model itself (FS_3DRING): it follows the surface and shows exactly where the dab ends. Off the model: the flat circle. */
+function meshRingOn(){if(ui.mode!=='p3d'||!['brush','erase','dodge','burn','material'].includes(ui.tool)||p3.udim||v3.rt)return false;const s=v3s(),a=s.paintAlign||'wrap';
+  if(a==='wrap')return typeof swUsable==='function'&&swUsable();if(a!=='uv'||typeof uvmBuild!=='function')return false;const U=uvmBuild();return !!(U&&!U.overlap);}
+function meshRingCursor(hit,e){const was=v3.ring;v3.ring=null;let ok=false;
+  try{if(meshRingOn()){const q=meshUVAt(hit,e),c=q&&uvmPos(q[0],q[1]);if(c){const k=Math.max(1,doc.w/uvm.G),a=uvmPos(q[0]+k,q[1])||uvmPos(q[0]-k,q[1]),b=uvmPos(q[0],q[1]+k)||uvmPos(q[0],q[1]-k),ey=v3Eye();
+      let n=a&&b?[(a[1]-c[1])*(b[2]-c[2])-(a[2]-c[2])*(b[1]-c[1]),(a[2]-c[2])*(b[0]-c[0])-(a[0]-c[0])*(b[2]-c[2]),(a[0]-c[0])*(b[1]-c[1])-(a[1]-c[1])*(b[0]-c[0])]:null,l=n?Math.hypot(...n):0;
+      const v=[ey[0]-c[0],ey[1]-c[1],ey[2]-c[2]];if(l<1e-12){n=v;l=Math.hypot(...v);}n=n.map(x=>x/l);if(n[0]*v[0]+n[1]*v[1]+n[2]*v[2]<0)n=n.map(x=>-x);
+      const R=swBaseR({size:brush.size},c,q[0],q[1]);if(R>0){v3.ring={c,n,r:R,q,size:brush.size};ok=true;}}}}catch(er){}
+  if(ok||was){v3.dirty=true;requestRender();}return ok;}
 /* round cursor showing the brush size over the model */
 function meshCursor(hit,e){mir3CursorMove(hit,e);let c=v3.curEl;if(!c||!c.isConnected){c=v3.curEl=el('div',{class:'v3cur'});hit.parentNode.append(c);}
   if(e&&sel3.armed&&!e.altKey){c.hidden=true;hit.style.cursor='crosshair';return;}
-  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?'crosshair':'';return;}hit.style.cursor='none';const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,(ui.tool==='liquify'?liq.size:brush.size)*meshBrushScale(r.height));
+  if(!e||!v3.paintOn||!MESH_TOOLS.includes(ui.tool)||e.altKey||v3PickHeld(e)||v3.drag){if(v3.ring){v3.ring=null;v3.dirty=true;requestRender();}c.hidden=true;hit.style.cursor=e&&v3PickHeld(e)?'crosshair':'';return;}hit.style.cursor='none';if(meshRingCursor(hit,e)){c.hidden=true;return;}const r=hit.getBoundingClientRect(),pr=hit.parentNode.getBoundingClientRect(),d=Math.max(3,(ui.tool==='liquify'?liq.size:brush.size)*meshBrushScale(r.height));
   c.hidden=false;c.style.width=c.style.height=d+'px';c.style.transform='translate('+(e.clientX-pr.left-d/2)+'px,'+(e.clientY-pr.top-d/2)+'px)';tipCursor(c,d);}
 /* ---- what is under the pointer: the model's UV there (and how far away), from a one-pixel render ---- */
 const FS_3DPICK=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec3 uCamP; uniform float uSet; uniform int uOrtho; uniform vec3 uFwd; void main(){ o=vec4(vT,uOrtho==1?dot(vP-uCamP,uFwd):length(vP-uCamP),1.0+uSet); }`;
@@ -490,19 +506,19 @@ function meshBackfaceControl(id){const control=chk(id,'Paint back faces',v3s().n
    UV (stamps straight onto the texture). Backface culling: surfaces turned away from you by more than the angle take no paint.
    Size Space: Object (the brush keeps its size on the model as you zoom), Viewport (screen pixels), Texture (texture pixels). */
 /* (0.96.6, Kenn's defaults) UV alignment, backface culling on at 90°, object size space */
-const PROJ_DEF={paintAlign:'uv',noBack:true,cullAngle:90,cullSoft:.45,sizeSpace:'object'};
+const PROJ_DEF={paintAlign:'wrap',surfWrap:true,noBack:true,cullAngle:90,cullSoft:.45,sizeSpace:'object'};
 function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id:'p3Proj'});
   const redo=()=>{const n=projectionBox();box.replaceWith(n);for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=s.noBack===false;v3.dirty=true;requestRender(true);refreshCursor();};
   const sel=(id,label,opts,val,on,title)=>{const x=el('select',{id,'aria-label':label,title:title||''},...opts.map(([v,t])=>el('option',{value:v,text:t})));x.value=val;x.onchange=()=>on(x.value);return el('label',{class:'hpsel'},el('span',{text:label}),x);};
   const head=el('div',{class:'sub projhead'},el('span',{text:'Projection'}),el('button',{class:'btn sm',type:'button',id:'projReset',title:'Back to the defaults','aria-label':'Reset projection',text:'↺',onclick:()=>{Object.assign(s,PROJ_DEF);redo();}}));
-  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'uv',v=>{s.paintAlign=v;delete s.userAlign;redo();},'How the brush lands on the model');
+  const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'wrap',v=>{s.paintAlign=v;delete s.userAlign;redo();},'How the brush lands on the model');
   const on=s.noBack!==false,cull=el('button',{class:'btn sm'+(on?' on':''),type:'button',id:'projCull','aria-pressed':String(on),text:on?'On':'Off',title:'Backface culling: no paint on surfaces turned away from you',onclick:()=>{s.noBack=!on;redo();}});
   const ang=makeSlider({id:'projCullAng',label:'Angle',min:1,max:90,step:1,value:s.cullAngle??90,def:90,fmt:v=>Math.round(v)+'°',onInput:v=>{s.cullAngle=v;v3.dirty=true;}}).el;if(!on)ang.classList.add('dim');
   const soft=makeSlider({id:'projCullSoft',label:'Edge falloff',min:0,max:1,step:.01,value:s.cullSoft??.45,def:.45,fmt:pct,onInput:v=>{s.cullSoft=v;v3.dirty=true;}}).el;if(!on)soft.classList.add('dim');soft.title='How gradually the paint thins out as the surface turns away from you (0 = a hard edge)';
   const size=sel('projSize','Size Space',[['object','Object'],['viewport','Viewport'],['texture','Texture']],s.sizeSpace||'object',v=>{s.sizeSpace=v;redo();},'What the brush size is measured in');
-  const a=s.paintAlign||'uv',sz=s.sizeSpace||'object';
+  const a=s.paintAlign||'wrap',sz=s.sizeSpace||'object';
   const note=el('p',{class:'note',text:(a==='wrap'?'Tangent | Wrap follows the surface, even just behind a raised edge.':a==='camera'?'Camera projects the stroke flat from the view and only paints what you can see.':'UV stamps the brush straight onto the texture where you point; a seam starts a new stroke.')+
     ' Culling: surfaces turned away by more than the angle take no paint (90° = only those facing away). '+(sz==='object'?'Object: the brush keeps its size on the model as you zoom.':sz==='viewport'?'Viewport: the size is in screen pixels.':'Texture: the size is in texture pixels.')});
-  const surf=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Surface wrap (beta)'}),(()=>{const k=s.surfWrap===true,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projSurf','aria-pressed':String(k),text:k?'On':'Off',title:'Experimental: the plain brush is measured on the model itself, so it carries onto walls the camera cannot see. Off = the camera projection used before.',onclick:()=>{s.surfWrap=!k;redo();}});return b;})()):null;
+  const surf=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Surface brush'}),(()=>{const k=s.surfWrap!==false,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projSurf','aria-pressed':String(k),text:k?'On':'Off',title:'The brush is measured on the model itself: one size everywhere, round on the surface, over seams and round edges, and onto walls the camera cannot see. Off = the camera projection.',onclick:()=>{s.surfWrap=!k;redo();}});return b;})()):null;
   const keep=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Keep the brush round'}),(()=>{const k=s.wrapKeep!==false,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projKeep','aria-pressed':String(k),text:k?'On':'Off',title:'On a surface that leans away from you the brush is squeezed on screen, so it stays round on the model instead of stretching (like Painter)',onclick:()=>{s.wrapKeep=!k;redo();}});return b;})()):null;
   box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),soft,...(surf?[surf]:[]),...(keep?[keep]:[]),size,note);return box;}

@@ -1,3 +1,10 @@
+## Gouache Studio 0.98.20
+
+- 3D Paint: the surface brush is the default. One brush size everywhere on the model, measured.
+- The brush outline is drawn on the model and matches the paint exactly.
+- Strokes go over seams, round edges and onto caps without gaps or blobs; no paint in empty texture.
+- Backface culling's angle and edge falloff set how far paint wraps round an edge.
+
 ## Gouache Studio 0.98.19
 
 - 3D Paint warms up with a hidden test stroke while it loads, so the first strokes no longer freeze.

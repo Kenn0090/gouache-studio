@@ -82,7 +82,7 @@ function shInit(){const mk=(id,hid,title,body)=>{const s=el('section',{class:'se
    texture like on the flat canvas, so everything works but Line blend (tested: it paints nothing). With Tangent | Wrap or Camera the stroke is
    drawn on the screen and projected, which cannot read the paint underneath: mixing, drips, fans and the like do nothing there (tested). A brush that
    carries its own alignment (graffiti, blending…, p3-tools.js) is judged by that one. */
-function shAlignOf(p){const s=typeof v3s==='function'?v3s():{};const a=typeof brushAlign3d==='function'?brushAlign3d(p):null;return a||s.userAlign||s.paintAlign||'uv';}
+function shAlignOf(p){const s=typeof v3s==='function'?v3s():{};const a=typeof brushAlign3d==='function'?brushAlign3d(p):null;return a||s.userAlign||s.paintAlign||'wrap';}
 function shNo3d(k,align){const a=align||shAlignOf(null);return (a==='uv'?['lineBlend']:['mix','lineBlend','fanFill','laneN','drip','dripAuto','endInk','wet','smoothCurve']).includes(k);}
 function shWorks3D(p){if(!p)return false;if(!['brush','erase','smudge','dodge','burn',undefined].includes(p.tool))return false;const a=shAlignOf(p);
   for(const k of ['mix','lineBlend','fanFill','laneN','drip','dripAuto','endInk','wet']){const v=p[k];if(v&&v!==(BRUSH_DEFAULTS[k]||0)&&shNo3d(k,a))return false;}return true;}

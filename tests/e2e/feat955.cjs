@@ -32,9 +32,10 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(await p.evaluate(()=>!__gs.sel.active),'3D Paint: Q twice leaves no selection (no orange on the model)');
  /* ---- [ ] with the pointer resting on the model: the outline follows at once; holding speeds up ---- */
  await p.evaluate(()=>{Object.assign(__gs.brush,{size:40});__gs.setTool('brush');});await p.mouse.move(cx+5,cy+5);await W(200);
- const w0=await p.evaluate(()=>{const c=__gs.v3.curEl;return c&&!c.hidden?parseFloat(c.style.width):0;});
+ const ow=()=>p.evaluate(()=>{const g=__gs;if(g.v3.ring)return g.v3.ring.r*1000;/* (0.98.20) the outline is a ring on the model */const c=g.v3.curEl;return c&&!c.hidden?parseFloat(c.style.width):0;});
+ const w0=await ow();
  await p.keyboard.press(']');await W(100);
- const w1=await p.evaluate(()=>{const c=__gs.v3.curEl;return c&&!c.hidden?parseFloat(c.style.width):0;});
+ const w1=await ow();
  ok(w0>0&&w1>w0,'] grows the outline on the model without moving the mouse ('+w0.toFixed(1)+' → '+w1.toFixed(1)+')');
  const steps=await p.evaluate(()=>{const G=__gs;G.brush.size=40;G.kbBrushSize(1,false);const f1=G.brush.size/40;for(let i=0;i<12;i++)G.kbBrushSize(1,true);const a=G.brush.size;G.kbBrushSize(1,true);return [f1,G.brush.size/a];});
  ok(steps[1]>steps[0]+.08,'holding ] speeds up (first step ×'+steps[0].toFixed(2)+', later ×'+steps[1].toFixed(2)+')');
@@ -63,7 +64,7 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
  ok(r1>r0+100,'UV alignment paints onto the texture ('+(r1-r0)+' px)');
  await p.evaluate(()=>{__gs.undo();const sel=document.getElementById('projAlign');sel.value='wrap';sel.dispatchEvent(new Event('change'));});await W(400);
  /* culling angle: a small angle stops paint on a plane seen at a slant */
- await p.evaluate(()=>{const G=__gs;Object.assign(G.v3.cam,{yaw:0,pitch:-1.0});G.v3s().cullAngle=20;G.v3.dirty=true;});await W(600);
+ await p.evaluate(()=>{const G=__gs;Object.assign(G.v3.cam,{yaw:0,pitch:-1.0});G.v3s().cullAngle=20;G.v3s().surfWrap=false;/* (0.98.20) the angle from the view is the camera projection's rule; the surface brush measures it from the dab (surf9820) */G.v3.dirty=true;});await W(600);
  const c0=await red();await p.mouse.move(cx-40,cy);await p.mouse.down();await p.mouse.move(cx+40,cy,{steps:8});await p.mouse.up();await W(500);const c1=await red();
  await p.evaluate(()=>{const G=__gs;G.v3s().cullAngle=90;});const c2=await red();await p.mouse.move(cx-40,cy+5);await p.mouse.down();await p.mouse.move(cx+40,cy+5,{steps:8});await p.mouse.up();await W(500);const c3=await red();
  ok(c1-c0<20&&c3-c2>100,'a culling angle of 20° keeps paint off a plane seen at a slant, 90° paints it ('+(c1-c0)+' vs '+(c3-c2)+')');

@@ -14,7 +14,12 @@ function uvmBuild(){const C=typeof fillPosMaps==='function'?fillPosMaps():null;i
   if(!n)return null;const size=Math.max(mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2])||1,cell=size/64,K=1<<16,head=new Int32Array(K).fill(-1),next=new Int32Array(G*H).fill(-1);
   const hash=(x,y,z)=>(((x*73856093)^(y*19349663)^(z*83492791))>>>0)&(K-1);
   for(let i=0;i<G*H;i++){if(P[i*4+3]<.5)continue;const h=hash(Math.floor((P[i*4]-mn[0])/cell),Math.floor((P[i*4+1]-mn[1])/cell),Math.floor((P[i*4+2]-mn[2])/cell));next[i]=head[h];head[h]=i;}
-  Object.assign(uvm,{key,G,H,P,cell,head,next,lo:mn,n,hash,K});return uvm;}
+  /* (0.98.20) does the layout overlap itself (shared or mirrored UVs, the built-in shapes)? The position picture holds one point per texel,
+     so the surface brush could only reach one of the parts sharing it: those sets keep the camera projection (swUsable) */
+  let area=0;try{const m=v3.mesh,R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:m.idx.length/3},uv=m.uv,I=m.idx,us=(v3s().uvs)||1;
+    for(let t=R.start;t<R.start+R.count;t++){const a=I[t*3]*2,b=I[t*3+1]*2,c=I[t*3+2]*2;area+=Math.abs((uv[b]-uv[a])*(uv[c+1]-uv[a+1])-(uv[c]-uv[a])*(uv[b+1]-uv[a+1]))/2*us*us;}}catch(e){area=0;}
+  const overlap=area>n/(G*H)*1.25+.002;
+  Object.assign(uvm,{key,G,H,P,cell,head,next,lo:mn,n,hash,K,overlap});return uvm;}
 /* the point on the model at a canvas pixel (bilinear between the samples around it, covered ones only) */
 function uvmPos(x,y){const U=uvm,fx=x/doc.w*U.G-.5,fy=y/doc.h*U.H-.5,ix=Math.floor(fx),iy=Math.floor(fy),tx=fx-ix,ty=fy-iy;let s=[0,0,0],w=0;
   for(const [dx,dy,k] of [[0,0,(1-tx)*(1-ty)],[1,0,tx*(1-ty)],[0,1,(1-tx)*ty],[1,1,tx*ty]]){const X=clamp(ix+dx,0,U.G-1),Y=clamp(iy+dy,0,U.H-1),i=(Y*U.G+X)*4;if(U.P[i+3]<.5||k<=0)continue;s[0]+=U.P[i]*k;s[1]+=U.P[i+1]*k;s[2]+=U.P[i+2]*k;w+=k;}

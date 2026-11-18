@@ -65,7 +65,7 @@ function beginStroke(L,x,y,p,o){
   const SW=cg?cg.w:W,SH=cg?cg.h:H;
   const sampleT=o.tool==='smudge'&&o.sampleAll&&!o.space&&!L.maskOf&&!L.quick?compositeMap(doc.map):null;
   const gcell=clamp(o.grainSize||6,1,40),gx=Math.max(1,Math.round(W/gcell)),gy=Math.max(1,Math.round(H/gcell));
-  stroke={lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:(cg||o.uvRs)?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint:!!(tint||cg&&o.worldNormal),dabTint:tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
+  stroke={surf:o.surfStroke||null,uvClip:!!o.uvClipStroke,lazy,fd:o.space?'all':null,L,o,x,y,p,lsx:x,lsy:y,dir:0,carry:0,bb:[W,H,0,0],clearBox,gScale:[W/gx,H/gy],gPeriod:[gx,gy],space:cg,rs:(cg||o.uvRs)?(o.cageRs||1):1,SW,SH,sym:o.sym||null,tint:!!(tint||cg&&o.worldNormal),dabTint:tint,grey:doc.map!=='base',sampleT,sampleAt:performance.now()};
   if(o.weldHeat)weldHeatBegin(stroke);
   if(stitchHasRelief(o.material?.stitch))stitchFoldsBegin(stroke);
   /* Resolve the library and repeating mask once, rather than per dab at low spacing. */
@@ -152,13 +152,17 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null;
   const stitch=o.material?.stitch,stitchExtent=stitch&&(stitch.fray||stitch.variation)?1.85:1.4143;
   const ext=r*(s.weldHeat?3:stitch?stitchExtent:o.material?.surfaceDetail?1.10:tip?1.4143:o.spray>0&&o.sprayFleck>0?2.8:1)+2,copies=[];
-  if(doc.wrap&&!s.space){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
+  /* (0.98.20) on the model (surface wrap, clipped UV) the texture's edge is not a neighbour on the surface: one copy, the model finds the rest */
+  if(doc.wrap&&!s.space&&!s.surf&&!s.uvClip){const cx0=mod(x,W),cy0=mod(y,H);for(const ox of [-W,0,W])for(const oy of [-H,0,H]){const cx=cx0+ox,cy=cy0+oy;if(cx+ext<0||cx-ext>W||cy+ext<0||cy-ext>H)continue;copies.push([cx,cy]);}}
   else if(!(x+ext<0||x-ext>W||y+ext<0||y-ext>H))copies.push([x,y]);
   if(!copies.length)return;
   const U={uRadius:r,uExtent:ext,uLane:[o.laneN||0,o.laneHue||0,o.laneVal||0,o.laneMode||0],uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
     uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uTexImg:(s.texT===undefined&&(s.texT=o.texDepth>0&&o.texKey&&typeof dualTip==='function'?dualTip({tipKey:o.texKey}):null),s.texT)?s.texT.tex:dummy,uTexSet:[o.texScale||128,s.texT?o.texDepth:0,o.texInvert?1:0,1.5],uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
-  let sw=null;if(s.surf&&copies.length===1&&!o.dual&&!s.dualBatch&&typeof swDab==='function'){sw=swDab(s,copies[0][0],copies[0][1],r,ext);if(sw)Object.assign(U,sw.u);}/* (0.98.13) surface wrap */
+  let sw=null;if(s.surf&&copies.length===1&&!o.material?.stitch&&!o.material?.surfaceDetail&&!o.dual&&!s.dualBatch&&typeof swDab==='function'){sw=swDab(s,copies[0][0],copies[0][1],r,ext);if(sw)Object.assign(U,sw.u);}/* (0.98.13) surface wrap */
+  else if(s.uvClip&&copies.length===1&&typeof swDab==='function'){const k=swDab(s,copies[0][0],copies[0][1],r,ext,true);if(k)Object.assign(U,k.u);else return;}/* (0.98.20) UV alignment stays on the model */
+  /* (0.98.20) a surface dab that cannot be placed on the model (off it) is left out, never drawn flat in the wrong place */
+  if(s.surf&&!sw&&!o.material?.stitch&&!o.material?.surfaceDetail&&!o.dual&&!s.dualBatch)return;
   if(!s.dualBatch&&!sw)p3PaintDab(s,U,copies,a,tip);
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     {const bx=copies.map(c=>[Math.floor(c[0]-ext),Math.floor(c[1]-ext),Math.ceil(ext*2)+2,Math.ceil(ext*2)+2]);for(const r of (s.lastClr||[]).concat(bx))scissorDo(r,()=>clearTarget(s.space.buf));s.lastClr=bx;}for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});

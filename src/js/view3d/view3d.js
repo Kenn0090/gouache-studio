@@ -390,13 +390,21 @@ layout(location=2) in vec2 aT; uniform vec2 uOrigin; uniform vec2 uExtent; unifo
 void main(){ vec2 p=uOrigin+(aT+uShift)*uExtent; gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
 function prog3(vs,fs,header=FS_HEAD){const p=gl.createProgram(),v=compile(gl.VERTEX_SHADER,vs),f=compile(gl.FRAGMENT_SHADER,header+fs);gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);return {p,locs:{},fs,vs,head:header===FS_HEAD?undefined:header,_sh:[v,f]};}
 const FS_3DSEL=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform sampler2D uSel; void main(){ float m=texture(uSel,fract(vT)).r; if(m<0.02) discard; o=vec4(1.0,0.62,0.22,0.32*m); }`;
-const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL)};
+/* (0.98.20, Kenn: "I didn't see the brush following the surface of the asset like in Painter") the brush outline drawn ON the model: the
+   ring is where the paint ends, measured the same way the dab is (distance in space, the same surfaces left out) */
+const FS_3DRING=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform vec4 uRing; uniform vec3 uRingN;
+void main(){ vec3 d=vP-uRing.xyz; float L=length(d),r=uRing.w; if(dot(normalize(vN),uRingN)<-0.15||abs(dot(d,uRingN))>0.85*r) discard;
+  float w=max(fwidth(L),1e-7),e=abs(L-r),a=1.0-smoothstep(w*0.6,w*1.6,e),b=1.0-smoothstep(w*1.6,w*3.0,e); if(b<0.01) discard;
+  o=vec4(vec3(a),max(a,b*0.55)); }`;
+const P3={mesh:Object.assign(prog3(VS_3D,FS_3D),{decodeOnly:true}),line:prog3(VS_3D,FS_3DLINE),uv:prog3(VS_UV,FS_3DLINE),sel:prog3(VS_3D,FS_3DSEL),ring:prog3(VS_3D,FS_3DRING)};
 
 /* ---- settings (kept in the document) ---- */
-const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'uv',noBack:true,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
+const V3D_DEFAULTS={model:'plane',detail:0,unlit:null,uvs:1,disp:0,paintAlign:'wrap',alignV:2,noBack:true,sunAz:40,sunEl:45,sunI:1,skyI:1,expo:1,bg:'dark',clip:true,wire:false,wireOnly:false,showUV:false,litUV:false,spin:false,fov:40,ortho:false,
   env:'studio',envRot:0,envI:1,envBg:false,envBlur:.35,envSun:0,tone:'filmic',studioFill:.12,studioRim:.08,lightColor:[1,1,1],shadows:true,shadowSoft:1.5,floor:false,floorHeight:0,floorOpacity:.5,floorSoft:2,floorColor:[0,0,0],metalView:false,metalRough:.25};
 const v3={on:false,mesh:null,gpu:null,tex:{},cam:{yaw:.5,pitch:.25,dist:3.2,tx:0,ty:0,tz:0},dirty:true,postDirty:false,mapsDirty:true,editDirty:true,lastFull:0,fbo:null,imported:null};
-function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];}return doc.v3d;}
+function v3s(){if(!doc.v3d)doc.v3d=Object.assign({},V3D_DEFAULTS);else{const old=!('alignV' in doc.v3d);for(const k in V3D_DEFAULTS)if(!(k in doc.v3d))doc.v3d[k]=V3D_DEFAULTS[k];
+  /* (0.98.20, Kenn: the surface brush is the default) projects from before: the old default UV alignment becomes Tangent | Wrap with the surface brush */
+  if(old&&doc.v3d.paintAlign==='uv'){doc.v3d.paintAlign='wrap';delete doc.v3d.surfWrap;}}return doc.v3d;}
 const v3Unlit=()=>{const s=v3s();return s.unlit==null?doc.maps.length<2:s.unlit;};
 
 /* ---- mesh on the GPU ---- */
@@ -654,6 +662,8 @@ function v3Render(F,flip){const g=v3.gpu;if(!g)return;gl.blendEquation(gl.FUNC_A
   if(F.overlays!==false&&!wireOnly&&!bake&&sel.active&&!sel.quick&&sel.t&&(ui.mode==='p3d'||v3.paintOn)){const R=ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3};
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);useProg(P3.sel,Object.assign({},common,{uSel:sel.t.tex}));gl.bindVertexArray(g.vao);
     gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);gl.depthMask(true);gl.disable(gl.BLEND);}
+  if(F.overlays!==false&&!wireOnly&&!bake&&v3.ring&&v3.paintOn){const q=v3.ring;/* [ and ] resize the ring at once */if(q.size!==brush.size&&q.q){q.r=swBaseR({size:brush.size},q.c,q.q[0],q.q[1]);q.size=brush.size;}gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);
+    useProg(P3.ring,Object.assign({},common,{uRing:[q.c[0],q.c[1],q.c[2],q.r],uRingN:q.n}));gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.depthMask(true);gl.disable(gl.BLEND);}
   if(F.overlays!==false&&typeof udimFlashDraw==='function')udimFlashDraw(g,common);
   if(F.overlays!==false&&!bake)sel3HoverDraw(g,common,F);
   if(s.wire)v3DrawWire(g,list,common);
