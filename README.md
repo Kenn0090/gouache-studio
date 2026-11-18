@@ -74,4 +74,4 @@ Gouache Studio is made by Kenn ([@Kenn0090](https://github.com/Kenn0090)), with 
 
 **Licence:** the source is public so you can read it and follow along, but no open-source licence has been chosen yet. Until one is added, please ask before reusing the code.
 
-[windows-download]: https://github.com/Kenn0090/gouache-studio/releases/download/v0.98.15/Gouache.Studio_0.98.15_x64-setup.exe
+[windows-download]: https://github.com/Kenn0090/gouache-studio/releases/download/v0.98.16/Gouache.Studio_0.98.16_x64-setup.exe
