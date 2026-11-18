@@ -1,3 +1,14 @@
+## 0.98.18
+
+Every viewer shader now shows in the ray-traced view.
+
+- **Skin is traced with real light under the surface.** Light goes into the skin, wanders and comes out nearby, redder the deeper it went; thin parts such as ears and nostrils glow against a light behind them. It uses the Skin shader's Scatter, Scatter depth and colour, and the Scattering and Scatter colour channels. Wax works the same way, deeper and warmer.
+- **Glass** reflects and bends the light through it (Refraction is the index, Frost blurs it, the colour tints by how far the light travels inside, set by Thickness).
+- **Car paint** has its clear coat and metallic flakes; the **Eye** has a glossy cornea over an iris with depth, pupil and limbal ring; **Iridescent** shifts colour with the angle.
+- **Velvet, Cloth and Fur** get a soft sheen at the edges (Fur's strands are drawn only in the normal view); **Brushed metal** stretches its highlights along the brushing direction.
+- **Toon, Cel, Half-tone, Ink and Hatch** keep their flat drawn look, with real traced shadows. **Hologram** glows and lets the scene show through.
+- Standard, Spec/Gloss, Panner, Retro and custom shaders trace as before (plain physically based material).
+
 ## 0.98.17
 
 3D Paint waits until it is ready, Ctrl + drag smooths again, and fixes from Georgian's 8K painting report.

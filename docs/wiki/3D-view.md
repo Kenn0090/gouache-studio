@@ -23,6 +23,7 @@ The **Detail** menu at the top gives the model more triangles, from Low up to ×
 - **Lit:** full PBR, using base colour, roughness, metallic, the finished normal, AO, emissive and opacity, lit by an **HDRI** (see Lighting).
 - **Unlit:** base colour only (plus AO), the way hand-painted games usually look. This is the default for hand-painted documents.
 - **Ray traced:** a path-traced picture with real shadows and light bouncing between surfaces. It adds a sample every frame and gets cleaner the longer you leave it; the bottom of the view says how far it is. Turning the model or painting starts it again.
+  Each texture set's **shader** is traced too: Skin and Wax let light travel under the surface (ears glow against a light behind them), Glass bends and reflects light, Car paint has its clear coat and flakes, the Eye its cornea and deep iris, Iridescent shifts colour, Velvet, Cloth and Fur get their sheen, Brushed metal stretches its highlights, and Toon, Cel, Half-tone, Ink and Hatch keep their drawn look with real shadows. Fur's strands show only in the normal view.
 
 ![Ray traced mode.](images/raytraced.png)
 

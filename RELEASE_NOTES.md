@@ -1,3 +1,9 @@
+## Gouache Studio 0.98.18
+
+- Ray-traced view: every shader now shows there. Skin has real light under the surface (ears glow against a backlight); Wax too.
+- Glass bends and reflects light; car paint has clear coat and flakes; the eye has a glossy cornea and a deep iris; iridescent shifts colour.
+- Velvet, cloth and fur get their soft sheen; brushed metal stretches its highlights; toon and the drawn styles keep their look with real shadows.
+
 ## Gouache Studio 0.98.17
 
 - 3D Paint shows a progress screen while it loads and waits until it is ready.
