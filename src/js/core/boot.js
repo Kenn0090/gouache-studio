@@ -104,3 +104,4 @@ if(window.__gs)Object.assign(window.__gs,{auxSweep,auxStashes,auxReleaseState});
 if(window.__gs)Object.assign(window.__gs,{chPackBytes,chPackFreeAll,skb});
 if(window.__gs)Object.defineProperty(window.__gs,'curStroke',{get:()=>stroke,configurable:true});
 if(window.__gs)Object.assign(window.__gs,{p3r,p3ReadyShow,p3ReadyEnd});
+if(window.__gs)Object.assign(window.__gs,{rtPixels,rtSkinUniform,rtShadeList});
