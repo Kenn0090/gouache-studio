@@ -38,7 +38,9 @@ async function asWithTab(t,fn){if(!t.state||stroke||preview)return null;const co
   const mine=docState();let r=null;tabDocs.hold=true;
   try{setDocState(t.state);r=await fn();}catch(e){console.warn('autosave tab',e);}
   finally{t.state=docState();setDocState(mine);tabDocs.hold=false;cover.remove();requestRender(true);}return r;}
-async function autosaveNow(force){if((typeof gpuHealth!=='undefined'&&gpuHealth.lost)||as.busy||stroke||preview||(typeof tabDocs!=='undefined'&&tabDocs.hold)||(typeof bk!=='undefined'&&bk.busy))return false;as.busy=true;let n=0;
+/* (0.98.15, Georgian) never autosave while a file, model or project is loading */
+const asLoading=()=>(typeof loadDepth!=='undefined'&&loadDepth>0)||(typeof uwBusy!=='undefined'&&!!uwBusy);
+async function autosaveNow(force){if(asLoading()||(typeof gpuHealth!=='undefined'&&gpuHealth.lost)||as.busy||stroke||preview||(typeof tabDocs!=='undefined'&&tabDocs.hold)||(typeof bk!=='undefined'&&bk.busy))return false;as.busy=true;let n=0;
   try{/* the painting */
     const pk=asPaintKind(),sig=asPaintSig();if(sig&&(force||sig!==as.last[pk])){if(asPaintSaved()){await asClear(pk);}
       else{if(prefs.autosaveOver&&platform.isDesktop&&withPaintDoc(()=>doc.filePath&&extOf(doc.filePath)==='gouache'))await withPaintDocAsync(()=>saveDoc(false));
@@ -66,11 +68,11 @@ function asCountdown(){if(asCd)return;const n0=asCountSec();if(!n0){autosaveNow(
     el('button',{class:'btn sm primary',text:'Save now',onclick:()=>{asCountClose();autosaveNow(false);}}));
   document.body.append(box);let n=n0;
   asCd={box,timer:setInterval(()=>{n--;if(n>0){num.textContent=String(n);return;}
-    if(stroke||ptrBusy()){num.textContent='0';return;} /* wait until the stroke is finished */
+    if(stroke||ptrBusy()||asLoading()){num.textContent='0';return;} /* wait until the stroke is finished, or the loading */
     asCountClose();box.classList.add('go');autosaveNow(false).then(ok=>{if(ok)toast('Autosaved.');});},1000)};}
 const ptrBusy=()=>typeof ptr!=='undefined'&&!!ptr;
 function asSchedule(){clearInterval(asTimer);asCountClose();const m=asMin();if(!m){asNext=0;return;}asNext=Date.now()+m*60000;
-  asTimer=setInterval(()=>{if(Date.now()<asNext||asCd)return;asNext=Date.now()+asMin()*60000;if(asPending())asCountdown();},15000);}
+  asTimer=setInterval(()=>{if(Date.now()<asNext||asCd)return;if(asLoading()){asNext=Date.now()+15000;return;}asNext=Date.now()+asMin()*60000;if(asPending())asCountdown();},15000);}
 /* after a real save the recovery copy is not needed any more */
 {const sd=saveDoc;saveDoc=async function(f){const r=await sd(f);if(asPaintSaved())asClear(asPaintKind());return r;};
  const sp=saveP3Project;saveP3Project=async function(f){const r=await sp(f);if(p3.savedAt===p3Sig())asClear('p3d');return r;};}
