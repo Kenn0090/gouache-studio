@@ -55,7 +55,7 @@ else{let tries=0;const warm=()=>{let left=0;for(const pr of [...Object.values(P)
 if(window.__gs)Object.assign(window.__gs,{mapOpacityOf,setMapOpacityOf,sel3Grow,sel3Shells,sel3Topo,sel3Draw,p3SyncSets,p3RemoveSet,p3DeleteSet,p3RestoreSets,p3Range,p3SetKey,bevelNormals,bevelPreviewGPU,bevelPreviewProgram,bvSettings,bvWidth,bvGPU,uvAct,uvTransferSet,p3SharedSquare,uvMergeMaterialGroups,uvRepackOwn,maskBarSync,luLook,luFlush,lu});
 if(window.__gs)Object.assign(window.__gs,{BEVEL_GLSL,BK_TRACE,VS_FULL,bvUniforms,bvPrepareInfo,bvHardBitsBuild,bevelBakeTex,bkHighGPU,bkFreeHigh,prog3,run,bvChanged,bvSetPreview,bvChangeUnit,bevelScreen,bkHighView,bkHV,bakeAlign,bakeSetModel,bakeSyncMesh,bakeIdHas,bakeIdSource,meshPack,meshUnpack,partsInfo,subdivideMesh,layerRenameStart,cmdClearMask,fillCompUniforms,pxfUniforms,v3WireMode,v3SetWireMode,studioShadow,studioShadowPrepare,ui});
 
-if(window.__gs)Object.assign(window.__gs,{meshIdParts,fillUseImage,sel3HitTriangles,sel3HoverState,sel3HoverMove,sel3HoverClear,sel3Arm,studioShadowSize,studioShadowMatrix,v3ShowMaterial,uvViewSync,uvw,p3mm,p3mmSet,p3ShowLit,v3MeshU,v3Ctx,dtRender,dtab,dtClose});
+if(window.__gs)Object.assign(window.__gs,{meshIdParts,fillUseImage,sel3HitTriangles,sel3HoverState,sel3HoverMove,sel3HoverClear,sel3Arm,studioShadowSize,studioShadowMatrix,v3ShowMaterial,uvViewSync,uvw,p3mm,p3mmSet,p3ShowLit,v3MeshU,v3Ctx,dtRender,dtClose});
 
 if(window.__gs)Object.assign(window.__gs,{parseFBX,build3dPane,toggle3D,libTarget,sel3HoverDraw,p3SelectAt,meshFinish});
 
@@ -98,3 +98,6 @@ if(window.__gs)Object.assign(window.__gs,{nav,navSync});
 if(window.__gs)Object.assign(window.__gs,{mcMake,ensureMapTarget,setDocMaps});
 if(window.__gs)Object.assign(window.__gs,{udimBox,udimSetTileSize,udimGU,udimLay,udimPack,udimTileRect,udimGridRect,p3PaintMeshKey});
 if(window.__gs)Object.assign(window.__gs,{udimFlashS,udimFlash,udimFlashAlpha,bkUdBox,bkUdBake,bkUdCompose,bkUdSub,bkUdCard,bkUdFlash,bakeExport,bakeSendP3,runBake,bkLow,bakeSetModel,bakeCfg});
+if(window.__gs)Object.assign(window.__gs,{sgHigh,sgHeap,autosaveNow,encodeP3Project});
+if(window.__gs)Object.assign(window.__gs,{gpuLost:()=>gpuLost});
+if(window.__gs)Object.assign(window.__gs,{auxSweep,auxStashes,auxReleaseState});

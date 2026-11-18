@@ -448,7 +448,9 @@ let v3MipPatchKept=null;
 function v3MipPatch(w,h,t){const k=v3MipPatchKept;if(k&&k.depth===t.depth&&!!k.packed===!!t.packed&&!!k.mono===!!t.mono&&k.w>=w&&k.h>=h){v3MipPatchKept=null;return k;}if(k){disposeTarget(k);v3MipPatchKept=null;}return makeTarget(Math.max(w,64),Math.max(h,64),t.depth,false,t.packed,t.mono);}
 function v3MipPatchFree(p){if(!p)return;if(v3MipPatchKept&&v3MipPatchKept!==p)disposeTarget(v3MipPatchKept);v3MipPatchKept=p;}
 /* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
-function v3MapTex(k,src,region){const mono=doc.w*doc.h>=67108864&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
+/* (0.98.16, Georgian's 8192×4096 crashes) the 3D view's copies of grey maps (roughness, metal, height…) are one channel from 4096×4096 up, a quarter of the memory (was 8192×8192 up) */
+const V3_MONO_PX=16777216;
+function v3MapTex(k,src,region){const mono=doc.w*doc.h>=(window.__v3MonoPx||V3_MONO_PX)&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const edges=ui.mode==='p3d'&&v3s().uvs===1&&!v3.mesh?.noUV&&src.w===doc.w&&src.h===doc.h?seamBlurMesh():null;
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
   const r=partial?region:[0,0,doc.w,doc.h];if(r[2]<=0||r[3]<=0)return t;

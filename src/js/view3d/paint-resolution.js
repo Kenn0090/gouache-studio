@@ -37,8 +37,16 @@ function p3PaintRead(t){
   blit(t,stage,0,0,t.w,t.h,0,0);
   return readRegionAsync(stage,0,0,t.w,t.h).finally(()=>disposeTarget(stage));
 }
+/* (0.98.16, Georgian's crashes on 8192×4096 projects) a painted picture's stroke record used to start with a packed copy of the
+   whole picture, read back from the card each time something other than a stroke had changed it: 128 MB read and packed before
+   the stroke at 8K, and every old copy kept alive by the undo history. Now pictures over 4096×4096 (or any while the page's memory
+   is high) keep no picture copy: a size change scales them instead (fine from 8K down). Blank pictures still record cheaply.
+   Each record is also capped (steps and pixel patches); past the cap it is dropped and the picture simply scales. */
+const P3REC_MAX_PX=4096*4096,P3REC_MAX_STEPS=3000,P3REC_MAX_BYTES=384*1048576;
+const p3RecHigh=()=>typeof sgHigh==='function'&&sgHigh();
 function p3PaintSource(t,force=false,lay){
   if(!force&&t._paintSource&&!t._paintStale)return t._paintSource;
+  if(!t._paintClear&&(t.w*t.h>(window.__p3RecMax||P3REC_MAX_PX)||p3RecHigh())){t._paintSource=null;t._paintStale=false;return null;}/* __p3RecMax: tests use a small canvas; the old, no longer valid record is let go */
   const base={w:t.w,h:t.h,d:t.depth,lay:lay!==undefined?lay:udimLayNow()};
   if(t._paintClear)base.color=t._paintClear.slice();
   else{
@@ -230,7 +238,9 @@ function p3PaintAfter(s){
   const r=s.paintReplay;
   if(!r)return;
   for(const c of r.channels)if(c.before&&c.t._paintClear===null){
-    c.after={base:c.before.base,tail:{prev:c.before.tail,draw:r.draw,merge:c.merge}};
+    const steps=(c.before.steps||0)+1,bytes=(c.before.bytes||0)+r.draw.dabs.length*120;
+    if(steps>P3REC_MAX_STEPS||bytes>P3REC_MAX_BYTES||p3RecHigh()){c.after=null;p3PaintAttach(c.t,null);continue;}/* over the cap: no record (scales on resize) */
+    c.after={base:c.before.base,tail:{prev:c.before.tail,draw:r.draw,merge:c.merge},steps,bytes};
     p3PaintAttach(c.t,c.after);
   }
 }
@@ -240,7 +250,10 @@ function p3PaintUndo(r,s){
 function p3PaintUndoSources(r,channels){
   if(!channels.length)return r;
   const undo=r.undo,redo=r.redo;
-  const restore=k=>{for(const c of channels){const t=c.getTarget();if(t?.tex&&!t.empty)p3PaintAttach(t,c[k]);}};
+  /* (0.98.16) undo holds the records weakly: an old record the picture no longer uses is not kept alive by the history (if it is
+     gone when undone, the picture is just marked unrecorded and scales on a size change) */
+  const refs=channels.map(c=>({c,before:c.before?new WeakRef(c.before):null,after:c.after?new WeakRef(c.after):null}));
+  const restore=k=>{for(const x of refs){const t=x.c.getTarget();if(t?.tex&&!t.empty){const src=x[k]&&x[k].deref();if(src)p3PaintAttach(t,src);else{t._paintSource=null;t._paintStale=false;}}}};
   r.undo=function(){undo.call(this);restore('before');};
   r.redo=function(){redo.call(this);restore('after');};
   return r;
@@ -261,12 +274,14 @@ function p3PaintPatch(source,getTarget,before,after,x,y){
   if(t._paintClear){
     const next=p3PaintSource(t,true);
     p3PaintAttach(t,next);
-    return {getTarget,before:source,after:next};
+    return next?{getTarget,before:source,after:next}:null;
   }
+  const steps=(source.steps||0)+1,bytes=(source.bytes||0)+w*h*(d===16?8:4);/* the packed pair is smaller than this, so it is a safe guess */
+  if(steps>P3REC_MAX_STEPS||bytes>P3REC_MAX_BYTES||p3RecHigh()){p3PaintAttach(t,null);return null;}
   const pack=s=>p3PaintSnap(s).then(raw=>pxPack(new Uint8Array(raw.buffer,raw.byteOffset,raw.byteLength),w,h,d,false));
   const patch={x,y,w,h,d,W:t.w,H:t.h,lay:udimLayNow(),before:pack(before),after:pack(after)};
   patch.before.catch(()=>{});patch.after.catch(()=>{});
-  const next={base:source.base,tail:{prev:source.tail,patch}};
+  const next={base:source.base,tail:{prev:source.tail,patch},steps,bytes};
   p3PaintAttach(t,next);
   return {getTarget,before:source,after:next};
 }
@@ -414,8 +429,7 @@ async function p3PaintRebuild(j,work,keep){
     j.how=!current?'scaled (no strokes kept for it)':'scaled (strokes belonged to another layout)';p3LayScale(src,nt,udimRelay&&udimRelay.from);
     if(keep){
       const source=p3PaintSource(src,true,udimRelay?udimRelay.from:undefined);/* the picture before scaling: a later size up gets its detail back */
-      await source.base.image;
-      p3PaintAttach(nt,source);
+      if(source){await source.base.image;p3PaintAttach(nt,source);}
     }
     return;
   }

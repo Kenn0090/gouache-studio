@@ -1,3 +1,9 @@
+## Gouache Studio 0.98.16
+
+- Big 3D Paint projects use much less memory: fixes for crashes during autosave and graphics card resets at 8K.
+- Autosave saves only what changed and waits when memory is nearly full.
+- Texture sets and documents you are not painting free their work pictures; grey maps in the 3D view use a quarter of the memory.
+
 ## Gouache Studio 0.98.15
 
 - Tangent | Wrap is the camera projection again; the surface wrap is an optional beta switch under Projection.
