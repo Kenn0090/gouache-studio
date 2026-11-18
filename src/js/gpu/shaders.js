@@ -107,6 +107,8 @@ float brushMask(vec2 pix){
   vec2 dv=pix-uCenter;
   /* (0.98.13, Kenn: wrap like Painter) Surface wrap: the brush is measured ON the model. Each texel knows where it sits in space (the position picture), so the brush
      reaches round edges, behind walls and over seams, and keeps its shape: the distance from the dab's centre is taken in space and laid out in the tangent plane there. */
+  /* (0.98.20) UV alignment, clipped: only texels of the model within the brush's reach in space (not empty texture, not a neighbouring island) */
+  if(uSurf==2){ ivec2 ts=textureSize(uPosT,0); vec4 P=texelFetch(uPosT,clamp(ivec2(pix),ivec2(0),ts-1),0); if(P.a<0.5||length(P.xyz-uSC)>uSW) return 0.0; }
   if(uSurf==1){ ivec2 ts=textureSize(uPosT,0), ip=clamp(ivec2(pix),ivec2(0),ts-1); vec4 P=texelFetch(uPosT,ip,0); if(P.a<0.5) return 0.0;
     vec3 Nc=texelFetch(uNrmT,clamp(ivec2(uCenter),ivec2(0),ts-1),0).xyz, Nt=texelFetch(uNrmT,ip,0).xyz; if(dot(Nt,Nc)<-0.15) return 0.0;
     vec3 d=P.xyz-uSC; float L=length(d); if(abs(dot(d,Nc))>0.85*uSW) return 0.0;/* a surface well off the tangent plane at the dab (the far wall behind a thin part) takes no paint */ vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);

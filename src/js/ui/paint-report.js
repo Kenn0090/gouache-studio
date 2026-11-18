@@ -68,7 +68,7 @@ function prSetup(){const L=allLayers(),lines=[];let gi={};try{gi=gpuInfo();}catc
   lines.push(L.length+' layers: '+fills+' material, '+masks+' with a mask ('+rows+' generator/filter rows), '+fx+' filter layers, '+cfx+' with effects, '+styles+' with styles');
   let br='';try{br=(typeof activePreset!=='undefined'&&activePreset&&activePreset.name?'“'+activePreset.name+'” ':'')+Math.round(brush.size)+' px, spacing '+(+brush.spacing).toFixed(2)+(brush.mix?', mixing':'')+(brush.grain?', grain':'')+(brush.dual?', dual':'');}catch(e){}
   let sym='';try{sym=ui.mode==='p3d'?(typeof mir3On==='function'&&mir3On()?' · mirror on':''):(typeof symFor==='function'&&symFor()?' · symmetry on':'');}catch(e){}
-  let al='';try{if(ui.mode==='p3d')al=' · alignment '+(v3s().paintAlign||'uv')+' · 3D view '+(v3.on?'on':'off')+(v3.mesh&&v3.mesh.idx?' · '+Math.round(v3.mesh.idx.length/3).toLocaleString()+' triangles':'');}catch(e){}
+  let al='';try{if(ui.mode==='p3d')al=' · alignment '+(v3s().paintAlign||'wrap')+' · 3D view '+(v3.on?'on':'off')+(v3.mesh&&v3.mesh.idx?' · '+Math.round(v3.mesh.idx.length/3).toLocaleString()+' triangles':'');}catch(e){}
   lines.push('Tool '+ui.tool+' · brush '+br+sym+al);
   lines.push('Preferences: paint speed '+(prefs.paintSpeed||'automatic')+' · engine quality '+(prefs.quality||'high')+' · undo steps '+(typeof mem!=='undefined'&&mem.steps?mem.steps:'default')+' · timelapse '+(typeof tlr!=='undefined'&&tlr.on?'recording':'off'));
   return lines;}

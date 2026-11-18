@@ -16,8 +16,8 @@ function p3ToolFix(){document.body.classList.toggle('p3-matspecial',p3MatBrushSp
 const ALIGN3D_NAMES={uv:'UV',wrap:'Tangent | Wrap',camera:'Camera'};
 function brushAlign3d(p){if(!p)return null;if(p.align3d)return p.align3d;return ['smudge','liquify','heal','clone'].includes(p.tool)?'wrap':null;}
 function p3BrushAlign(p){if(ui.mode!=='p3d')return;const s=v3s(),a=brushAlign3d(p);
-  if(a){if(s.userAlign==null)s.userAlign=s.paintAlign||'uv';if((s.paintAlign||'uv')!==a){s.paintAlign=a;toast('“'+p.name+'” paints with '+ALIGN3D_NAMES[a]+' alignment in 3D Paint (switched for you).');}}
-  else if(s.userAlign!=null){const back=s.userAlign;delete s.userAlign;if((s.paintAlign||'uv')!==back){s.paintAlign=back;toast('Alignment back to '+ALIGN3D_NAMES[back]+'.');}}
+  if(a){if(s.userAlign==null)s.userAlign=s.paintAlign||'wrap';if((s.paintAlign||'wrap')!==a){s.paintAlign=a;toast('“'+p.name+'” paints with '+ALIGN3D_NAMES[a]+' alignment in 3D Paint (switched for you).');}}
+  else if(s.userAlign!=null){const back=s.userAlign;delete s.userAlign;if((s.paintAlign||'wrap')!==back){s.paintAlign=back;toast('Alignment back to '+ALIGN3D_NAMES[back]+'.');}}
   if(typeof buildBrushPanel==='function')buildBrushPanel();}
 {const ap=applyPreset;applyPreset=function(p){const r=ap.apply(this,arguments);try{p3BrushAlign(p);}catch(e){console.warn(e);}return r;};}
 {const bt=brushLibraryTile;brushLibraryTile=function(p,recent){const b=bt.apply(this,arguments);const a=ui.mode==='p3d'?brushAlign3d(p):null;
@@ -29,9 +29,9 @@ function p3BrushAlign(p){if(ui.mode!=='p3d')return;const s=v3s(),a=brushAlign3d(
 function brushAlignRow(){if(ui.mode!=='p3d'||!['brush','erase','dodge','burn','smudge','liquify','heal','clone','material'].includes(ui.tool))return null;
   const s=v3s(),fixed=typeof MESH_WRAP_ONLY!=='undefined'&&MESH_WRAP_ONLY.includes(ui.tool),need=brushAlign3d({tool:ui.tool,align3d:brush.align3d});
   const sel=el('select',{id:'brAlign3d',class:'shsel','aria-label':'Alignment on the model',disabled:fixed||null},
-    el('option',{value:'',text:'Projection setting ('+ALIGN3D_NAMES[s.userAlign||s.paintAlign||'uv']+')'}),...['wrap','camera','uv'].map(k=>el('option',{value:k,text:ALIGN3D_NAMES[k]})));
+    el('option',{value:'',text:'Projection setting ('+ALIGN3D_NAMES[s.userAlign||s.paintAlign||'wrap']+')'}),...['wrap','camera','uv'].map(k=>el('option',{value:k,text:ALIGN3D_NAMES[k]})));
   sel.value=fixed?'wrap':(brush.align3d||'');
-  sel.onchange=()=>{const v=sel.value;brush.align3d=v;if(v){if(s.userAlign==null)s.userAlign=s.paintAlign||'uv';s.paintAlign=v;}else if(s.userAlign!=null){s.paintAlign=s.userAlign;delete s.userAlign;}
+  sel.onchange=()=>{const v=sel.value;brush.align3d=v;if(v){if(s.userAlign==null)s.userAlign=s.paintAlign||'wrap';s.paintAlign=v;}else if(s.userAlign!=null){s.paintAlign=s.userAlign;delete s.userAlign;}
     if(typeof brushEdited==='function')brushEdited();buildBrushPanel();if(typeof v3Refresh==='function')v3Refresh();};
   const note=fixed?'This tool reads the paint around it, so it always uses Tangent | Wrap.':need==='wrap'&&!brush.align3d?'':brush.align3d?'Saved with the brush: picking it again switches to '+ALIGN3D_NAMES[brush.align3d]+'.':'';
   return el('div',{class:'bralign',id:'brAlignRow'},el('div',{class:'frow'},el('span',{text:'On the model'}),sel),note?el('p',{class:'note',text:note}):'');}
