@@ -9,7 +9,8 @@ function mapBrushColor(k){const m=ui.mapBrush[k];if(m.c)return m.c.slice();retur
 function mapBrushTargets(){if(doc.maps.length<2||ui.mode==='anim')return [];
   return MAP_BRUSH_KEYS.filter(k=>k!==doc.map&&doc.maps.includes(k)&&(ui.mapBrush[k].on||mapLinkAll()));}
 /* (0.98.4) the lock beside the channel drop-down: paint every channel at once, like Photoshop's linked channels (off = only the ones ticked in the brush) */
-function mapLinkAll(){try{return localStorage.getItem('gs.linkAll')==='1';}catch(e){return false;}}
+/* (0.98.13, Kenn) the brush paints only the channel being edited plus the ones ticked in its own Maps section, even when the lock is on */
+function mapLinkAll(){return false;}
 function strokeExtras(o,et){if(!et||et.isMask||o.chan||!['brush','erase'].includes(o.tool)||!et.L.maps)return [];
   return mapBrushTargets().map(k=>({key:k,mode:strokeMode(o),color:mapBrushColor(k)}));}
 function mapBrushSnapshot(){const o={};for(const k of MAP_BRUSH_KEYS)o[k]=Object.assign({},ui.mapBrush[k],ui.mapBrush[k].c?{c:ui.mapBrush[k].c.slice()}:{});return o;}

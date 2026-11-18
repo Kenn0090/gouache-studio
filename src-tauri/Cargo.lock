@@ -1502,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "gouache-studio"
-version = "0.98.13"
+version = "0.98.14"
 dependencies = [
  "gouache-render",
  "reqwest",

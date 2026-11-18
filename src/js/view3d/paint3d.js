@@ -449,7 +449,7 @@ function p3mmCycle(dir){const K=p3mmKeys();if(!K.length){toast('No baked maps ye
 function p3ShowLit(){if(stroke||selLive)return;closeMenu();v3s().worldNormalView=false;ui.viewMask=false;libIdShow(false);v3s().channelView=null;p3mmSet(null);v3s().unlit=false;v3.rt=false;setView('material');build3dPane();v3.mapsDirty=true;v3.dirty=true;requestRender(true);}
 window.addEventListener('keydown',e=>{if(typeof pathKeys==='function'&&pathKeys(e))return;if(ui.mode!=='p3d'||!modal.hidden||isTypingTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey||document.querySelector('#menuPop.tool-menu:not([hidden])'))return;
   if((e.key==='Delete'||e.key==='Backspace')&&typeof lightKeyDelete==='function'&&lightKeyDelete(e))return;
-  if((e.key==='r'||e.key==='R')&&typeof lightKeyRotate==='function'&&lightKeyRotate(e))return;
+  if((e.key==='r'||e.key==='R'||e.key==='w'||e.key==='W')&&typeof lightKeyRotate==='function'&&lightKeyRotate(e))return;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat){closeMenu();cmdDelete();}}
   else if(e.key==='c'||e.key==='C'||e.key==='b'||e.key==='B'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat&&!stroke&&!selLive){closeMenu();if(e.key.toLowerCase()==='c')p3CycleChannel(e.shiftKey?-1:1);else p3mmCycle(e.shiftKey?-1:1);}}
   else if(e.key==='Escape'&&(p3mm.k||p3ChannelView()||v3s().worldNormalView)&&!ui.viewMask){e.preventDefault();e.stopImmediatePropagation();p3ShowLit();}

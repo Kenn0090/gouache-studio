@@ -2,8 +2,8 @@
 const VS_FULL=`#version 300 es
 in vec2 a; out vec2 vUV; void main(){ vUV=a; gl_Position=vec4(a*2.0-1.0,0.0,1.0); }`;
 const VS_STAMP=`#version 300 es
-in vec2 a; uniform vec2 uCenter; uniform float uExtent; uniform vec2 uSize;
-void main(){ vec2 p=uCenter+(a*2.0-1.0)*uExtent; gl_Position=vec4(p/uSize*2.0-1.0,0.0,1.0); }`;
+in vec2 a; uniform vec2 uCenter; uniform float uExtent; uniform vec2 uSize; uniform int uQuad; uniform vec2 uQC; uniform vec2 uQE;
+void main(){ vec2 p=uQuad==1?uQC+(a*2.0-1.0)*uQE:uCenter+(a*2.0-1.0)*uExtent; gl_Position=vec4(p/uSize*2.0-1.0,0.0,1.0); }`;
 const VS_VIEW=`#version 300 es
 in vec2 a; uniform vec2 uOrigin; uniform vec2 uExtent; uniform vec2 uViewport; uniform vec2 uUV0; uniform vec2 uUV1; uniform vec4 uR; out vec2 vUV;
 void main(){ vec2 q=a*uExtent; vec2 p=uOrigin+vec2(uR.x*q.x+uR.y*q.y,uR.z*q.x+uR.w*q.y); vUV=mix(uUV0,uUV1,a); gl_Position=vec4(p.x/uViewport.x*2.0-1.0,1.0-p.y/uViewport.y*2.0,0.0,1.0); }`;
@@ -39,7 +39,7 @@ float pap_h(vec2 p,int t,float sc){ vec2 q=p/sc; float h=0.5;
   return h; }
 `;
 const CH_BRUSH=PAPER_GLSL+`
-uniform float uTiltK; uniform highp sampler2D uTiltD;
+uniform float uTiltK; uniform highp sampler2D uTiltD; uniform int uSurf; uniform highp sampler2D uPosT; uniform highp sampler2D uNrmT; uniform vec3 uSC; uniform vec3 uSR; uniform float uSW;
 uniform vec2 uCenter; uniform float uRadius; uniform float uHard; uniform float uGrain; uniform vec2 uGrainScale; uniform vec2 uPeriod;
 uniform int uUseDual; uniform sampler2D uDual; uniform vec2 uDualSize; uniform vec2 uDualOff; uniform int uDualMode; uniform float uDualAmt;
 float hash(vec2 p, vec2 per){ p=mod(p,per); return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
@@ -105,12 +105,20 @@ float pt_field(vec2 pix, int id, float S, float seed){ vec2 p=pix/S;
 float brushMask(vec2 pix){
   float r=max(uRadius,0.01);
   vec2 dv=pix-uCenter;
+  /* (0.98.13, Kenn: wrap like Painter) Surface wrap: the brush is measured ON the model. Each texel knows where it sits in space (the position picture), so the brush
+     reaches round edges, behind walls and over seams, and keeps its shape: the distance from the dab's centre is taken in space and laid out in the tangent plane there. */
+  if(uSurf==1){ ivec2 ts=textureSize(uPosT,0), ip=clamp(ivec2(pix),ivec2(0),ts-1); vec4 P=texelFetch(uPosT,ip,0); if(P.a<0.5) return 0.0;
+    vec3 Nc=texelFetch(uNrmT,clamp(ivec2(uCenter),ivec2(0),ts-1),0).xyz, Nt=texelFetch(uNrmT,ip,0).xyz; if(dot(Nt,Nc)<-0.15) return 0.0;
+    vec3 d=P.xyz-uSC; float L=length(d); if(abs(dot(d,Nc))>0.85*uSW) return 0.0;/* a surface well off the tangent plane at the dab (the far wall behind a thin part) takes no paint */ vec3 T=uSR-Nc*dot(uSR,Nc); float tl=length(T); T=tl>1e-4?T/tl:normalize(cross(Nc,vec3(0.0,1.0,0.0))+vec3(1e-4)); vec3 B=cross(Nc,T);
+    vec2 pl=vec2(dot(d,T),dot(d,B)); float pn=length(pl); dv=(pn>1e-9?pl/pn*L:vec2(0.0))*(uRadius/max(uSW,1e-9)); }
   /* (0.98.13, Kenn: wrap like Painter) on the model, where the surface leans away from the view the brush is squeezed on screen by the lean, so it is round ON the surface instead of stretched.
      The lean comes from how the distance to the camera changes across the screen at the dab (zero when the surface faces the pixel's ray). */
   if(uTiltK>0.0){ ivec2 tc=ivec2(uCenter), ts=textureSize(uTiltD,0); float d0=texelFetch(uTiltD,clamp(tc,ivec2(0),ts-1),0).r;
-    if(d0>0.0){ float a=texelFetch(uTiltD,clamp(tc+ivec2(2,0),ivec2(0),ts-1),0).r, b=texelFetch(uTiltD,clamp(tc-ivec2(2,0),ivec2(0),ts-1),0).r, c=texelFetch(uTiltD,clamp(tc+ivec2(0,2),ivec2(0),ts-1),0).r, e=texelFetch(uTiltD,clamp(tc-ivec2(0,2),ivec2(0),ts-1),0).r;
-      if(a>0.0&&b>0.0&&c>0.0&&e>0.0&&abs(a-b)<0.3*d0&&abs(c-e)<0.3*d0){ vec2 g=vec2(a-b,c-e)*0.25; float gl=length(g);
-        if(gl>1e-7){ float tn=gl/(d0*uTiltK), co=max(inversesqrt(1.0+tn*tn),0.22); vec2 u=g/gl, w=vec2(-u.y,u.x); dv=u*(dot(dv,u)/co)+w*dot(dv,w); } } } }
+    /* the lean is measured over a third of the brush, not a few pixels, so a crease or a bump does not turn each dab a different way */
+    int k=int(clamp(uRadius*0.6,4.0,48.0)); ivec2 ex=ivec2(k,0), ey=ivec2(0,k);
+    if(d0>0.0){ float a=texelFetch(uTiltD,clamp(tc+ex,ivec2(0),ts-1),0).r, b=texelFetch(uTiltD,clamp(tc-ex,ivec2(0),ts-1),0).r, c=texelFetch(uTiltD,clamp(tc+ey,ivec2(0),ts-1),0).r, e=texelFetch(uTiltD,clamp(tc-ey,ivec2(0),ts-1),0).r;
+      if(a>0.0&&b>0.0&&c>0.0&&e>0.0&&abs(a-b)<0.5*d0&&abs(c-e)<0.5*d0){ vec2 g=vec2(a-b,c-e)/(2.0*float(k)); float gl=length(g);
+        if(gl>1e-7){ float tn=gl/(d0*uTiltK), co=max(inversesqrt(1.0+tn*tn),0.4); vec2 u=g/gl, w=vec2(-u.y,u.x); dv=u*(dot(dv,u)/co)+w*dot(dv,w); } } } }
   float ca=cos(uAngle), sa=sin(uAngle);
   vec2 q=vec2(ca*dv.x+sa*dv.y,-sa*dv.x+ca*dv.y)*uFlip; q.y/=max(uRound,0.02);
   float m;

@@ -26,7 +26,7 @@ function refreshMapsUI(){mapsPanelSync();if(typeof renderShading==="function")re
   ctl.hidden=!ctl.children.length;
   /* (0.40, Kenn) a channel drop-down on the layer stack, like Painter's: which channel you see and paint, and whose blend mode and opacity the stack shows */
   {const h=$('#hLayers');if(h){let sel=$('#lChan');if(!sel){sel=el('select',{id:'lChan',class:'shsel lchan','aria-label':'Channel',title:'Which channel you see and paint. The blend mode and opacity below are for this channel.'});sel.onchange=()=>setView(sel.value);h.append(sel);}
-    let lk=$('#lChanLock');if(!lk){lk=el('button',{type:'button',id:'lChanLock',class:'btn sm lchanlock',onclick:()=>{try{localStorage.setItem('gs.linkAll',mapLinkAll()?'0':'1');}catch(e){}mapLockSync();if(typeof buildBrushPanel==='function')buildBrushPanel();}});sel.after(lk);}mapLockSync();
+    let lk=$('#lChanLock');if(!lk){lk=el('button',{type:'button',hidden:true,id:'lChanLock',class:'btn sm lchanlock',onclick:()=>{try{localStorage.setItem('gs.linkAll',mapLinkAll()?'0':'1');}catch(e){}mapLockSync();if(typeof buildBrushPanel==='function')buildBrushPanel();}});sel.after(lk);}mapLockSync();
     sel.replaceChildren(...rows.map(([k,l])=>el('option',{value:k,text:l})));sel.value=doc.view;sel.hidden=doc.maps.length<2;}}
   $('#mapState').textContent=doc.maps.length>1?doc.maps.length+' maps':'';
   const st=$('#stMap');if(st){st.hidden=doc.maps.length<2;st.textContent='Map: '+MAP_DEFS[doc.map].label+(doc.view!==doc.map?' (viewing '+(doc.view==='material'?'material':'normal')+')':'');}if(ui.mode==='p3d'&&typeof buildOptBar==='function'&&!optSliders.__busy)buildOptBar();

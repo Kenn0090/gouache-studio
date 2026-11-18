@@ -28,21 +28,21 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    const fine=t=>{const d=g.captureRegionNow(t,0,0,W,H).data;let f=0,n=0;for(let y=8;y<H-8;y+=3)for(let x=8;x<W-8;x+=3){const i=(y*W+x)*4;f+=Math.abs(d[i]-d[i+4]);n++;}return f/n;};
    const FXE=g.FX.edgeWear,src=g.makeTarget(W,H,8,false);g.clearTarget(src,[.5,.5,.5,1]);
    const run=o=>{const v=Object.assign(g.fxDefaults(FXE),{src:'curv',sm:0},o),dst=g.makeTarget(W,H,8,false);FXE.render(src,dst,v);const f=fine(dst);g.disposeTarget(dst);return f;};
-   const e1=run({}),e0=run({cbSmall:0});
+   const e1=run({}),e0=run({cbSharp:0,cbFine:0});
    const mc=o=>{const m=g.mcMake(L,Object.assign({curv:true,ao:false,curvEdge:false,curvCrease:false,rough:false,metal:false,r:2,str:1,aoR:16},o));const f=fine(m.curv);for(const k in m)g.disposeTarget(m[k]);return f;};
    const m1=mc({}),m0=mc({cb:{small:0}});g.disposeTarget(src);
-   return {defs:['cbBig','cbMed','cbSmall'].every(k=>FXE.defs.some(d=>d.key===k)),e1,e0,m1,m0};});
+   return {defs:['cbSharp','cbFine','cbSoft','cbMedium','cbLarge','cbBig','cbHuge'].every(k=>FXE.defs.some(d=>d.key===k)),e1,e0,m1,m0};});
  ok(ew.defs&&ew.e0<ew.e1*.6,'Edge wear has Big / Medium / Small, and Small details 0% takes the fine wear out '+JSON.stringify(ew));
  ok(ew.m0<ew.m1*.6,'Mesh maps from a material: Small details 0% takes the fine curvature out ('+ew.m1.toFixed(2)+' → '+ew.m0.toFixed(2)+')');
  /* the sliders: in the generator settings (3D Paint) and the Bake tab's curvature */
  await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=p3d]').click());await p.waitForTimeout(3000);
  const gen=await p.evaluate(()=>{const g=__gs;g.cmdNewFillLayer();const L=g.doc.active;const row=g.msAdd(L,'gen',{p:g.msGenDefaults('edge')});g.msSelect(L,'m',(row||L.mask.stack[L.mask.stack.length-1]).id);
-   return {big:!!document.getElementById('msCb_big'),med:!!document.getElementById('msCb_med'),small:!!document.getElementById('msCb_small'),card:!!document.getElementById('msC_curvbands')};});
+   return {big:!!document.getElementById('msCb_big'),med:!!document.getElementById('msCb_medium'),small:!!document.getElementById('msCb_sharp'),card:!!document.getElementById('msC_curvbands')};});
  ok(gen.big&&gen.med&&gen.small,'a generator has Big shapes, Medium shapes and Small details sliders '+JSON.stringify(gen));
  const before=await p.evaluate(()=>{const g=__gs,L=g.doc.active;g.msUpdate&&g.msUpdate(L);const t=L.mask.target,d=g.captureRegionNow(t,0,0,t.w,t.h).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i];return s;});
- await p.evaluate(()=>{const i=document.querySelector('#msCb_small');i.value='0';i.dispatchEvent(new Event('input',{bubbles:true}));});await p.waitForTimeout(900);
+ await p.evaluate(()=>{const i=document.querySelector('#msCb_sharp');i.value='0';i.dispatchEvent(new Event('input',{bubbles:true}));});await p.waitForTimeout(900);
  const after=await p.evaluate(()=>{const g=__gs,L=g.doc.active,row=L.mask.stack[L.mask.stack.length-1];g.msUpdate&&g.msUpdate(L);const t=L.mask.target,d=g.captureRegionNow(t,0,0,t.w,t.h).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i];return {s,cb:row.p.cb};});
- ok(after.cb&&after.cb.small===0,'moving the slider stores it on the generator '+JSON.stringify(after.cb));
+ ok(after.cb&&after.cb.sharp===0,'moving the slider stores it on the generator '+JSON.stringify(after.cb));
  ok(after.s!==before,'…and changes the mask ('+before+' → '+after.s+')');
  /* the Mask Builder: the sliders sit right under its curvature inputs */
  const mb=await p.evaluate(()=>{const g=__gs,L=g.doc.active,row=g.msAdd(L,'gen',{p:g.msGenDefaults('builder')});g.msSelect(L,'m',(row||L.mask.stack[L.mask.stack.length-1]).id);
@@ -50,15 +50,15 @@ let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
    return {card:!!card,big:!!b.querySelector('#msCb_big'),after:!!(cav&&card&&(cav.compareDocumentPosition(card)&Node.DOCUMENT_POSITION_FOLLOWING))};});
  ok(mb.card&&mb.big&&mb.after,'the Mask Builder has the curvature detail sliders, under its curvature inputs '+JSON.stringify(mb));
  /* the Bake mesh maps window in 3D Paint */
- const pb=await p.evaluate(()=>{__gs.dlgP3Bake();const ok=!!document.getElementById('p3bkCb_big')&&!!document.getElementById('p3bkCb_small');document.getElementById('dlgCancel')?.click();return ok;});
+ const pb=await p.evaluate(()=>{__gs.dlgP3Bake();const ok=!!document.getElementById('p3bkCb_big')&&!!document.getElementById('p3bkCb_sharp');document.getElementById('dlgCancel')?.click();return ok;});
  ok(pb,'the Bake mesh maps window has them too');
  /* the converter Curvature from normal */
- ok(await p.evaluate(()=>['cbBig','cbMed','cbSmall'].every(k=>__gs.CONVERTERS.curvFromNormal.defs.some(d=>d.key===k))),'the Curvature from normal converter has Big / Medium / Small');
+ ok(await p.evaluate(()=>['cbSharp','cbFine','cbSoft','cbMedium','cbLarge','cbBig','cbHuge'].every(k=>__gs.CONVERTERS.curvFromNormal.defs.some(d=>d.key===k))),'the Curvature from normal converter has Big / Medium / Small');
  await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=bake]').click());await p.waitForTimeout(2500);
- const bk=await p.evaluate(()=>{const g=__gs;g.bakeCfg.mapOpen=Object.assign({},g.bakeCfg.mapOpen,{curv:true});g.buildBakePanel&&g.buildBakePanel();return !!document.getElementById('bkCb_big')&&!!document.getElementById('bkCb_small');});
+ const bk=await p.evaluate(()=>{const g=__gs;g.bakeCfg.mapOpen=Object.assign({},g.bakeCfg.mapOpen,{curv:true});g.buildBakePanel&&g.buildBakePanel();return !!document.getElementById('bkCb_big')&&!!document.getElementById('bkCb_sharp');});
  ok(bk,'the Bake tab\'s curvature has the same sliders');
  /* the Convert tab's curvature */
  await p.evaluate(()=>document.querySelector('#modeTabs [data-mode=convert]').click());await p.waitForTimeout(2500);
- const cv=await p.evaluate(()=>{const g=__gs;g.cvS.tab='curv';g.buildConvertPanel&&g.buildConvertPanel();return !!document.getElementById('cvCb_big')&&!!document.getElementById('cvCb_small');});
+ const cv=await p.evaluate(()=>{const g=__gs;g.cvS.tab='curv';g.buildConvertPanel&&g.buildConvertPanel();return !!document.getElementById('cvCb_big')&&!!document.getElementById('cvCb_sharp');});
  ok(cv,'the Convert tab\'s curvature has them as well');
  ok(!errs.length,'no page errors '+errs.join(' | '));await b.close();console.log(fails?fails+' FAILED':'ALL PASSED');process.exit(fails?1:0);})();

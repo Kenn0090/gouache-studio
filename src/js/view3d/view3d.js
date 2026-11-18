@@ -834,7 +834,7 @@ function v3Controls(hit){hit.addEventListener('contextmenu',e=>e.preventDefault(
     /* (0.68.3) Alt + the pen's button pans; let go of Alt with the button still down and the same drag zooms (press Alt again to pan), like Painter */
     if(d&&d.penAlt&&(d.how==='pan'||d.how==='zoom'))d.how=e.altKey?'pan':'zoom';
     if(!d){if(v3PickHeld(e)&&!e.buttons)v3HoverPick(hit,e);return;}
-    if(d.how==='bsize'||d.how==='bflow'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
+    if(d.how==='bsize'||d.how==='bflow'||d.how==='bfo'){pcAdjust(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     if(d.how==='pick'){v3ToolPick(hit,e);return;}
     if(d.how.startsWith('st')){st3Drag(d,e,hit);d.x=e.clientX;d.y=e.clientY;return;}
     const dx=e.clientX-d.x,dy=e.clientY-d.y;d.x=e.clientX;d.y=e.clientY;const c=v3.cam;

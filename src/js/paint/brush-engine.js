@@ -158,7 +158,8 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   const U={uRadius:r,uExtent:ext,uLane:[o.laneN||0,o.laneHue||0,o.laneVal||0,o.laneMode||0],uSize:[W,H],uHard:s.solid?.9:o.hardness,uGrain:s.solid?0:o.grain,uGrainScale:s.gScale,uPeriod:s.gPeriod,
     uUseTip:!!tip,uTip:tip?tip.tex:dummy,uAngle:ang,uRound:o.roundness||1,uFlip:[fx,fy],uTipAspect:tip?tip.w/tip.h:1,uSpray:o.spray>0&&!tip&&!s.solid?[o.spray,o.sprayDen*(1-(o.sprayPress||0)*(1-pcurve(s.p,o))),Math.random()*997,o.sprayMist]:[0,0,0,0],uSprayVar:o.sprayVar||0,uSprayFleck:o.spray>0&&!tip&&!s.solid?(o.sprayFleck||0)*((o.pSize||o.pFlow||o.pOpacity||o.simP!=='off')?.3+.7*pcurve(s.p,o):1):0,uSprayRing:o.spray>0&&!tip&&!s.solid?[o.sprayRing||0,o.spraySwirl||0,(s.ph=(s.ph||0)+.9+Math.random()*.5)]:[0,0,0],uSpraySolid:o.spraySolid==null?1:o.spraySolid,uTexImg:(s.texT===undefined&&(s.texT=o.texDepth>0&&o.texKey&&typeof dualTip==='function'?dualTip({tipKey:o.texKey}):null),s.texT)?s.texT.tex:dummy,uTexSet:[o.texScale||128,s.texT?o.texDepth:0,o.texInvert?1:0,1.5],uPat:o.pattern>0?[o.pattern,o.patSize||10,(o.patDen==null?1:o.patDen)*(.4+.6*pcurve(s.p,o))*(o.patRamp>0?.22+.78*Math.min(1,(s.trav||0)/o.patRamp):1),s.patSeed==null?(s.patSeed=Math.random()*400):s.patSeed]:[0,10,1,0],uPaper:o.tooth>0?(()=>{const pi=s.pap||(s.pap=(typeof paperInfo==='function'&&paperInfo())||{t:4,sc:1});return [pi.t,pi.sc,o.tooth];})():[0,1,0]};
   if(s.dualU){if(o.dual.random)s.dualU.uDualOff=[Math.random()*s.dualU.uDualSize[0],Math.random()*s.dualU.uDualSize[1]];Object.assign(U,s.dualU);}
-  if(!s.dualBatch)p3PaintDab(s,U,copies,a,tip);
+  let sw=null;if(s.surf&&copies.length===1&&!o.dual&&!s.dualBatch&&typeof swDab==='function'){sw=swDab(s,copies[0][0],copies[0][1],r,ext);if(sw)Object.assign(U,sw.u);}/* (0.98.13) surface wrap */
+  if(!s.dualBatch&&!sw)p3PaintDab(s,U,copies,a,tip);
   if(o.tool==='smudge'&&s.space){/* on the 3D model: the dab goes into the screen buffer, then pulls paint through the model's UVs (mesh-pull.js) */
     {const bx=copies.map(c=>[Math.floor(c[0]-ext),Math.floor(c[1]-ext),Math.ceil(ext*2)+2,Math.ceil(ext*2)+2]);for(const r of (s.lastClr||[]).concat(bx))scissorDo(r,()=>clearTarget(s.space.buf));s.lastClr=bx;}for(const c of copies)run(P.stamp,s.space.buf,Object.assign({},U,{uCenter:c,uAlpha:a,uTint:{int:0},uDabCol:[0,0,0]}),{blend:'max'});
     for(const c of copies)meshSmudgeApply(s,c[0],c[1],ext,dx,dy);
@@ -168,7 +169,7 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
     if(s.mix){for(const c of copies)mixDab(s,c,U,a,ext,r,dx,dy);}else for(const c of copies)run(P.smudge,s.L.target,Object.assign({},U,{uCenter:c,uSrc:(s.sampleT||scratchT).tex,uSrcPrev:(s.samplePrevT||s.sampleT||scratchT).tex,uSampleBlend:s.samplePrevT?clamp(s.sampleBlend??1,0,1):1,uDst:scratchT.tex,uDelta:[dx,dy],uSoft:o.blendMode==='soft'?1:0,uSoftQ:o.softSmooth?1:0,uStreak:o.streak||0,uPull:o.pull||1,uAlpha:a,uStrength:o.strength,uCharge:o.charge,uPaintMix:o.paintMix||0,uMixLab:o.mixLab?1:0,uHueMix:clamp(o.hueMix||0,0,1),uNormalMap:{int:doc.map==='normal'?1:0},uColor:o.color,uLockAlpha:s.L.lockAlpha},chanU(o),selU(o)));
   } else {
     const dst=s.space?s.space.buf:strokeT;
-    if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
+    if(dst===strokeT&&!doc.wrap)for(const c of copies)clearStrokeBufferRegion(s,sw?sw.rect:[c[0]-ext,c[1]-ext,c[0]+ext,c[1]+ext]);
     if(s.weldHeat)for(const [cx,cy] of copies)weldHeatDab(s.weldHeat,
       {uCenter:[cx,cy],uExtent:ext,uSize:[W,H],uRadius:r,uAngle:ang,uRound:o.roundness||1},
       pcurve(pressure??s.p,o),a);
@@ -178,9 +179,10 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
     else{const U2=s.space&&s.space.tilt?Object.assign({},U,s.space.tilt):U;for(const c of copies)paintRegularDab(dst,U2,c,a,s.dabCol,s.dabTint,o.buildup||o.pFlow);}
   }
-  for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
+  if(sw){const b=s.bb,R=sw.rect;b[0]=Math.min(b[0],R[0]);b[1]=Math.min(b[1],R[1]);b[2]=Math.max(b[2],R[2]);b[3]=Math.max(b[3],R[3]);}
+  else for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
-  if(s.fd!=='all')for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}
+  if(s.fd!=='all'){if(sw)fdAdd(s,sw.rect.slice());else for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}}
 }
 /* The stroke texture only needs initialized pixels where this stroke can merge. Grow a cleared
    rectangle as dabs extend the stroke, clearing just its newly exposed strips instead of the

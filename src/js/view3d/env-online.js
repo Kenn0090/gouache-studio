@@ -40,11 +40,14 @@ function hvDraw(){const b=hv.body;if(!b||!document.contains(b))return;const all=
 function dlgMoreSkies(){
   if(!platform.isDesktop){toast('Downloading more skies works in the desktop app. In the browser, use Load your own… with a .hdr or .exr file.');return;}
   hv.err='';hv.q='';hv.page=0;
-  const q=el('input',{type:'search',id:'hvSearch',placeholder:'Search skies (sunset, forest, studio…)','aria-label':'Search skies',style:'flex:1',oninput:()=>{hv.q=q.value;hv.page=0;hvDraw();}});
-  const res=el('select',{id:'hvRes','aria-label':'Size'},...['1K','2K','4K'].map(r=>el('option',{value:r,text:r+(r==='1K'?' (about 1 MB)':r==='2K'?' (about 6 MB)':' (about 25 MB)'),selected:r===hv.res})));res.onchange=()=>{hv.res=res.value;hvDraw();};
-  hv.chips=el('div',{class:'chips'});hv.grid=el('div',{class:'matgrid olgrid',id:'hvGrid'});hv.foot=el('div',{class:'olpage'});
-  hv.body=el('div',{class:'dlg-grid',id:'hvBody'},el('div',{class:'chips'},q,res),hv.chips,hv.grid,hv.foot,
+  /* (0.98.13, Kenn: "just like the material one") the same window as Get more materials: wide, resizable, the same bars */
+  const q=el('input',{type:'search',id:'hvSearch',class:'matsearch',placeholder:'Search skies (sunset, forest, studio…)','aria-label':'Search skies',oninput:()=>{hv.q=q.value;hv.page=0;hvDraw();}});
+  const res=seg([['1K','1K'],['2K','2K'],['4K','4K']],hv.res,v=>{hv.res=v;hvDraw();},'Picture size');
+  hv.chips=el('div',{class:'chips olchips'});hv.grid=el('div',{class:'olgrid',id:'hvGrid'});hv.foot=el('div',{class:'olfoot olpage'});
+  hv.body=el('div',{class:'olwin',id:'hvBody'},el('div',{class:'olbar'},q),hv.chips,
+    el('div',{class:'olres'},el('span',{class:'dim',text:'Picture size'}),res,el('span',{class:'note',text:'1K is about 1 MB, 2K about 6 MB, 4K about 25 MB. The bigger ones are sharper but heavier.'})),
+    hv.grid,hv.foot,
     el('p',{class:'note',text:'Powered by Poly Haven (polyhaven.com). The skies are CC0, free for any use; each tile shows its creator. A sky you download stays in the Environments list.'}));
-  openDialog({title:'Get more skies',body:hv.body,okLabel:null,cancelLabel:'Close',float:true,onCancel(){hv.body=null;}});
+  openDialog({title:'Get more skies',body:hv.body,okLabel:null,cancelLabel:'Close',wide:true,resizable:true,onCancel(){hv.body=null;}});
   hvDraw();hv.loading=true;hvLoad().then(()=>{hv.loading=false;hvDraw();}).catch(e=>{hv.loading=false;hv.err='Could not reach Poly Haven: '+(e&&e.message||e);hvDraw();});}
 setTimeout(()=>{try{hvMineEnsure();}catch(e){}},0);
