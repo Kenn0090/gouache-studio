@@ -5,7 +5,7 @@
 /* (0.98.15, Kenn: "the tangent wrap isn't working, go back to the previous version") off unless you turn it on under Projection */
 const swOn=()=>ui.mode==='p3d'&&v3s().paintAlign==='wrap'&&v3s().surfWrap!==false;/* (0.98.20) on by default */
 /* plain brush and eraser only; stencils, UDIM sets made by tile and the other tools keep the camera projection */
-function swUsable(){if(!swOn()||!['brush','erase'].includes(ui.tool))return false;if(typeof st3!=='undefined'&&st3.img&&st3.mode!=='off')return false;
+function swUsable(){if(!swOn()||!['brush','erase','dodge','burn','material'].includes(ui.tool))return false;/* (0.98.20) dodge, burn and the material brush too */if(typeof st3!=='undefined'&&st3.img&&st3.mode!=='off')return false;
   if(typeof p3!=='undefined'&&p3.udim)return false;const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos||!C.nrm)return false;return !!(typeof uvmBuild==='function'&&uvmBuild());}
 /* the camera's right-hand direction in space, to orient the brush tip */
 function swRight(){let e=null,t=null;try{e=v3Eye();t=[v3.cam.tx||0,v3.cam.ty||0,v3.cam.tz||0];}catch(_){}if(!e||!t)return [1,0,0];

@@ -221,6 +221,10 @@ function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.
     if(brush.lazy>0&&!ev.shiftKey){const z=lazyStep(m,x,y,brush.lazy*(stroke.o.cageRs||1));if(!z)continue;x=z[0];y=z[1];}
     strokeSmooth(m,x,y,pr,brush.smoothing,ev.timeStamp,ev.shiftKey);
     const jump=Math.hypot(m.sx-m.last[0],m.sy-m.last[1]),reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
+    /* (0.98.20) crossed a seam with the surface brush: the SAME stroke carries on from the other island (each dab is measured on the model,
+       so nothing is lost at the seam); restarting it put a stroke start (the pen's ink blob, a taper) in the middle of the line, and made
+       two undo steps */
+    if(jump>reach&&(stroke.surf||stroke.uvClip)&&typeof strokeJump==='function'){m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;m.last=q;swAdapt(stroke,q[0],q[1]);strokeJump(q[0],q[1],pr);continue;}
     if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;const sf=!!(stroke&&stroke.surf),uc=!!(stroke&&stroke.uvClip),rs0=stroke.rs;endStroke(true);m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;o.cageRs=rs0;o.surfStroke=sf?{right:swRight()}:null;o.uvClipStroke=uc;beginStroke(L,q[0],q[1],pr,o);if(stroke){if(sf)stroke.paintReplay=null;swAdapt(stroke,q[0],q[1]);}m.last=q;continue;}
     addPoint(m.sx,m.sy,m.sp);m.last=[m.sx,m.sy];}}
 function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
