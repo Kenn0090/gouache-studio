@@ -15,7 +15,7 @@ out vec3 vP; out vec3 vN; out vec2 vT; out vec4 vTan;
 void main(){ vec2 t=aT*uUVs; vec3 p=aP; if(uUseH==1&&uDisp!=0.0){ float h=textureLod(uH,uUseUDIM==1?fract(t):t,0.0).r-0.5; p+=aD*h*uDisp; }
   vP=p; vN=aN; vT=t; vTan=aTan; vec2 q=(uUseUDIM==1?fract(t):t)-uShift; gl_Position=vec4(q*2.0-1.0,0.0,1.0); }`;
 /* uMir: for mirror and radial painting, the texel looks up the brush where its mirror image is (identity otherwise) */
-const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
+const FS_3DPROJ=`in vec3 vP; in vec3 vN; in vec2 vT; in vec4 vTan; uniform mat4 uVPm; uniform sampler2D uStroke; uniform highp sampler2D uDepth; uniform vec3 uCamP; uniform mat4 uMir; uniform int uAlign; uniform float uWrapTol; uniform int uNoBack; uniform float uCullSoft; uniform float uCullCos; uniform int uUseUDIM; uniform vec2 uUDIMTile;
 uniform int uSt; uniform sampler2D uStT; uniform vec2 uStC; uniform vec2 uStHalf; uniform float uStRot; uniform vec2 uScr; uniform int uStTile; uniform int uStInv; uniform bool uMaterialData;
 uniform vec2 uShift; uniform bool uWorldNormal; uniform vec3 uWorldDirection; uniform bool uHasNormalBase; uniform sampler2D uNormalBase;
 void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=(uMir*vec4(vP,1.0)).xyz; vec4 c=uVPm*vec4(q,1.0); if(c.w<=1e-6)discard; vec2 s=c.xy/c.w*0.5+0.5;
@@ -28,7 +28,7 @@ void main(){ if(uUseUDIM==1&&any(notEqual(floor(vT),uUDIMTile)))discard; vec3 q=
   /* Skip back faces: the real face (from how the position changes across the pixels, turned to the side the vertex normals point to)
      must look at the camera. Paint then never goes through a thin part to the far side, and never lands on a face seen from behind. */
   float fadeG=1.0;/* (0.98.4) paint thins out toward the grazing limit instead of stopping at a hard edge */
-  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; float fc=dot(normalize(mat3(uMir)*gn),viewDir); if(fc<=uCullCos)discard; fadeG=smoothstep(uCullCos,uCullCos+0.05,fc); } }
+  if(uNoBack==1){ vec3 gn=cross(dFdx(vP),dFdy(vP)); if(dot(gn,gn)>1e-24){ gn=normalize(gn); if(dot(gn,vN)<0.0) gn=-gn; float fc=dot(normalize(mat3(uMir)*gn),viewDir); if(fc<=uCullCos)discard; fadeG=smoothstep(uCullCos,uCullCos+max(uCullSoft,0.02),fc);/* (0.98.17, Georgian: "a gradient rather than a hard edge") Edge falloff */ } }
   /* (0.95.4, Kenn: paint at the lip corner landed on the neck) Surface wrap still needs SOME depth check: a surface facing
      the camera but hidden far behind another part (the neck under the chin) must not take paint. uWrapTol (world units,
      from the brush size) lets paint reach just behind a raised edge, nothing further. */
@@ -88,7 +88,7 @@ function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p
   useProg(P.depth,{uVP:{m4:VP},uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uCamP:eye});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);gl.bindVertexArray(vao);
   gl.disable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
   const mirs=replay?.mirs||mir3Mats(),mesh=v3.mesh,R=replay?.range||(ui.mode==='p3d'&&typeof p3Range==='function'?p3Range():{start:0,count:g.count/3});/* only the active texture set takes paint */
-  const projectSettings=()=>({align:v3s().paintAlign==='camera'?0:1,back:v3s().noBack===false?0:1,cull:meshCullCos(),wrap:meshWrapTol()});
+  const projectSettings=()=>({align:v3s().paintAlign==='camera'?0:1,back:v3s().noBack===false?0:1,cull:meshCullCos(),soft:meshCullSoft(),wrap:meshWrapTol()});
   /* A small screen-space index, built once per stroke, bounds the UV triangles touched by the brush.
      Per-frame queries visit at most 256 cells, rather than transforming a high-poly mesh again.
      Displacement, mirrored painting, tiled UVs and near-plane intersections keep full texture updates. */
@@ -133,7 +133,7 @@ function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p
     pull(prog,target,extra,ov){useProg(prog,Object.assign({uVPm:{m4:ov?ov.VP:VP},uDepth:ov?ov.dt:M.dt,uCamP:ov?ov.cam:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v]},extra));
       bindTarget(target);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(prog.p,'uShift'),alignLoc=gl.getUniformLocation(prog.p,'uAlign'),backLoc=gl.getUniformLocation(prog.p,'uNoBack');gl.bindVertexArray(g.vao);
-      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
+      gl.uniform1i(alignLoc,s.paintAlign==='camera'?0:1);gl.uniform1i(backLoc,s.noBack===false?0:1);gl.uniform1f(gl.getUniformLocation(prog.p,'uCullCos'),meshCullCos());gl.uniform1f(gl.getUniformLocation(prog.p,'uCullSoft'),meshCullSoft());gl.uniform1f(gl.getUniformLocation(prog.p,'uWrapTol'),meshWrapTol());
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}
       gl.bindVertexArray(vao);},
     /* The projection covers the whole texture, which at 4096 px is tens of millions of heavy fragments per frame (times each
@@ -154,7 +154,7 @@ function meshSpace(w,h,replay=null,depth=doc.depth,replayCache=null){const P=p3p
       for(const Mi of copies){useProg(P.proj,Object.assign({uVPm:{m4:VP},uStroke:source.tex,uDepth:M.dt,uCamP:eye,uUVs:uvs,uH:useH?T.height.tex:dummy,uDisp:s.disp*.3,uUseH:useH,uUseUDIM:udim,uUDIMTile:[udimTile.u,udimTile.v],uMir:{m4:Mi},uMaterialData:materialData,uWorldNormal:!!worldDirection,uWorldDirection:worldDirection||[0,0,1],uHasNormalBase:!!normalBase,uNormalBase:normalBase?.tex||dummy},stU));
       bindTarget(target);if(worldDirection)gl.disable(gl.BLEND);else{gl.enable(gl.BLEND);gl.blendEquation(gl.MAX);gl.blendFunc(gl.ONE,gl.ONE);}gl.disable(gl.CULL_FACE);
       const loc=gl.getUniformLocation(P.proj.p,'uShift'),alignLoc=gl.getUniformLocation(P.proj.p,'uAlign'),backLoc=gl.getUniformLocation(P.proj.p,'uNoBack');gl.bindVertexArray(g.vao);
-      gl.uniform1i(alignLoc,settings.align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),settings.cull);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),settings.wrap);gl.uniform1i(backLoc,settings.back);
+      gl.uniform1i(alignLoc,settings.align);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullCos'),settings.cull);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uCullSoft'),settings.soft==null?meshCullSoft():settings.soft);gl.uniform1f(gl.getUniformLocation(P.proj.p,'uWrapTol'),settings.wrap);gl.uniform1i(backLoc,settings.back);
       for(let j=0;j<uvs;j++)for(let i=0;i<uvs;i++){gl.uniform2f(loc,i,j);gl.drawElements(gl.TRIANGLES,R.count*3,gl.UNSIGNED_INT,R.start*12);}}
       gl.bindVertexArray(vao);gl.blendEquation(gl.FUNC_ADD);gl.disable(gl.BLEND);},
     /* the part of the texture this stroke can have touched: triangles whose screen position meets the stroke */
@@ -183,6 +183,8 @@ function v3TexelPx(hit,pt){const d=6,a=v3PickFast(hit,{clientX:pt.clientX-d,clie
   const len=(p,q)=>p&&q&&p.set===q.set?Math.hypot((p.uv[0]-q.uv[0])*doc.w,(p.uv[1]-q.uv[1])*doc.h):null,l1=len(a,b),l2=len(c,e),ls=[l1,l2].filter(v=>v&&v<doc.w*.25);
   if(!ls.length)return null;const t=ls.reduce((x,y)=>x+y,0)/ls.length;return t>1e-6?2*d/t:null;}
 const meshCullCos=()=>{const a=v3s().cullAngle;return Math.cos(clamp(a==null?90:+a,1,90)*Math.PI/180);};
+/* (0.98.17) how far before the culling angle the paint starts to thin out: 0 = a hard edge, 1 = fades over the whole turn (in cosine units up to 0.7) */
+const meshCullSoft=()=>{const f=v3s().cullSoft;return .02+.68*clamp(f==null?.45:+f,0,1);};
 function meshPt(hit,e){const r=hit.getBoundingClientRect();return [e.clientX-r.left,r.height-(e.clientY-r.top)];}
 /* (0.95.5, Kenn: 3D-Coat's Shift smooths) Shift + drag smooths and blends the paint under the brush; Shift + click without a
    drag still draws a straight line from the last point. The press waits until the pointer moves (or is let go) to know which. */
@@ -190,7 +192,7 @@ const SHIFT_SMOOTH_TOOLS=['brush','erase','dodge','burn','material'];
 const evCopy=e=>({clientX:e.clientX,clientY:e.clientY,pointerId:e.pointerId,pressure:e.pressure,pointerType:e.pointerType,tiltX:e.tiltX,tiltY:e.tiltY,twist:e.twist,timeStamp:e.timeStamp,button:0,buttons:1,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey});
 function meshDown(hit,e){if(stroke||preview||selLive||v3.shiftPend)return false;const s=v3s();
   /* (0.95.6, Kenn: "no overlap between the blur and the straight line") Ctrl + drag smooths; Shift + click stays the straight line only */
-  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
+  if(ui.mode==='p3d'&&(e.ctrlKey||e.metaKey)&&(prefs.ctrlDrag==='flowop')===!!e.shiftKey&&!e.altKey&&s.shiftSmooth!==false&&SHIFT_SMOOTH_TOOLS.includes(ui.tool))/* (0.96.6, Kenn) Ctrl smooths with Tangent | Wrap whatever the alignment (UV alignment cannot smooth) */return meshDown0(hit,Object.assign(evCopy(e),{ctrlKey:false,metaKey:false}),{smooth:true});
   /* (0.97.27, Kenn: "clone stamp isn't working") clone, heal, smudge and liquify read the paint around them, which UV alignment cannot
      do: they use Tangent | Wrap by themselves instead of refusing */
   if(ui.mode==='p3d'&&(s.paintAlign||'uv')==='uv'&&!npWorldPaint(doc.active)&&!MESH_WRAP_ONLY.includes(ui.tool))return meshDownUV(hit,e);
@@ -224,7 +226,8 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
   if(ui.mode==='bake'&&(ui.tool==='smudge'||ui.tool==='liquify')){toast('Smudge and Liquify work in 3D Paint, on the model’s texture set.');return true;}
   if(ui.tool==='material')materialBrushTarget();if(fillNoMask())return true;
   if(typeof npSync==='function')npSync();const et=ui.mode==='bake'?bakeEditTarget():editTarget();if(ui.mode!=='bake'&&lockStop(et))return true;const o=paintOpts(et,true);if(!o)return true;
-  if(opt&&opt.smooth){Object.assign(o,{tool:'smudge',smooth3d:true,smoothK:clamp(.35+(o.opacity??1)*.45,.2,.85),charge:0,mix:false,paintMix:0,streak:0});}
+  if(opt&&opt.smooth){if(prefs.ctrlSmooth==='blend')Object.assign(o,{tool:'smudge',smooth3d:false,strength:clamp(.35+(o.opacity??1)*.45,.2,.85),charge:0,mix:false,paintMix:0,streak:0});/* Blend: drags the paint along */
+    else Object.assign(o,{tool:'smudge',smooth3d:true,smoothK:clamp(.35+(o.opacity??1)*.45,.2,.85),charge:0,mix:false,paintMix:0,streak:0});}
   const r=hit.getBoundingClientRect(),w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height)),sp=meshSpace(w,h);if(!sp)return true;
   if(o.tool==='liquify')return meshLiqDown(hit,e,et,o,sp);
   if(o.tool==='smudge'){o.extras=[];o.sym=null;if(!sp.mesh||(typeof p3!=='undefined'&&p3.udim)){toast('Smudge on the model needs a plain texture set (no UDIM tiles).');return true;}}
@@ -487,7 +490,7 @@ function meshBackfaceControl(id){const control=chk(id,'Paint back faces',v3s().n
    UV (stamps straight onto the texture). Backface culling: surfaces turned away from you by more than the angle take no paint.
    Size Space: Object (the brush keeps its size on the model as you zoom), Viewport (screen pixels), Texture (texture pixels). */
 /* (0.96.6, Kenn's defaults) UV alignment, backface culling on at 90°, object size space */
-const PROJ_DEF={paintAlign:'uv',noBack:true,cullAngle:90,sizeSpace:'object'};
+const PROJ_DEF={paintAlign:'uv',noBack:true,cullAngle:90,cullSoft:.45,sizeSpace:'object'};
 function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id:'p3Proj'});
   const redo=()=>{const n=projectionBox();box.replaceWith(n);for(const root of [document,...(v3.pop?[v3.pop.win.document]:[])])for(const input of root.querySelectorAll('[data-backface-paint]'))input.checked=s.noBack===false;v3.dirty=true;requestRender(true);refreshCursor();};
   const sel=(id,label,opts,val,on,title)=>{const x=el('select',{id,'aria-label':label,title:title||''},...opts.map(([v,t])=>el('option',{value:v,text:t})));x.value=val;x.onchange=()=>on(x.value);return el('label',{class:'hpsel'},el('span',{text:label}),x);};
@@ -495,10 +498,11 @@ function projectionBox(){const s=v3s(),box=el('div',{class:'dlg-grid projbox',id
   const align=sel('projAlign','Alignment',[['wrap','Tangent | Wrap'],['camera','Camera'],['uv','UV']],s.paintAlign||'uv',v=>{s.paintAlign=v;delete s.userAlign;redo();},'How the brush lands on the model');
   const on=s.noBack!==false,cull=el('button',{class:'btn sm'+(on?' on':''),type:'button',id:'projCull','aria-pressed':String(on),text:on?'On':'Off',title:'Backface culling: no paint on surfaces turned away from you',onclick:()=>{s.noBack=!on;redo();}});
   const ang=makeSlider({id:'projCullAng',label:'Angle',min:1,max:90,step:1,value:s.cullAngle??90,def:90,fmt:v=>Math.round(v)+'°',onInput:v=>{s.cullAngle=v;v3.dirty=true;}}).el;if(!on)ang.classList.add('dim');
+  const soft=makeSlider({id:'projCullSoft',label:'Edge falloff',min:0,max:1,step:.01,value:s.cullSoft??.45,def:.45,fmt:pct,onInput:v=>{s.cullSoft=v;v3.dirty=true;}}).el;if(!on)soft.classList.add('dim');soft.title='How gradually the paint thins out as the surface turns away from you (0 = a hard edge)';
   const size=sel('projSize','Size Space',[['object','Object'],['viewport','Viewport'],['texture','Texture']],s.sizeSpace||'object',v=>{s.sizeSpace=v;redo();},'What the brush size is measured in');
   const a=s.paintAlign||'uv',sz=s.sizeSpace||'object';
   const note=el('p',{class:'note',text:(a==='wrap'?'Tangent | Wrap follows the surface, even just behind a raised edge.':a==='camera'?'Camera projects the stroke flat from the view and only paints what you can see.':'UV stamps the brush straight onto the texture where you point; a seam starts a new stroke.')+
     ' Culling: surfaces turned away by more than the angle take no paint (90° = only those facing away). '+(sz==='object'?'Object: the brush keeps its size on the model as you zoom.':sz==='viewport'?'Viewport: the size is in screen pixels.':'Texture: the size is in texture pixels.')});
   const surf=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Surface wrap (beta)'}),(()=>{const k=s.surfWrap===true,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projSurf','aria-pressed':String(k),text:k?'On':'Off',title:'Experimental: the plain brush is measured on the model itself, so it carries onto walls the camera cannot see. Off = the camera projection used before.',onclick:()=>{s.surfWrap=!k;redo();}});return b;})()):null;
   const keep=a==='wrap'?el('div',{class:'frow'},el('span',{text:'Keep the brush round'}),(()=>{const k=s.wrapKeep!==false,b=el('button',{class:'btn sm'+(k?' on':''),type:'button',id:'projKeep','aria-pressed':String(k),text:k?'On':'Off',title:'On a surface that leans away from you the brush is squeezed on screen, so it stays round on the model instead of stretching (like Painter)',onclick:()=>{s.wrapKeep=!k;redo();}});return b;})()):null;
-  box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),...(surf?[surf]:[]),...(keep?[keep]:[]),size,note);return box;}
+  box.append(head,align,el('div',{class:'frow projcull'},el('span',{text:'Backface culling'}),cull,ang),soft,...(surf?[surf]:[]),...(keep?[keep]:[]),size,note);return box;}

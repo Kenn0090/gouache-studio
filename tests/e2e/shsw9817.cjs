@@ -1,0 +1,33 @@
+/* 0.98.17 (Georgian: video memory up to 24 GB after switching shaders, Standard looking unlit afterwards): the packed copies the Skin
+   shader makes are freed when the model goes back to Standard, and Standard looks the same before and after. */
+const {chromium}=require('playwright');
+let fails=0;const ok=(c,m)=>{console.log((c?'PASS ':'FAIL ')+m);if(!c)fails++;};
+(async()=>{const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});const p=await (await b.newContext({viewport:{width:1200,height:800}})).newPage();
+ await p.route('**/*',r=>r.request().url().startsWith('file:')?r.continue():r.abort());
+ const errs=[];p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+require('path').resolve(__dirname,'../../dist-web/index.html')+'?debug');await p.waitForTimeout(2500);
+ await p.evaluate(async()=>{const g=__gs;g.setMode('paint');g.p3.started=false;await g.p3NewProject(256,{modelKey:'sphere'});const L=g.paintLayers().find(x=>x.fill);
+   L.fill.maps.base.c=[.8,.3,.2];if(L.fill.maps.rough){L.fill.maps.rough.on=true;L.fill.maps.rough.v=.3;}g.fillRender(L);
+   Object.assign(g.v3.cam,{yaw:.4,pitch:.2,dist:3,tx:0,ty:0,tz:0});g.v3.mapsDirty=true;g.v3.dirty=true;g.requestRender(true);});
+ await p.waitForTimeout(2500);
+ const kind=async k=>{await p.evaluate(k=>{const s=document.getElementById('shKind');s.value=k;s.dispatchEvent(new Event('change'));__gs.v3.mapsDirty=true;__gs.v3.dirty=true;__gs.requestRender(true);},k);await p.waitForTimeout(2000);};
+ const shot=async()=>{const box=await p.evaluate(()=>{const R=document.getElementById('v3Hit').getBoundingClientRect();return [R.x,R.y,R.width,R.height];});
+   return (await p.screenshot({timeout:120000,clip:{x:box[0]+box[2]*.3,y:box[1]+box[3]*.3,width:box[2]*.4,height:box[3]*.4}})).toString('base64');};
+ const A=await shot();
+ await kind('skin');const skinB=await p.evaluate(()=>__gs.chPackBytes());const blur=await p.evaluate(()=>!!__gs.skb.F);
+ console.log('skin packed bytes',skinB,'blur pictures',blur);
+ ok(skinB>0,'Skin makes its packed copies');
+ await kind('std');const stdB=await p.evaluate(()=>__gs.chPackBytes());
+ ok(stdB<skinB,'back on Standard the Skin copies are freed ('+stdB+' left)');
+ ok(!(await p.evaluate(()=>!!__gs.skb.F)),'the skin blur pictures are freed');
+ const B=await shot();
+ for(const k of ['aniso','velvet','skin','hologram','std'])await kind(k);
+ const C=await shot();
+ const d=await p.evaluate(async([x,y,z])=>{const dec=async s=>{const bm=await createImageBitmap(await (await fetch('data:image/png;base64,'+s)).blob());const cv=new OffscreenCanvas(bm.width,bm.height),g=cv.getContext('2d');g.drawImage(bm,0,0);return g.getImageData(0,0,bm.width,bm.height).data;};
+   const P=await dec(x),Q=await dec(y),R=await dec(z);const diff=(A,B)=>{let s=0;for(let i=0;i<A.length;i+=4)for(let j=0;j<3;j++)s+=Math.abs(A[i+j]-B[i+j]);return s/(A.length*.75);};
+   let mn=255,mx=0;for(let i=0;i<P.length;i+=4){const l=P[i]+P[i+1]+P[i+2];if(l<mn)mn=l;if(l>mx)mx=l;}return {ab:diff(P,Q),ac:diff(P,R),range:(mx-mn)/3};},[A,B,C]);
+ console.log(JSON.stringify(d));
+ ok(d.range>40,'Standard shows light and shade (range '+d.range.toFixed(0)+')');
+ ok(d.ab<2&&d.ac<2,'Standard looks the same after Skin and after a round of shaders ('+d.ab.toFixed(2)+', '+d.ac.toFixed(2)+')');
+ ok(!errs.length,'no page errors '+errs.join(' | '));
+ await b.close();console.log(fails?fails+' FAILED':'ALL PASS');process.exit(fails?1:0);})();

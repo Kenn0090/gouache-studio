@@ -134,11 +134,16 @@ The layer button with the little dial (or **Layer › New › Hue / Saturation l
 ## Projection (how the brush lands on the model)
 The **Projection** section of the 3D Paint panel works like Substance Painter's (↺ puts it back to the defaults):
 - **Alignment:** *Tangent | Wrap* follows the surface, reaching just behind a raised edge (but never onto a part hidden further behind, such as the neck under the chin). *Camera* projects the stroke flat from the view and only paints what you can see. *UV* stamps the brush straight onto the texture where you point; crossing a UV seam starts a new stroke.
-- **Backface culling** (On/Off) with an **Angle**: surfaces turned away from you by more than the angle take no paint. 90° only stops faces that point away; a smaller angle also keeps paint off surfaces seen at a slant, so it does not smear round edges. Off paints faces seen from behind (models whose faces point the wrong way, or the inside of a part).
+- **Backface culling** (On/Off) with an **Angle**: surfaces turned away from you by more than the angle take no paint. 90° only stops faces that point away; a smaller angle also keeps paint off surfaces seen at a slant, so it does not smear round edges. Off paints faces seen from behind (models whose faces point the wrong way, or the inside of a part). **Edge falloff** fades the paint out as the surface turns towards the angle instead of stopping at a hard edge (0 is a hard edge).
 - **Size Space:** *Object* keeps the brush the same size on the model as you zoom; *Viewport* measures it in screen pixels; *Texture* measures it in texture pixels.
 
 ## Smooth with Ctrl
-Hold **Ctrl and drag** over painted areas to smooth and blend the paint under the brush (like 3D-Coat's smoothing; it works across UV seams and on every map of the layer). **Shift + click** is only for straight lines from the last point, so the two never get in each other's way.
+Hold **Ctrl and drag** over painted areas to smooth and blend the paint under the brush (like 3D-Coat's smoothing; it works across UV seams and on every map of the layer). **Ctrl + Shift + drag** sets the brush **flow** (left/right) and **opacity** (up/down). In Preferences, *3D Paint: Ctrl + drag* swaps the two, and *Smoothing brush* picks **Smooth** (a soft blur) or **Blend** (smears the paint along). **Shift + click** is only for straight lines from the last point, so the two never get in each other's way.
+
+## Getting ready, and painting on big textures
+Opening the 3D Paint tab or a project shows **Getting 3D Paint ready** with a progress bar: the model, the shaders, the position maps and the textures are prepared first, and clicks and keys wait until the view draws smoothly. **Start now** appears after a few seconds if you do not want to wait. Preferences › *3D Paint: wait until ready* turns it off.
+
+Preferences › *3D Paint: while painting, the model shows* is set to **only the painted channels** from 4096 × 4096 up: during a stroke the model refreshes the channels you paint, and the others catch up when you let go. This keeps 8K textures from stuttering.
 
 ## Deleting every layer
 You can delete all the layers of a texture set. A plain grey **Base material** is left in their place, so the model is never bare (Undo brings the deleted layers back). In the Paint tab the same leaves the plain canvas.

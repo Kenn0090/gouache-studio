@@ -1,3 +1,13 @@
+## 0.98.17
+
+3D Paint waits until it is ready, Ctrl + drag smooths again, and fixes from Georgian's 8K painting report.
+
+- **3D Paint waits until it is ready.** Opening the tab, a project or a new project shows a progress screen (model, mask and material shaders, position maps, textures on the model, smooth drawing). Clicks and keys wait until the view draws smoothly, so the first strokes no longer stutter. "Start now" appears after five seconds; Preferences › "3D Paint: wait until ready" turns it off.
+- **Ctrl + drag smooths again.** Ctrl + left-drag on the model smooths the paint; flow and opacity moved to Ctrl + Shift + left-drag. Preferences › "3D Paint: Ctrl + drag" swaps them back, and "Smoothing brush" picks Smooth (a soft blur) or Blend (smears the paint along).
+- **Big textures no longer stutter while painting.** New preference "3D Paint: while painting, the model shows": only the painted channels (the default from 4096 × 4096) or every channel. With a filter layer or a large mirrored stroke the model used to rebuild all nine 8K channels about once a second during a stroke (half-second stutters in Georgian's report); now the other channels catch up when you let go.
+- **Shader switches no longer leak graphics memory.** Skin, Specular reflectivity, custom shaders and the metallic/specular level pair make packed copies of the texture set for the viewer; these stayed after switching to a shader that does not use them (one set per texture set, about 170 MB each at 8192 × 4096), and the skin's screen-size blur pictures stayed too. They are now freed after the next frame. The skin's thickness/light copy is made at most 4096 × 4096 (it is soft anyway), which cuts Skin's memory at 8K by a third. Shaders looking "unlit" and Skin at 1 fps came from the card running out of memory.
+- **Backface culling has an Edge falloff.** Paint fades out as the surface turns towards the culling angle instead of stopping at a hard edge (Projection › Backface culling › Edge falloff; 0 is the old hard edge).
+
 ## 0.98.16
 
 Big 3D Paint projects (8192 × 4096 and up) use much less memory, to stop the crashes and graphics card resets Georgian reported.

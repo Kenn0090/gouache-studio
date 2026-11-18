@@ -2,7 +2,7 @@
    Kenn: "I want all of the controls to be like Painter." These follow Painter's own shortcut list (Settings › Shortcuts):
    - Ctrl + right-drag: brush size (left–right) and hardness (up–down); a ring shows the result and a label gives the numbers
    - Ctrl + middle-drag: flow (left–right) and brush rotation (up–down)
-   - Ctrl + left-drag: flow (left–right) and opacity (up–down) (0.98.13; smoothing is Ctrl + Shift + drag now)
+   - Ctrl + left-drag smooths (0.98.17; Preferences › "3D Paint: Ctrl + drag" picks Smooth or Blend); Ctrl + Shift + left-drag: flow (left–right) and opacity (up–down). The preference can swap the two.
    - stencil: S + left-drag rotates (Shift snaps to 90°), S + middle-drag moves, S + right-drag scales; hold N to ignore the stencil
    - F1 3D + 2D · F2 3D only · F3 2D only · F4 swap the two sides · F5 perspective · F6 orthographic
    (Alt navigation, Shift + right-drag for the sky, [ ] for the size, F to frame, Shift-click lines and Alt colour picking were already like Painter.)
@@ -12,7 +12,10 @@ const pcOn=()=>prefs.painterControls!==false&&ui.mode==='p3d'&&typeof v3nav!=='u
 /* which adjusting drag a press starts (null: none) */
 function pcNavOf(e,paint){if(!paint||!pcOn()||!MESH_TOOLS.includes(ui.tool))return null;
   /* (0.95.6) Ctrl + left-drag smooths the paint now, so flow and rotation moved to Ctrl + middle-drag */
-  if(!(e.ctrlKey||e.metaKey)||e.altKey||e.shiftKey)return null;return e.button===2?'bsize':e.button===1?'bflow':e.button===0?'bfo':null;}/* (0.98.13, Kenn) Ctrl + left-drag: flow across, opacity up and down */
+  if(!(e.ctrlKey||e.metaKey)||e.altKey)return null;
+  /* (0.98.17, Kenn) Ctrl + left-drag smooths by default; flow and opacity are on Ctrl + Shift + left-drag (Preferences can swap them) */
+  if(e.button===0)return (prefs.ctrlDrag==='flowop')!==!!e.shiftKey?'bfo':null;
+  if(e.shiftKey)return null;return e.button===2?'bsize':e.button===1?'bflow':null;}/* (0.98.13, Kenn) Ctrl + left-drag: flow across, opacity up and down */
 function pcAdjust(d,e,hit,flat){const B=d.b0||(d.b0={size:brush.size,hardness:brush.hardness,flow:brush.flow,opacity:brush.opacity==null?1:brush.opacity,angle:brush.angle||0}),dx=e.clientX-d.x0,dy=e.clientY-d.y0;
   if(d.how==='bsize'){brush.size=clamp(Math.round(B.size*Math.exp(dx/160)),1,brushMax());brush.hardness=clamp(+(B.hardness-dy/220).toFixed(3),0,1);brushRememberSize();}
   else if(d.how==='bfo'){brush.flow=clamp(+(B.flow+dx/280).toFixed(3),.01,1);brush.opacity=clamp(+(B.opacity-dy/280).toFixed(3),.01,1);}

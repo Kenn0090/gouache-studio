@@ -220,7 +220,13 @@ void main(){ vec2 uv=gl_FragCoord.xy/uSz;
   o=vec4(uHasA.x>0.5?texture(uA,uv).r:uV.x, uHasA.y>0.5?texture(uB,uv).r:0.5, 0.0, 1.0); }`;
 let P_CHPACK=null;const chPk=new WeakMap(),chIds=new WeakMap();let chIdN=0;
 const chId=t=>{if(!t)return '-';if(!chIds.has(t))chIds.set(t,++chIdN);return chIds.get(t)+'.'+(t._studioVer||0);};
-function chPackRun(T,slot,key,w,h,U){let c=chPk.get(T);if(!c)chPk.set(T,c={});let e=c[slot];
+/* (0.98.17, Georgian: video memory climbed to 24 GB after switching shaders) the packed copies are kept in chPkAll so a shader switch can free
+   them (chPackFreeUnused in chpack-free.js) and dropped texture sets give theirs back (chPkGone); the skin's thickness/light pack is soft, so it is
+   made at most 4096 × 4096 */
+const chPkAll=new Set(),chPkGone=typeof FinalizationRegistry!=='undefined'?new FinalizationRegistry(c=>{chPkAll.delete(c);for(const k in c)if(c[k]&&c[k].t)disposeTarget(c[k].t);}):null;
+let chFrame=null;const CH_SOFT={skinA:1};
+function chPackRun(T,slot,key,w,h,U){if(CH_SOFT[slot]&&w*h>16777216){const f=Math.sqrt(16777216/(w*h));w=Math.max(1,Math.round(w*f));h=Math.max(1,Math.round(h*f));}
+  let c=chPk.get(T);if(!c){chPk.set(T,c={});chPkAll.add(c);if(chPkGone)chPkGone.register(T,c);}if(chFrame){if(!chFrame.has(c))chFrame.set(c,new Set());chFrame.get(c).add(slot);}let e=c[slot];
   if(e&&e.key===key&&e.t.w===w&&e.t.h===h)return e.t;
   /* this runs while the model is being drawn: keep the drawing target, viewport, vertex setup, program and depth/blend state */
   const fb=gl.getParameter(gl.FRAMEBUFFER_BINDING),vp=gl.getParameter(gl.VIEWPORT),va=gl.getParameter(gl.VERTEX_ARRAY_BINDING),pr=gl.getParameter(gl.CURRENT_PROGRAM),dt=gl.isEnabled(gl.DEPTH_TEST),bl=gl.isEnabled(gl.BLEND),cf=gl.isEnabled(gl.CULL_FACE),dm=gl.getParameter(gl.DEPTH_WRITEMASK),po=gl.isEnabled(gl.POLYGON_OFFSET_FILL),eb=gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING);

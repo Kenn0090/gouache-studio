@@ -50,7 +50,7 @@ function toolKeyChoose(B){const id=B.cmd[0],t=id.startsWith('tool:')?id.slice(5)
     if(k&&mk3.tool!==k)maskTool(k);}
   return true;
 }
-function toolKeyDown(e){if(!toolKeys.ready||e.defaultPrevented||isTypingTarget(e.target)||document.getElementById('welcome')||document.getElementById('setup'))return;
+function toolKeyDown(e){if(typeof p3r!=='undefined'&&p3r.on)return;/* (0.98.17) 3D Paint is still getting ready */if(!toolKeys.ready||e.defaultPrevented||isTypingTarget(e.target)||document.getElementById('welcome')||document.getElementById('setup'))return;
   const B=toolKeyBinding(e);if(!B?.cmd)return;
   e.preventDefault();e.stopImmediatePropagation();const code=e.code||e.key;
   if(e.repeat||toolKeys.frames.some(f=>f.code===code&&!f.released))return;

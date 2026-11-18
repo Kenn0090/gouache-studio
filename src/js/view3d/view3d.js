@@ -450,6 +450,8 @@ function v3MipPatchFree(p){if(!p)return;if(v3MipPatchKept&&v3MipPatchKept!==p)di
 /* Material shading reads one value from roughness, metal, AO, opacity and height. Keep full resolution. */
 /* (0.98.16, Georgian's 8192×4096 crashes) the 3D view's copies of grey maps (roughness, metal, height…) are one channel from 4096×4096 up, a quarter of the memory (was 8192×8192 up) */
 const V3_MONO_PX=16777216;
+/* Preferences › "while painting, the model shows": only the painted channels (auto: from 4096 × 4096) or every channel */
+function v3StrokeMapsOnly(){const m=prefs.strokeMaps||'auto';return m==='on'||(m==='auto'&&doc.w*doc.h>=16777216);}
 function v3MapTex(k,src,region){const mono=doc.w*doc.h>=(window.__v3MonoPx||V3_MONO_PX)&&MAP_DEFS[k]?.grey,packed=!!src.packed&&!mono;let t=v3.tex[k];if(!t||t.w!==doc.w||t.h!==doc.h||t.depth!==src.depth||!!t.packed!==packed||!!t.mono!==!!mono){if(t)disposeTarget(t);t=v3.tex[k]=makeTarget(doc.w,doc.h,src.depth,true,packed,mono);region=null;}
   const edges=ui.mode==='p3d'&&v3s().uvs===1&&!v3.mesh?.noUV&&src.w===doc.w&&src.h===doc.h?seamBlurMesh():null;
   const partial=region&&t.hasMips&&!(t.w&(t.w-1))&&!(t.h&(t.h-1))&&region[2]*region[3]<t.w*t.h*.25;
@@ -461,13 +463,13 @@ function v3MapTex(k,src,region){const mono=doc.w*doc.h>=(window.__v3MonoPx||V3_M
   if(anisoExt)gl.texParameterf(gl.TEXTURE_2D,anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(qual('aniso'),anisoMax));return t;}
 const anisoExt=gl.getExtension('EXT_texture_filter_anisotropic'),anisoMax=anisoExt?gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT):1;
 function v3Needed(){const K=v3Unlit()?doc.maps.filter(k=>k==='base'||k==='ao'):doc.maps.filter(k=>k!=='normal'&&k!=='height'&&k!=='curv').concat(doc.maps.includes('height')||doc.maps.includes('normal')||meshNormalBase()?['nfinal']:[]),shown=typeof p3ChannelView==='function'?p3ChannelView():null;if(shown&&!K.includes(shown))K.push(shown);return K;}
-function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window: the window shows it, so the page's own 3D view waits until the stroke ends */try{if(stroke&&nv.isOpen&&nvPaintOn())return;}catch(e){}if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),gap=stroke?({fast:1e9,balanced:Math.max(qual('refresh'),900)}[prefs.paintSpeed]||Math.max(qual('refresh'),doc.w*doc.h>=16777216?150:0)):0,full=v3.mapsDirty&&(!stroke||now-v3.lastFull>gap);/* (0.30) Painting speed Fast: the other maps update on the model when the stroke ends */
+function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window: the window shows it, so the page's own 3D view waits until the stroke ends */try{if(stroke&&nv.isOpen&&nvPaintOn())return;}catch(e){}if(ui.mode==='bake'){bakeV3Refresh();return;}if(ui.mode==='convert'){cvV3Refresh();return;}const now=performance.now(),gap=stroke?({fast:1e9,balanced:Math.max(qual('refresh'),900)}[prefs.paintSpeed]||Math.max(qual('refresh'),doc.w*doc.h>=16777216?150:0)):0,smo=!!stroke&&v3StrokeMapsOnly(),full=v3.mapsDirty&&(!stroke||(!smo&&now-v3.lastFull>gap));/* (0.30) Painting speed Fast: the other maps update on the model when the stroke ends */
   const plain=doc.view===doc.map&&compOut&&ui.mode!=='anim';
   const one0=k=>{if(k==='nfinal'){const t=normalComposite(false,null);v3MapTex(k,t);release(t);return;}
     if(k===doc.map&&plain&&!panState){const q=v3.mapRegion;v3MapTex(k,compOut,!full&&q&&q.root===doc.root&&q.tex===v3.tex&&q.map===k?q.r:null);return;}
     if(ui.mode==='anim'&&k==='base'){v3MapTex(k,compOut);return;}
     const t=compositeMap(k);v3MapTex(k,t);release(t);};
-  const one=k=>{if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
+  const one=k=>{if(window.__v3rc)window.__v3rc[k]=(window.__v3rc[k]||0)+1;if(typeof pnBegin==='function')pnBegin(k);try{one0(k);}finally{panState=null;}};
   if(full){withWeldMask(null,()=>{for(const k of v3Needed())one(k);if(v3s().disp&&doc.maps.includes('height')){const t=compositeMap('height');v3MapTex('height',t);release(t);}});
     v3.mapsDirty=false;v3.editDirty=false;v3.lastFull=now;v3.dirty=true;v3SgDerive();
     /* (0.97.27, Georgian's 8K head kept showing a deleted layer) when the graphics card runs out of memory the model keeps its old
@@ -475,6 +477,13 @@ function v3Refresh(){if(!v3.on)return;/* a stroke made in the new viewer window:
     /* (0.97.32, Kenn: "lags in between strokes" at 8K) asking the card for errors waits until it has finished ALL its work, so it
        is asked only once after the texture size changes or a project opens (v3.oomCheck), never after ordinary strokes */
     if(v3.oomCheck&&!stroke&&(v3.oomCheck=false,gl.getError()===gl.OUT_OF_MEMORY)&&!v3.oomSaid){v3.oomSaid=true;toast('The graphics card ran out of memory, so the model may show an old picture of the textures. Try a smaller texture size, 8-bit channels, or fewer channels (Texture Set Settings), then save and reopen.',12000);}}
+  /* (0.98.17, Georgian: 500 ms stutters about once a second at 8192 × 4096) while a stroke goes the model refreshes only the channels the brush
+     paints (the main one every frame, the extras and the final normal at most every 150 ms); the full rebuild waits for the stroke's end */
+  else if(smo&&v3.mapsDirty){if(v3.editDirty){const maskLayer=stroke.L&&stroke.L.maskOf,needed=v3Needed(),slow=now-(v3.lastSmo||0)>Math.max(qual('refresh'),150);
+      if(maskLayer){if(now-v3.lastFull>gap){withWeldMask(null,()=>{for(const k of needed)one(k);});v3.lastFull=now;}}
+      else{withWeldMask(null,()=>{if(needed.includes(doc.map))one(doc.map);if(slow){for(const e of (stroke.o&&stroke.o.extras)||[])if(e.key!==doc.map&&needed.includes(e.key))one(e.key);
+        const ks=[doc.map,...((stroke.o&&stroke.o.extras)||[]).map(e=>e.key)];if((ks.includes('height')||ks.includes('normal'))&&needed.includes('nfinal'))one('nfinal');v3.lastSmo=now;}});}
+      v3.editDirty=false;v3.dirty=true;}}
   else if(v3.editDirty&&(stroke||v3.mapRegion?.finished)&&v3.mapRegion?.weld){const q=v3.mapRegion,r=q.r;
     if(r&&q.root===doc.root&&q.tex===v3.tex&&q.map===doc.map&&r[2]*r[3]<doc.w*doc.h*.25&&!(doc.w&(doc.w-1))&&!(doc.h&(doc.h-1))&&v3Needed().every(k=>v3.tex[k]?.hasMips)){
       withWeldMask(r,()=>{const maskLayer=stroke?.L.maskOf;const keys=new Set(q.keys|| (maskLayer?doc.maps:[doc.map,...stroke.o.extras.map(e=>e.key)])),needed=v3Needed();

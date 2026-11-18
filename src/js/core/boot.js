@@ -101,3 +101,6 @@ if(window.__gs)Object.assign(window.__gs,{udimFlashS,udimFlash,udimFlashAlpha,bk
 if(window.__gs)Object.assign(window.__gs,{sgHigh,sgHeap,autosaveNow,encodeP3Project});
 if(window.__gs)Object.assign(window.__gs,{gpuLost:()=>gpuLost});
 if(window.__gs)Object.assign(window.__gs,{auxSweep,auxStashes,auxReleaseState});
+if(window.__gs)Object.assign(window.__gs,{chPackBytes,chPackFreeAll,skb});
+if(window.__gs)Object.defineProperty(window.__gs,'curStroke',{get:()=>stroke,configurable:true});
+if(window.__gs)Object.assign(window.__gs,{p3r,p3ReadyShow,p3ReadyEnd});
