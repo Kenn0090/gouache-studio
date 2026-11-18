@@ -13,14 +13,19 @@ function rebuildLayers(newW,newH,depth,draw){
   for(const n of everyNode())if(n.mask&&n.mask.stack)for(const r of n.mask.stack)if(r.t&&r.kind!=='image')jobs.push({src:r.t,d:depth,m:false,row:true,set:nt=>{r.t=nt;}});
   for(const d in aux){const pl=aux[d].pool;for(const t of pl.free.splice(0)){pl.all.splice(pl.all.indexOf(t),1);disposeTarget(t);}} /* spare room first */
   while(gl.getError()!==gl.NO_ERROR);
-  const made=[];let bad=false;
-  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d,undefined,j.d===16&&depth===8&&newW*newH>=268435456,j.mono);made.push(j.nt);if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){bad=true;break;}}
-  if(!bad)for(let i=0;i<5;i++){const t=makeTarget(newW,newH,depth);made.push(t);if(gl.getError()!==gl.NO_ERROR){bad=true;break;}}
-  if(bad){for(const t of made)disposeTarget(t);while(gl.getError()!==gl.NO_ERROR);return false;}
-  for(const t of made.splice(jobs.length))disposeTarget(t);
+  /* (0.98.15, Georgian's report: the card ran out of memory and reset during a 4K → 8K tile change) look before leaping: how much will the whole stack take
+     once it is the new size? If that is more than the card can hold, say so and change nothing, instead of letting the graphics driver reset (which scrambles the layers). */
+  try{const G=gpuMemory(),bud=gpuBudget();let oldB=0,newB=0;for(const j of jobs){oldB+=gpuBytes(j.src);newB+=gpuBytes({w:newW,h:newH,depth:j.d,mono:j.mono,packed:false});}
+    const after=G.bytes-oldB+newB;if(bud>0&&after>bud*.85){toast('That size needs about '+fmtBytes(after)+' of graphics memory and this card has about '+fmtBytes(bud)+'. Nothing was changed. Use fewer layers, a smaller tile, or merge layers first.');setTimeout(()=>toast('That size needs about '+fmtBytes(after)+' of graphics memory and this card has about '+fmtBytes(bud)+'. Nothing was changed. Use fewer layers, a smaller tile, or merge layers first.'),80);return false;}}catch(e){}
+  /* one map at a time: the new picture is made, filled, and only then the old one goes, so the peak is today's memory plus ONE new map (not all of them twice) */
   clearHistory();
   const keepPaint=doc.p3&&newW===doc.w&&newH===doc.h&&depth!==doc.depth;
-  for(const j of jobs){if(j.row)clearTarget(j.nt,[0,0,0,0]);draw(j.src,j.nt,j.m);if(keepPaint)p3PaintCopy(j.src,j.nt);disposeTarget(j.src);j.set(j.nt);}
+  let done=0;
+  for(const j of jobs){j.nt=makeTarget(newW,newH,j.d,undefined,j.d===16&&depth===8&&newW*newH>=268435456,j.mono);
+    if(gl.getError()!==gl.NO_ERROR||gl.isContextLost()){disposeTarget(j.nt);j.nt=null;while(gl.getError()!==gl.NO_ERROR);if(!done)return false;/* nothing replaced yet: a clean refusal */break;}
+    if(j.row)clearTarget(j.nt,[0,0,0,0]);draw(j.src,j.nt,j.m);if(keepPaint)p3PaintCopy(j.src,j.nt);disposeTarget(j.src);j.set(j.nt);done++;}
+  if(done<jobs.length){/* ran out part-way: the rest are brought to the new size from what is left */
+    for(const j of jobs.slice(done)){const nt=makeTarget(newW,newH,j.d,undefined,false,j.mono);if(j.row)clearTarget(nt,[0,0,0,0]);draw(j.src,nt,j.m);disposeTarget(j.src);j.set(nt);}}
   for(const L of everyLayer())if(L.maps)L.target=L.maps.base;
   for(const n of everyNode())if(n.mask&&n.mask.stack)n.mask._key=null;
   if(newW!==doc.w||newH!==doc.h){if(doc.cage){doc.cage=null;cageFlatOff();}if(typeof bakeReset==='function')bakeReset();if(typeof cvReset==='function')cvReset();}doc.w=newW;doc.h=newH;doc.depth=depth;

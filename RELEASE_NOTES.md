@@ -1,3 +1,12 @@
+## Gouache Studio 0.98.15
+
+- Tangent | Wrap is the camera projection again; the surface wrap is an optional beta switch under Projection.
+- Curvature bake can measure each size band from the model, for real detail.
+- Softer brushes in 3D Paint (16-bit stroke picture).
+- Autosave waits while a file or project is loading.
+- A texture-size change checks graphics memory first and refuses instead of resetting the card.
+- New Help › Resize report… for finding out how each layer was brought to a new size.
+
 ## Gouache Studio 0.98.14
 
 - Tangent | Wrap now measures the brush on the model's surface: it carries onto hidden walls and across seams.

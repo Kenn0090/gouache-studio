@@ -1,3 +1,12 @@
+## 0.98.15
+
+- **Tangent | Wrap is the camera projection again.** The surface wrap from 0.98.14 is now an off-by-default switch, **Surface wrap (beta)**, under Projection, so painting behaves as it did before unless you turn it on.
+- **Multi-scale curvature bake.** When the curvature size bands (Sharp to Huge) are in use, the Bake tab measures curvature again at larger sizes, from the model or from the baked normal, so each band holds real detail and not a blur of one map. A tick, **Measure each size from the model**, turns it on or off.
+- **Softer brushes in 3D Paint.** The stroke is built in a 16-bit picture while you paint, so a soft falloff keeps its steps until it is committed.
+- **Autosave waits while loading.** No autosave (or countdown) starts while a file, model or project is loading.
+- **A resize checks graphics memory first.** Changing a texture size, tile size or canvas size works out the memory it needs at its busiest moment. If it will not fit on the card, it says so and changes nothing, instead of letting the graphics driver reset and scramble the layers. Canvas resizes also swap one map at a time, which lowers the peak.
+- **Help › Resize report…** lists the last texture-size changes: the memory used, and for every layer, mask and map how it was brought to the new size (strokes replayed, scaled, re-made from its rows, or filled with one colour). It holds only names, sizes and counts, and has a **Hide layer names** tick.
+
 ## 0.98.14
 
 - **Surface wrap.** With Alignment on Tangent | Wrap, the plain brush and eraser are measured on the model's surface instead of projected from the camera. The brush keeps its shape, carries onto walls the camera cannot see and across seams, and no longer leaves a gap. Stencils, UDIM sets, dual brushes and the other tools keep the camera projection.

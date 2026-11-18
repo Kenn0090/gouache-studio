@@ -79,7 +79,7 @@ async function runBake(L,ks,opt){opt=opt||{};const C=bakeCfg;if(bk.busy)return;i
   /* start from a clean slate: the model fills in as tiles finish */
   for(const k in bk.res)disposeTarget(bk.res[k]);for(const k in bk.acc)disposeTarget(bk.acc[k]);bk.res={};bk.acc={};bk.stale.clear();bk.dirty=true;
   const o={bevel:C.bevel?Object.assign({},C.bevel):null,size:doc.w,sizeH:doc.h,ss:C.ss,front:C.front*.02,back:C.back*.02,average:C.average,soften:C.soften||0,cage,match:C.match&&!!high,kinds,gfb:typeof btGFB==='function'&&high?btGFB(C):null,
-    rays:C.rays,light:kinds.includes('light')?JSON.parse(JSON.stringify(lightRig())):null,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
+    curvBands:C.curvBands,curvMulti:C.curvMulti!==false,rays:C.rays,light:kinds.includes('light')?JSON.parse(JSON.stringify(lightRig())):null,aoDist:C.aoDist*.02,thickDist:C.thickDist*.02,pad:C.pad,dx:false,seed:Math.random()*10,aoSpread:C.aoSpread,thickRays:C.thickRays,curvRadius:C.curvRadius,curvStr:C.curvStr};
   let res=null;
   try{prog.step('Baking '+ks.map(k=>BAKE_NAMES[k].toLowerCase()).join(', ')+'…');
     const hg=await bakeHG(L,high,low,t=>prog.step(t),kinds.includes('id'),kinds.includes('light'));
@@ -100,14 +100,22 @@ void main(){ vec4 s=texelFetch(uSrc,ivec2(gl_FragCoord.xy),0); float c=(s.r-0.5)
   float v=uMode==1?clamp(c,0.0,1.0):uMode==2?clamp(-c,0.0,1.0):clamp(0.5+c*0.5,0.0,1.0); o=vec4(vec3(v),1.0); }`;
 let bkCurvP=null;
 function bakeDerive(){const r=bk.res,C=bakeCfg;for(const k of ['curv','curvEdge','curvCrease','mcurv'])if(r[k]&&k!=='mcurv'){disposeTarget(r[k]);delete r[k];}
-  if(!bk.kinds.includes('curv')){if(r.gcurv){disposeTarget(r.gcurv);delete r.gcurv;}return;}
-  let raw=null,str=1;
+  const scaleKeys=[1,2,3,4,5,6].map(i=>'gcurv'+i),freeScales=()=>{for(const k of scaleKeys)if(r[k]){disposeTarget(r[k]);delete r[k];}};
+  if(!bk.kinds.includes('curv')){if(r.gcurv){disposeTarget(r.gcurv);delete r.gcurv;}freeScales();return;}
+  let raw=null,str=1,fromN=false;
   if(r.gcurv){raw=r.gcurv;delete r.gcurv;}
   else if(r.mcurv){raw=r.mcurv;delete r.mcurv;str=C.curvStr||1;}/* the low-poly on its own: measured at its corners */
-  else{const fromDoc=bk.curvSrc==='doc'&&doc.maps.includes('normal'),n=fromDoc?normalComposite(false,null):r.normal;if(!n)return;
+  else{fromN=true;const fromDoc=bk.curvSrc==='doc'&&doc.maps.includes('normal'),n=fromDoc?normalComposite(false,null):r.normal;if(!n)return;
     raw=makeTarget(doc.w,doc.h,16,false);const b=acquireD(n.depth),rad=Math.max(1,C.curvRadius||3);gaussian(n,b,Math.max(.8,rad*.35));
     run(P.f_ncurv,raw,{uN:b.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rad,uFlipG:!!C.curvFlip});release(b);if(fromDoc)release(n);}
-  if(typeof cbBake==='function')raw=cbBake(raw);/* (0.97.27) curvature detail */
+  /* the curvature measured at six growing sizes (mesh bake), or from the normal at six growing steps */
+  let scales=null,ownScales=false;if(typeof curvBandsOn==='function'&&curvBandsOn(C.curvBands)&&C.curvMulti!==false){
+    if(scaleKeys.every(k=>r[k])){scales=scaleKeys.map(k=>r[k]);}
+    else if(fromN){const fromDoc2=bk.curvSrc==='doc'&&doc.maps.includes('normal'),n2=fromDoc2?normalComposite(false,null):r.normal;
+      if(n2){scales=[];for(let i=1;i<=6;i++){const t=makeTarget(doc.w,doc.h,16,false),rd=Math.min(96,Math.max(1,(C.curvRadius||3)*Math.pow(2,i))),b2=acquireD(n2.depth);gaussian(n2,b2,Math.max(.8,rd*.35));
+          run(P.f_ncurv,t,{uN:b2.tex,uWrap:!!doc.wrap,uStr:1.2*(C.curvStr||1),uMode:{int:0},uStep:rd,uFlipG:!!C.curvFlip});release(b2);scales.push(t);}ownScales=true;}if(fromDoc2&&n2)release(n2);}}
+  if(typeof cbBake==='function')raw=cbBake(raw,undefined,scales);/* (0.97.27) curvature detail */
+  if(ownScales&&scales)scales.forEach(t=>{if(t&&t.tex)disposeTarget(t);});freeScales();
   if(!bkCurvP)bkCurvP=program(FS_BKCURV);const out=m=>{const t=makeTarget(doc.w,doc.h,doc.depth,false);run(bkCurvP,t,{uSrc:raw.tex,uEdges:C.curvEdges==null?1:C.curvEdges,uCreases:C.curvCreases==null?1:C.curvCreases,uMode:{int:m},uStr:str});return t;};
   r.curv=out(0);if(C.curvParts!==false){r.curvEdge=out(1);r.curvCrease=out(2);}disposeTarget(raw);}
 /* while baking: what is done so far, shown straight away */
@@ -418,7 +426,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     if(T==='curv'){const flip=chk('bkCurvFlip','Flip green',!!C.curvFlip,v=>{C.curvFlip=v;});flip.hidden=C.curvSrc==='mesh';
       pg.append(on('curv'),el('div',{class:'sub',text:'From'}),seg([['mesh','The shape'],['normal','Baked normal'],['doc','Normal map']],C.curvSrc||'mesh',v=>{C.curvSrc=v;flip.hidden=v==='mesh';},'Curvature from'),
         note('The shape: measured on the high-poly (or the low-poly on its own), right on mirrored and flipped UVs. Baked normal: from the normal baked with it. Normal map: from the document’s own normal map. Flip green if edges and creases come out swapped on some parts.'),
-        flip,S('bkCurvR','Radius','curvRadius',1,32,1,v=>v+' px'),S('bkCurvS','Strength','curvStr',.1,4,.05,pct),S('bkCurvE','Edges','curvEdges',0,2,.05,pct),S('bkCurvC','Creases','curvCreases',0,2,.05,pct),el('div',{class:'sub',text:'Curvature detail'}),...(typeof curvBandsSliders==='function'?curvBandsSliders(()=>C.curvBands,(k,v)=>{C.curvBands=Object.assign({},C.curvBands||{},{[k]:v});},'bkCb_'):[]),
+        flip,S('bkCurvR','Radius','curvRadius',1,32,1,v=>v+' px'),S('bkCurvS','Strength','curvStr',.1,4,.05,pct),S('bkCurvE','Edges','curvEdges',0,2,.05,pct),S('bkCurvC','Creases','curvCreases',0,2,.05,pct),el('div',{class:'sub',text:'Curvature detail'}),chk('bkCurvMulti','Measure each size from the model (richer detail; needs a re-bake)',C.curvMulti!==false,v=>{C.curvMulti=v;}),...(typeof curvBandsSliders==='function'?curvBandsSliders(()=>C.curvBands,(k,v)=>{C.curvBands=Object.assign({},C.curvBands||{},{[k]:v});},'bkCb_'):[]),
         chk('bkCurvParts','Also make edges-only and creases-only maps',C.curvParts!==false,v=>{C.curvParts=v;}),
         note('Radius: how far around each point it looks (small: thin sharp edges; large: broad soft ones). Edges and Creases set the light and dark sides on their own.'));}
     if(T==='height')pg.append(on('height'),note('How far the high-poly is above (light) or below (dark) the low-poly, within Front and Back (Geometry).'));
@@ -468,7 +476,7 @@ function buildBakePanel(){const box=$('#bakeBody');if(!box)return;box.replaceChi
     el('div',{class:'sub',text:'Send to the document as',title:'Layers: each bake is also a layer in the base colour, so you can blend them (curvature on Overlay over AO). AO, curvature and height go into their own maps too.'}),seg([['layers','Layers'],['maps','Maps only']],C.sendAs==='maps'?'maps':'layers',v=>{C.sendAs=v;},'Send as'),
     el('div',{class:'chips'},chk('bkAuto','Send results automatically',C.autoSend,v=>{C.autoSend=v;}),chk('bkRepl','Replace the last baked layers',C.replace,v=>{C.replace=v;})),bakeSendBox().valueOf()];
   /* Maps */
-  const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv'),maps=[el('div',{class:'bkmaps',id:'bkList',title:'Alt + click a tick: only this one. Alt + click again: all the others.'},...BK_LIST.map(mapRow))];
+  const have=Object.keys(bk.res).filter(k=>!/^(m|g)curv\d*$/.test(k)),maps=[el('div',{class:'bkmaps',id:'bkList',title:'Alt + click a tick: only this one. Alt + click again: all the others.'},...BK_LIST.map(mapRow))];
   if(have.length||bk.maps.skew||bk.maps.offset){const opts=[['material','Material (lit)'],...have.map(k=>[k,k==='curv'?'Curvature':BAKE_NAMES[k]]),...Object.keys(BK_PAINT).filter(k=>bk.maps[k]).map(k=>[k,BK_PAINT[k].name+' map'])];
     const sh=el('select',{id:'bkShow','aria-label':'Show'},...opts.map(([v,t])=>el('option',{value:v,text:t})));sh.value=opts.some(o=>o[0]===bk.show)?bk.show:'material';
     sh.onchange=()=>{bk.show=sh.value;uvw.view='off';bk.uvCheck=false;bk.dirty=true;v3.dirty=true;requestRender();buildBakePanel();};maps.push(row('Show',sh),...(bk.res.normal?[el('button',{class:'btn',id:'bkCompare',text:'Compare with a normal map…',title:'Pick a normal map made elsewhere (Marmoset…) and see how far the baked one is from it',onclick:bakeCompare})]:[]),el('p',{class:'note',text:'C steps through the maps on the model.'}));

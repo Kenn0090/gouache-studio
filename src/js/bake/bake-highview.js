@@ -24,7 +24,7 @@ function bakeDrawHigh(common,F){if(ui.mode!=='bake'||!bk.showHigh||bk.showHigh==
   useProg(rounded?bevelPreviewProgram(true):P_BKHIGH,rounded?{...material,uNrm:rounded.tex,uDef:[.28,0],uUnlit:false,uBVAlpha:see?.45:1,uUseH:false}:{...common,uUseH:false,uCamH:v3Eye(),uAlpha:see?.45:1,uTint:see?[1,.72,.45]:[.82,.8,.78]});gl.bindVertexArray(g.vao);gl.drawElements(gl.TRIANGLES,g.count,gl.UNSIGNED_INT,0);
   gl.bindVertexArray(vao);if(see){gl.depthMask(true);gl.disable(gl.BLEND);}}
 /* C steps through what the model shows */
-function bakeShowList(){const have=Object.keys(bk.res).filter(k=>k!=='mcurv'&&k!=='gcurv');return ['material',...have,...Object.keys(BK_PAINT).filter(k=>bk.maps[k])];}
+function bakeShowList(){const have=Object.keys(bk.res).filter(k=>!/^(m|g)curv\d*$/.test(k));return ['material',...have,...Object.keys(BK_PAINT).filter(k=>bk.maps[k])];}
 function bakeCycleShow(dir){uvw.view='off';bk.uvCheck=false;const L=bakeShowList();if(L.length<2){toast('Bake first: C steps through the baked maps on the model.');return;}const i=L.indexOf(bk.show);bk.show=L[(i+dir+L.length)%L.length];bk.dirty=true;v3.dirty=true;requestRender();
   if(typeof buildBakePanel==='function')buildBakePanel();const nm=x=>x==='material'?'Material (lit)':x==='curv'?'Curvature':BAKE_NAMES[x]||(BK_PAINT[x]?BK_PAINT[x].name+' map':x);
   if(typeof flipLabel==='function')flipLabel('Baked map',L.map(nm),L.indexOf(bk.show));else toast('Showing: '+nm(bk.show));}
