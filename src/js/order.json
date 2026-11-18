@@ -269,6 +269,7 @@
     "files/recent",
     "files/autosave",
     "files/save-guard",
+    "core/mem-sweep",
     "files/timelapse",
     "files/handbrake",
     "files/export-window",

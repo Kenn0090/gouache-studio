@@ -20,7 +20,7 @@ function makeTarget(w,h,depth,wrap,packed,mono){
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   const wm=wrap?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);
   const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
-  const t=gpuTrack({tex,fbo,w,h,depth,packed:!!packed,mono:!!mono,mipDirty:true});if(gpuLostReg){t._lostTok={};gpuLostReg.register(t,gpuBytes(t),t._lostTok);}clearTarget(t);return t;
+  const t=gpuTrack({tex,fbo,w,h,depth,packed:!!packed,mono:!!mono,mipDirty:true});if(window.__gpuStacks)t._stack=new Error().stack;/* tests: where each picture was made */if(gpuLostReg){t._lostTok={};gpuLostReg.register(t,gpuBytes(t),t._lostTok);}clearTarget(t);return t;
 }
 /* (0.98.16) a picture forgotten without disposeTarget keeps its graphics memory until the browser's clean-up runs, and the counter
    above no longer sees it: count those (Graphics card report) so leaks show up */

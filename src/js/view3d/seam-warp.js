@@ -41,7 +41,7 @@ function meshConnectedWarp(src,dst,amt,scale,seed,worldDistance=false,grow=0,edg
  const m=v3.mesh;if(!m._bb)msSurf();const bb=m._bb||{mn:[0,0,0],sz:[1,1,1]};
  blit(src,dst,0,0,src.w,src.h,0,0);/* pixels outside the model stay as they were */
  try{useProg(seamWarpProgram,{uFaces:C.tex,uSrc:src.tex,uSize:[src.w,src.h],uRadius:[0,0],uBox:{int:0},uAmt:amt,uFreq:scale,uSeed:seed,uBmin:bb.mn,uBsz:Math.max(...bb.sz),uWorldDistance:{int:worldDistance?1:0},uGrow:grow,uEdgeMid:edgeMid},!!dst.packed);
-  bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);}
+  bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);swDrawTiled(dst,C.count*3);}
  finally{gl.bindVertexArray(vao);}seamBlurPadding(C,dst);return true;}
 /* (0.96.1, Kenn: "make slope blur seam-safe too") Slope blur on the model's surface: the slope (of a 3D noise, of
    the picture itself, or of a chosen picture) is measured on the triangle in 3D, and each step of the smear walks
@@ -77,5 +77,11 @@ function meshConnectedSlope(src,dst,o){if(ui.mode!=='p3d'||!v3.mesh||src===dst||
       uMode:{int:o.mode|0},uGuide:{int:(o.guide===2&&!o.gimg)?0:o.guide|0},uFreq:o.freq||6,uSeed:o.seed||1,uBmin:bb.mn,uBsz:Math.max(...bb.sz),
       uGImg:(o.gimg||src).tex,uGTile:o.gtile||1,uGInv:o.ginv?1:0,uEdge:1.5,
       ...fxdSlopeInfluenceU(o.influence,o.invertInfluence)},!!dst.packed);
-    bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);gl.drawArrays(gl.TRIANGLES,0,C.count*3);}
+    bindTarget(dst);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);gl.disable(gl.CULL_FACE);gl.bindVertexArray(C.vao);swDrawTiled(dst,C.count*3);}
   finally{gl.bindVertexArray(vao);}seamBlurPadding(C,dst);return true;}
+
+/* (0.98.16, Georgian's card resets at 8K) these walk across seams for every texel, the heaviest work in a mask: on a big canvas the
+   picture is drawn in 1024-pixel squares, each sent to the card on its own, so no single job runs long enough for Windows to reset it */
+function swDrawTiled(dst,n){if(dst.w*dst.h<=4194304){gl.drawArrays(gl.TRIANGLES,0,n);return;}const T=1024,keep=typeof scissorNow!=='undefined'?scissorNow:null,R=keep||[0,0,dst.w,dst.h];
+  gl.enable(gl.SCISSOR_TEST);for(let y=R[1];y<R[1]+R[3];y+=T)for(let x=R[0];x<R[0]+R[2];x+=T){gl.scissor(x,y,Math.min(T,R[0]+R[2]-x),Math.min(T,R[1]+R[3]-y));gl.drawArrays(gl.TRIANGLES,0,n);gl.flush();}
+  if(keep)gl.scissor(keep[0],keep[1],keep[2],keep[3]);else gl.disable(gl.SCISSOR_TEST);}
