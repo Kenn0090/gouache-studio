@@ -105,6 +105,7 @@ function ghReportText(r){const I=gpuInfo(),G=gpuMemory(),log=gpuLogRead().filter
     'Largest texture: '+I.maxTex+' · samplers: '+I.maxSamplers+' · float targets: '+(I.float?'yes':'no'),'Card preference: '+I.pref+' · 3D quality: '+I.quality,
     'Document: '+doc.w+'×'+doc.h+' '+doc.depth+'-bit · '+allLayers().length+' layers · '+doc.maps.length+' maps · mode '+ui.mode,
     'Tracked graphics memory: '+fmtBytes(G.bytes)+' in '+G.targets+' pictures (budget '+fmtBytes(gpuBudget())+')',
+    typeof gpuLost!=='undefined'&&gpuLost.n?'Pictures dropped without being freed (held until clean-up): '+gpuLost.n+', '+fmtBytes(gpuLost.bytes):'',
     (()=>{const S=typeof gfSaveStats!=='undefined'&&gfSaveStats.last;return S&&S.images?'Last save: '+(S.total/1000).toFixed(1)+' s in all · GPU read '+(S.read/1000).toFixed(1)+' s · waiting for packing '+(S.pack/1000).toFixed(1)+' s · finding edges '+(S.bounds/1000).toFixed(1)+' s · '+S.images+' pictures, '+fmtBytes(S.bytes):'';})(),
     (()=>{const e=gpuLogRead().filter(x=>/^last session stopped/.test(x.kind)).pop();return e?'The app stopped while saving ('+new Date(e.t).toLocaleString()+'): '+e.kind.replace('last session stopped during: ',''):'';})(),
     (()=>{const m=typeof v3!=='undefined'&&v3.mesh;return m?'Model: '+Math.round(m.idx.length/3).toLocaleString()+' triangles, '+Math.round(m.pos.length/3).toLocaleString()+' points'+(typeof p3!=='undefined'&&p3.sets&&p3.sets.length>1?' · '+p3.sets.length+' texture sets':''):'';})(),

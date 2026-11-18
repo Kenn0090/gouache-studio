@@ -20,9 +20,12 @@ function makeTarget(w,h,depth,wrap,packed,mono){
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   const wm=wrap?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);
   const fbo=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
-  const t=gpuTrack({tex,fbo,w,h,depth,packed:!!packed,mono:!!mono,mipDirty:true});clearTarget(t);return t;
+  const t=gpuTrack({tex,fbo,w,h,depth,packed:!!packed,mono:!!mono,mipDirty:true});if(gpuLostReg){t._lostTok={};gpuLostReg.register(t,gpuBytes(t),t._lostTok);}clearTarget(t);return t;
 }
-function disposeTarget(t){if(!t)return;gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;t._paintSource=null;}
+/* (0.98.16) a picture forgotten without disposeTarget keeps its graphics memory until the browser's clean-up runs, and the counter
+   above no longer sees it: count those (Graphics card report) so leaks show up */
+const gpuLost={n:0,bytes:0},gpuLostReg=typeof FinalizationRegistry!=='undefined'?new FinalizationRegistry(b=>{gpuLost.n++;gpuLost.bytes+=b;}):null;
+function disposeTarget(t){if(!t)return;if(gpuLostReg&&t._lostTok)gpuLostReg.unregister(t._lostTok);gpuTargets.delete(t._gpuRef);gl.deleteTexture(t.tex);gl.deleteFramebuffer(t.fbo);t.tex=null;t.fbo=null;t._paintSource=null;}
 function setWrap(t,rep){gl.bindTexture(gl.TEXTURE_2D,t.tex);const wm=rep?gl.REPEAT:gl.CLAMP_TO_EDGE;gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wm);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wm);}
 /* Opacity proofs are conservative: any write invalidates them unless the complete result is known. */
 function bindTarget(t){if(t){t.opaque=false;p3PaintWrite(t);}gl.bindFramebuffer(gl.FRAMEBUFFER,t?t.fbo:null);gl.viewport(0,0,t?t.w:cv.width,t?t.h:cv.height);}
