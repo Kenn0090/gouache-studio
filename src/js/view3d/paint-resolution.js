@@ -105,6 +105,11 @@ async function p3PaintPrepare(w,h,keep,cancel){
   if(w<1||h<1||Math.max(w,h)>MAX_DIM||(doc.depth===16&&w*h>=268435456))throw new Error('This computer cannot render textures at that size.');
   const jobs=p3PaintJobs(),work=p3PaintWork(cancel);
   trimPools(0);
+  /* (0.98.15, Georgian's report: 4K → 8K tile change reset the graphics card) the new pictures are made while the old ones are still there, so look first: today's memory plus the new
+     stack must fit. If not, say so and change nothing: a reset card wipes the layers and they come back scrambled. */
+  try{const G=gpuMemory(),bud=gpuBudget();let newB=0;for(const j of jobs)newB+=gpuBytes({w,h,depth:j.src.depth,mono:j.src.mono,packed:false});
+    if(bud>0&&G.bytes+newB>bud*.85)throw new Error('That size needs about '+fmtBytes(G.bytes+newB)+' of graphics memory at the busiest moment, and this card has about '+fmtBytes(bud)+'. Nothing was changed. Use fewer layers, a smaller tile, or merge layers first.');}
+  catch(e){if(/^That size needs/.test(e.message||''))throw e;}
   while(!gl.isContextLost()&&gl.getError()!==gl.NO_ERROR){}
   try{
     for(let i=0;i<jobs.length;i++){
