@@ -1,3 +1,12 @@
+## Gouache Studio 0.98.14
+
+- Tangent | Wrap now measures the brush on the model's surface: it carries onto hidden walls and across seams.
+- Curvature has seven size bands (Sharp to Huge) with a Substance default button, everywhere curvature is used.
+- Edge wear has a Painter-style card (Wear Level, Grunge, AO Masking, Micro Details).
+- Lights: W shows move arrows, R shows rotation rings; the sun handle is hidden until the Lights panel opens.
+- Ctrl + left-drag sets flow and opacity. The brush paints only its own channels.
+- A picture dropped on Converted opens in the Convert tab; one Send as layer button.
+
 ## Gouache Studio 0.98.13
 
 - Wrap brush stays round on leaning surfaces; smoother edges where paint is hidden.

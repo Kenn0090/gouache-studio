@@ -1,3 +1,15 @@
+## 0.98.14
+
+- **Surface wrap.** With Alignment on Tangent | Wrap, the plain brush and eraser are measured on the model's surface instead of projected from the camera. The brush keeps its shape, carries onto walls the camera cannot see and across seams, and no longer leaves a gap. Stencils, UDIM sets, dual brushes and the other tools keep the camera projection.
+- **Seven curvature bands.** The curvature controls now have Sharp, Fine, Soft, Medium, Large, Big and Huge, in the Mask Builder, the Bake tab, the Convert tab, the 3D Paint bake window and Mesh maps from a material. A **Substance default** button sets 100, 90, 75, 50, 25, 15 and 10 %, and **All 100%** puts it back. Older three-band settings spread over the seven.
+- **Metal edge wear, Painter-style.** Edge wear generators have a card with Painter's names: Wear Level, Wear Contrast, Grunge Amount and Scale, Edges Smoothness, Ambient Occlusion Masking, Curvature Weight and Micro Details, plus a **Painter defaults** button.
+- **Light gizmos.** In Free mode **W** shows the move arrows and **R** shows three rotation rings (again hides them). The sun handle stays hidden until the Lights panel is open.
+- **Ctrl + left-drag in 3D Paint** sets flow (across) and opacity (up and down). Smoothing is Ctrl + Shift + drag now.
+- **The brush paints only its own channels.** The channel lock no longer links channels (it is hidden); only the edited channel and those ticked in the brush's Maps section are painted.
+- **Convert.** A picture dropped on a Converted channel opens in the Convert tab. One **Send as layer** button sits under the converted maps. Dropping on Mesh map adds the picture as a map.
+- **Get more skies** uses the same wide, resizable window as Get more materials.
+- **Wrap brush:** smoother stroke edges where the lean is measured over a wider area.
+
 ## 0.98.13
 
 - **The brush stays round on leaning surfaces.** In Tangent | Wrap, where a surface leans away from you the brush is squeezed on screen by the lean, so it is round on the model instead of stretched. Projection has a **Keep the brush round** switch (on by default).
