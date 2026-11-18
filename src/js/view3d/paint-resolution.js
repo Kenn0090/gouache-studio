@@ -51,12 +51,12 @@ function p3PaintJobs(){
   const jobs=[];
   for(const L of paintLayers())for(const k of Object.keys(L.maps||{})){
     const src=L.maps[k];
-    if(src&&!src.empty)jobs.push({src,set:t=>{L.maps[k]=t;}});
+    if(src&&!src.empty)jobs.push({src,set:t=>{L.maps[k]=t;},what:'layer map',layer:L.name,map:k,fill:!!L.fill});
   }
   for(const n of allNodes())if(n.mask){
     const mask=n.mask;
-    jobs.push({src:mask.target,set:t=>{mask.target=t;mask._key=null;},derived:!!mask.stack});
-    for(const r of mask.stack||[])if(r.t&&r.kind==='paint')jobs.push({src:r.t,set:t=>{r.t=t;}});
+    jobs.push({src:mask.target,set:t=>{mask.target=t;mask._key=null;},derived:!!mask.stack,what:mask.stack?'mask (made from its rows)':'mask',layer:n.name});
+    for(const r of mask.stack||[])if(r.t&&r.kind==='paint')jobs.push({src:r.t,set:t=>{r.t=t;},what:'mask paint row',layer:n.name});
   }
   return jobs;
 }
@@ -116,7 +116,7 @@ async function p3PaintPrepare(w,h,keep,cancel){
       const j=jobs[i],src=j.src;
       j.nt=makeTarget(w,h,src.depth,undefined,src.depth===16&&w*h>=268435456,src.mono);
       work.check();
-      if(j.derived)p3LayScale(src,j.nt,udimRelay&&udimRelay.from);
+      if(j.derived){j.how='re-made from its rows';p3LayScale(src,j.nt,udimRelay&&udimRelay.from);}
       else await p3PaintRebuild(j,work,keep);
       work.check();
       if(cancel)loadSet((i+1)/(jobs.length+1),'Rebuilding layers and masks…');
@@ -402,7 +402,7 @@ void main(){
 async function p3PaintRebuild(j,work,keep){
   const {src,nt}=j,current=p3PaintValid(src);
   if(!current&&src._paintClear){
-    clearTarget(nt,src._paintClear);
+    j.how='filled with its one colour';clearTarget(nt,src._paintClear);
     return;
   }
   const steps=current?p3PaintSteps(current):[];
@@ -411,7 +411,7 @@ async function p3PaintRebuild(j,work,keep){
   const meshMismatch=steps.some(s=>s.draw?.projection&&s.draw.projection.mesh!==meshNow&&s.draw.projection.mesh!==relay);
   if(!meshMismatch&&relay)for(const s of steps)if(s.draw?.projection&&s.draw.projection.mesh===relay)s.draw.projection={...s.draw.projection,mesh:meshNow};
   if(!current||meshMismatch){
-    p3LayScale(src,nt,udimRelay&&udimRelay.from);
+    j.how=!current?'scaled (no strokes kept for it)':'scaled (strokes belonged to another layout)';p3LayScale(src,nt,udimRelay&&udimRelay.from);
     if(keep){
       const source=p3PaintSource(src,true,udimRelay?udimRelay.from:undefined);/* the picture before scaling: a later size up gets its detail back */
       await source.base.image;
@@ -419,7 +419,7 @@ async function p3PaintRebuild(j,work,keep){
     }
     return;
   }
-  const b=current.base;
+  j.how='strokes replayed at the new size';const b=current.base;
   if(b.color)clearTarget(nt,b.color);
   else{
     const {bytes,f}=await b.image;

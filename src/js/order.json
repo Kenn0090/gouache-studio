@@ -295,6 +295,7 @@
     "api/gs-api",
     "ui/scripts",
     "ui/paint-report",
+    "view3d/resize-report",
     "core/boot"
   ]
 }
