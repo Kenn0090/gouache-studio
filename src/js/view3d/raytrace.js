@@ -102,7 +102,7 @@ void main(){ ivec2 px=ivec2(gl_FragCoord.xy); uint seed=uint(px.x)*1973u+uint(px
     float sssW=0.0; vec3 sCol=vec3(1.0); float dif=1.0,coat=0.0,coatR=0.03,sheen=0.0,sheenR=0.5; vec3 sheenC=vec3(1.0); float ax=0.0,ay=0.0; vec3 Ta=Tt,Ba=Bt; vec3 V=-rd;
     if(kd==1||kd==8){ sssW=clamp(sk.y*texture(uMat,vec3(uv,float(set*6+4))).r,0.0,1.0); sCol=lin(texture(uMat,vec3(uv,float(set*6+5))).rgb); metal=0.0; }
     else if(kd==2){ dif=0.0; metal=0.0; rough=max(clamp(sp.y,0.0,1.0),0.02); }
-    else if(kd==3){ coat=clamp(sp.z,0.0,1.0); coatR=max(sq.x,0.01); vec2 cell=floor(uv*max(sp.y,1.0)); uint hc=bkPcg(uint(int(cell.x)*7919+int(cell.y)*104729+911));
+    else if(kd==3){ coat=clamp(sp.z,0.0,1.0); coatR=max(sq.x,0.01); vec2 cell=floor(uv/uUVs*max(sp.y,1.0)*6.0);/* flakes per texture width: Size × 6, as fine as in the normal view */ uint hc=bkPcg(uint(int(cell.x)*7919+int(cell.y)*104729+911));
       float fh=float(hc&0xffffu)/65535.0; if(fh<clamp(sp.x,0.0,1.0)*0.6){ metal=1.0; alb=mix(alb,sc,0.6); rough=0.25;
         vec3 jt=vec3(float((hc>>16u)&255u),float((hc>>8u)&255u),float(hc&255u))/255.0-0.5; N=normalize(N+(Tt*jt.x+Bt*jt.y)*0.5*clamp(sp.w,0.0,2.0)); if(dot(N,Ng)<0.05) N=Ni; } }
     else if(kd==5){ sheen=clamp(sp.x,0.0,2.0)*(0.6+0.4*sp.z); sheenR=max(sp.y,0.05); sheenC=sc; }
