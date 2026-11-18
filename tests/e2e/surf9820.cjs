@@ -51,6 +51,17 @@ const {chromium}=require('playwright');const M=require('./models9820.cjs');const
  {
   await load('box',{yaw:.6,pitch:.45,dist:4.2,tx:0,ty:0,tz:0});rows.push(['stroke box front→right',await strokeTest([.38,.62],[.7,.58])]);rows.push(['stroke box top→front',await strokeTest([.5,.3],[.46,.7])]);
   await load('tube',{yaw:0,pitch:.45,dist:4.2,tx:0,ty:0,tz:0});rows.push(['stroke over tube seam',await strokeTest([.35,.62],[.65,.62])]);rows.push(['stroke side→cap',await strokeTest([.5,.7],[.5,.3])]);}
+ /* Projection › Backface culling angle: 90° paints round a square edge, 45° keeps paint off the face round the corner */
+ {await load('box',{yaw:.6,pitch:.45,dist:4.2,tx:0,ty:0,tz:0});const proj=pt=>p.evaluate(pt=>{const g=__gs,R=document.getElementById('v3Hit').getBoundingClientRect(),s=g.v3s(),cam=g.v3.cam,cp=Math.cos(cam.pitch),t=[cam.tx,cam.ty,cam.tz],eye=[t[0]+Math.sin(cam.yaw)*cp*cam.dist,t[1]+Math.sin(cam.pitch)*cam.dist,t[2]+Math.cos(cam.yaw)*cp*cam.dist];
+     const nrm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);},cr=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],f=nrm(t.map((v,i)=>v-eye[i])),rt=nrm(cr(f,[0,1,0])),up=cr(rt,f),th=Math.tan(s.fov*Math.PI/360);
+     const d=pt.map((v,i)=>v-eye[i]),z=dot(d,f),nx=dot(d,rt)/z/(th*R.width/R.height),ny=dot(d,up)/z/th;return [R.left+(nx+1)/2*R.width,R.top+(1-ny)/2*R.height];},pt);
+  /* the edge between the front (z = 1) and right (x = 1) faces, just on the front side */
+  const E=await proj([0.985,0.1,1]);
+  const sideOf=async ang=>{await p.evaluate(a=>{__gs.v3s().cullAngle=a;},ang);const x=E[0],y=E[1];await p.mouse.move(x,y);await p.waitForTimeout(200);await p.mouse.down();await p.mouse.up();await p.waitForTimeout(900);
+   const n=await p.evaluate(()=>{const g=__gs,C=g.fillPosMaps(),gl=document.getElementById('gl').getContext('webgl2'),W=C.nrm.w,H=C.nrm.h,N=new Float32Array(W*H*4);gl.bindFramebuffer(gl.FRAMEBUFFER,C.nrm.fbo);gl.readPixels(0,0,W,H,gl.RGBA,gl.FLOAT,N);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+     const T=g.mapT(g.layerByName('Paint'),'base'),d=g.captureRegionNow(T,0,0,T.w,T.h).data;let f=0,r=0;for(let i=0;i<W*H;i++){if(d[i*4+3]<128)continue;if(N[i*4+2]>.9)f++;else if(N[i*4]>.9)r++;}return [f,r];});await clear();await p.waitForTimeout(200);return n;};
+  const a90=await sideOf(90),a45=await sideOf(45);await p.evaluate(()=>{__gs.v3s().cullAngle=90;});console.log('edge dab: front/right texels at 90°',a90,'at 45°',a45);
+  ok(a90[0]>50&&a90[1]>50,'at 90° a dab on the edge paints both faces');ok(a45[1]<a90[1]*.25&&a45[0]>50,'at 45° the face round the corner is left (almost) unpainted');}
  for(const [n,r] of rows)console.log(n.padEnd(24),JSON.stringify(r));
  for(const [n,r] of rows){if(r.miss){ok(false,n+': missed the model');continue;}
    if('reach' in r){ok(r.reach>.85&&r.reach<1.12,n+': the paint is the brush size on the model ('+r.reach+')');ok(r.solid>.8,n+': solid inside ('+r.solid+')');ok(r.gutter===0,n+': nothing in empty texture');

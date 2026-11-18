@@ -38,6 +38,10 @@ function swBaseR(o,c,x,y){const half=(o.size||brush.size)/2,sp=v3s().sizeSpace||
 function swAdapt(s,x,y){if(!s||!s.o||!uvm.P)return;const c=uvmPos(x,y),w=swWpt(x,y);if(!c||!w)return;const R=swBaseR(s.o,c,x,y),half=(s.o.size||brush.size)/2,rs=Math.max(.02,R/w/half);
   /* a step never changes the size more than 1.5× (packing changes over a few texels; a bad sample must not blow the brush up) */
   s.rs=s.rs>0?clamp(rs,s.rs/1.5,s.rs*1.5):rs;s.swR=R;}
+/* (0.98.20) how far the paint goes round an edge, from Projection's Backface culling: the angle (only when set under 90°, a 90° edge is painted
+   round like Painter's Tangent | Wrap), faded over the Edge falloff; culling off = no limit */
+function swCull(){const s=v3s();if(s.noBack===false)return [-2,0];const a=clamp(s.cullAngle==null?90:+s.cullAngle,1,90),soft=(typeof meshCullSoft==='function'?meshCullSoft():.3)*.6;
+  return [a<89.5?Math.cos(a*Math.PI/180):-0.15,soft];}
 /* one dab at a texel: the uniforms for the shader and the box of texels it can reach */
 function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C||!C.pos||!C.nrm)return null;const c=uvmPos(x,y);if(!c)return null;
   const e=Math.max(1,doc.w/U.G),wpt=swWpt(x,y);if(!(wpt>1e-9))return null;
@@ -53,4 +57,4 @@ function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C
   if(x1<0)return null;const pad=e*1.5+2;x0=Math.max(0,Math.floor(x0-pad));y0=Math.max(0,Math.floor(y0-pad));x1=Math.min(doc.w,Math.ceil(x1+pad));y1=Math.min(doc.h,Math.ceil(y1+pad));
   if(x1<=x0||y1<=y0)return null;
   if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:[x0,y0,x1,y1]});
-  return {rect:[x0,y0,x1,y1],u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uQuad:{int:1},uQC:[(x0+x1)/2,(y0+y1)/2],uQE:[(x1-x0)/2,(y1-y0)/2]}};}
+  return {rect:[x0,y0,x1,y1],u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uSurfCull:swCull(),uQuad:{int:1},uQC:[(x0+x1)/2,(y0+y1)/2],uQE:[(x1-x0)/2,(y1-y0)/2]}};}
