@@ -1,3 +1,11 @@
+## 0.98.23
+
+From Kenn's video and Georgian's 0.98.22 painting report (8192 × 4096: usually 143 refreshes a second now, with a few 0.2–0.47 s hitches on fast pen moves).
+
+- **No more paint landing on other parts of the model during hiccups** (Kenn's video: while painting the chest, bands of paint appeared on the arms and neck). The stroke joined its points with straight lines on the texture; after a hiccup (one long pen move), or with stroke smoothing (an average taken on the texture), that line crossed other islands and painted them. Now the pen is followed on the screen, like Painter: smoothing and the lazy string work on screen positions, a long move is filled in with points along the screen line, each found on the model, and two points are joined only when the texture between them is one piece of the model. Measured with strong smoothing and big pen jumps: no paint away from the stroke, no gaps over seams and edges.
+- **Fast flicks no longer pile up hundreds of dabs.** With a fine pen (9 px at 3 % spacing), one quick pen move on the model made up to 175 dabs at once. Dabs that each only raise the paint to the brush's opacity look the same a little further apart, so on the model a long move now spreads them out (never past 12 % of the brush), at most about 48 per move. Brushes that build up paint dab by dab (Build-up, flow by pressure, spray, mixer) keep their exact spacing.
+- **The painting report shows more inside the dabs**: "placing dabs on the surface" (the processor) and "drawing dabs" (where a wait for a busy graphics card shows up), to find the remaining hitches.
+
 ## 0.98.22
 
 Painting speed on big textures, from Georgian's painting report (8192 × 4096, 1 fps while painting: 3.7 ms per brush dab, single dabs up to 1.2 s).

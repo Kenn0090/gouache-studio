@@ -42,6 +42,12 @@ function swAdapt(s,x,y){if(!s||!s.o||!uvm.P)return;const c=uvmPos(x,y),w=swWpt(x
    round like Painter's Tangent | Wrap), faded over the Edge falloff; culling off = no limit */
 function swCull(){const s=v3s();if(s.noBack===false)return [-2,0];const a=clamp(s.cullAngle==null?90:+s.cullAngle,1,90),soft=(typeof meshCullSoft==='function'?meshCullSoft():.3)*.6;
   return [a<89.5?Math.cos(a*Math.PI/180):-0.15,soft];}
+/* (0.98.24, Kenn's video: while painting the chest, paint appeared on the arms) is the straight line between two texels on the texture one
+   continuous piece of the model? A hiccup (a long pen move) or the stroke smoothing (an average taken on the texture) can join points whose
+   straight line crosses other islands; dabs along it painted them. Walk the line on the model: off the model or a jump in space = not joined. */
+function swSegOk(ax,ay,bx,by){const U=uvm;if(!U||!U.P)return true;const L=Math.hypot(bx-ax,by-ay),e=Math.max(1,doc.w/U.G);if(L<=e*1.5)return true;
+  const w=swWpt(ax,ay)||swWpt(bx,by);if(!w)return true;const n=Math.min(32,Math.ceil(L/e)),step=L/n;let prev=uvmPos(ax,ay);if(!prev)return false;
+  for(let i=1;i<=n;i++){const t=i/n,q=uvmPos(ax+(bx-ax)*t,ay+(by-ay)*t);if(!q)return false;if(Math.hypot(q[0]-prev[0],q[1]-prev[1],q[2]-prev[2])>6*w*step+1e-7)return false;prev=q;}return true;}
 /* one dab at a texel: the uniforms for the shader and the box of texels it can reach */
 function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C||!C.pos||!C.nrm)return null;const c=uvmPos(x,y);if(!c)return null;
   const e=Math.max(1,doc.w/U.G),wpt=swWpt(x,y);if(!(wpt>1e-9))return null;

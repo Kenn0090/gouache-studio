@@ -29,7 +29,7 @@ const brush=Object.assign({},BRUSH_DEFAULTS);
 function pcurve(p,o){return Math.pow(clamp(p,0,1),Math.pow(2,-o.curve*1.6));}
 function radiusAt(p){const o=stroke.o;let r=o.size/2*(stroke.rs||1);if(o.pSize)r*=o.minSize+(1-o.minSize)*pcurve(p,o);return Math.max(.5,r);}
 function alphaAt(p){const o=stroke.o;let a=o.flow;if(o.pOpacity||o.pFlow)a*=pcurve(p,o);return a;}
-function spacingAt(p){/* (0.97.16) on the model each blend dab redraws the whole mesh once per map: never closer than a fifth of the brush */const sp=stroke.o.spacing*(stroke.o.tool==='smudge'&&stroke.space?Math.max(1,.2/Math.max(.01,stroke.o.spacing)):1);return Math.max(.5,sp*2*radiusAt(p));}
+function spacingAt(p){/* (0.97.16) on the model each blend dab redraws the whole mesh once per map: never closer than a fifth of the brush */const sp=stroke.o.spacing*(stroke.o.tool==='smudge'&&stroke.space?Math.max(1,.2/Math.max(.01,stroke.o.spacing)):1);return Math.max(.5,sp*2*radiusAt(p),stroke.spMin||0);}
 /* colour jitter: each dab (or each stroke) gets its own hue, saturation and brightness around the brush colour */
 function jitterColor(c,o,grey){const R=()=>Math.random()*2-1;
   if(grey){const g=clamp(c[0]*(1+R()*(o.valJitter||0)),0,1);return [g,g,g];}
@@ -147,7 +147,7 @@ function stamp(x,y,p){
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
 function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll||s.o.mixBrush)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
-function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
+function strokeJump(x,y,p){const s=stroke;if(!s)return;if(s.cv)s.cv={px:x,py:y,pp:p,mx:x,my:y,mp:p};/* (0.98.24) the smooth curve starts again here, not across the jump */refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null;
   const stitch=o.material?.stitch,stitchExtent=stitch&&(stitch.fray||stitch.variation)?1.85:1.4143;
@@ -218,6 +218,10 @@ function addPointLin(x,y,p){
   if(s.fdWait){if(len<2.5){s.p=p;return;}s.fdWait=false;}
   if(len>0.5)s.dir=Math.atan2(dy,dx);
   const sampled=!!s.sampleT&&refreshStrokeSample(s);let t=s.carry,guard=0;
+  /* (0.98.23, Georgian's report: single pen moves of 0.2–0.47 s with a 9 px pen at 3 % spacing) on the model, a fast flick made hundreds of dabs at
+     once. Dabs that do not add up (each one only raises the paint to the brush's opacity) look the same a little further apart, so a long move
+     spreads them out, never past 12 % of the brush: at most about 48 dabs per move. Brushes that build paint up keep their exact spacing. */
+  {const o=s.o;s.spMin=(s.surf||s.uvClip)&&(o.tool==='brush'||o.tool==='erase')&&!o.buildup&&!o.pFlow&&!(o.spray>0)&&!o.mixer?Math.min(len/48,.24*radiusAt(p)):0;}
   if(typeof dualBatchStart==='function')dualBatchStart(s);
   s.segX=s.x;s.segY=s.y;try{while(t<=len&&guard++<20000){const f=t/len;let pp=s.p+(p-s.p)*f;if(s.o.taperStart>0)pp*=Math.max(.06,Math.min(1,((s.trav||0)-len+t)/s.o.taperStart));s.sampleBlend=sampled?f:1;stamp(s.x+dx*f,s.y+dy*f,pp);t+=spacingAt(pp);}}
   finally{s.segX=undefined;if(s.dualBatch)dualBatchFlush(s);}
