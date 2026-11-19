@@ -53,7 +53,9 @@ function skinBlurPass(F,C,list,common,flip,g){
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(false);gl.disable(gl.BLEND);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(-2,-4);gl.bindVertexArray(g.vao);
   try{for(const [tgt,pass] of [[X.d,1],[X.a,2]]){gl.bindFramebuffer(gl.FRAMEBUFFER,tgt.fbo);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       for(const it of items){const U=v3MeshU(C,common,it,flip,null);U.uSkinPass={int:pass};useProg(P3.mesh,U);gl.drawElements(gl.TRIANGLES,it.count*3,gl.UNSIGNED_INT,it.start*12);}}}
-  finally{try{useProg(P3.mesh,{uSkinPass:{int:0}});}catch(e){}/* back to the normal drawing for every later frame */gl.depthMask(true);gl.disable(gl.DEPTH_TEST);gl.disable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(0,0);gl.bindVertexArray(vao);}
+  finally{/* (0.98.21) back to the normal drawing on EVERY copy of the program: with one-channel grey maps (4096 px and up) the passes ran on the
+    packed copy, and only the plain one was reset, so the model kept drawing the bare skin colour (Georgian: "looks unlit" after Scatter depth) */
+    for(const pr of [P3.mesh,P3.mesh.packedVariant])if(pr&&pr.p){try{gl.useProgram(pr.p);const l=gl.getUniformLocation(pr.p,'uSkinPass');if(l)gl.uniform1i(l,0);}catch(e){}}/* back to the normal drawing for every later frame */gl.depthMask(true);gl.disable(gl.DEPTH_TEST);gl.disable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(0,0);gl.bindVertexArray(vao);}
   /* 2. blurred across, then down */
   const sz=[F.w,F.h];run(P_SKBLUR,X.b0,{uSrc:X.d.tex,uDepth:X.dt,uDir:[1,0],uR:R,uSz:sz});run(P_SKBLUR,X.b1,{uSrc:X.b0.tex,uDepth:X.dt,uDir:[0,1],uR:R,uSz:sz});
   /* 3. sharp under-skin light swapped for the blurred one */
