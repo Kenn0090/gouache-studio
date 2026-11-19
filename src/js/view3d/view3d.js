@@ -627,7 +627,7 @@ function v3MeshU(C,common,it,flip,safeMip=null){const {s,bake,EU,eye,a,e}=C,sg=i
     if(isFur)furUniforms(U,T,shk);
     if(!bake&&!isFur)chPackUniforms(U,T,shk,it);
     if(it.hatchTex){U.uThick=it.hatchTex;U.uShE[1]=1;U.uHas.int&=~128;}
-    return U;}
+    U.uSkinPass={int:0};/* (0.98.21, Georgian: shaders went unlit after moving Scatter depth) every normal draw is a normal pass, whichever copy of the program draws it */return U;}
 /* (0.95.5, Kenn) wireframe colour with its own opacity (Preferences › Look and the viewport display settings) */
 const wireOpacity=()=>{const o=prefs.wireOp;return o==null?1:Math.max(0,Math.min(1,+o));};
 const wireColA=()=>[...(prefs.wireCol||[.95,.7,.35]),wireOpacity()];

@@ -1,3 +1,7 @@
+## 0.98.21
+
+- **Fixed: the lit shaders turned flat ("unlit") after moving a Skin slider** (Georgian: Standard, Brushed metal, Velvet looked unlit once he moved Scatter depth; Toon still worked). With textures of 4096 × 4096 and up, grey maps are kept in a compact one-channel form, and the model is drawn by a second copy of its program. The Skin shader's soft-skin effect draws two extra passes (the light alone, the bare skin colour) and then sets the program back to normal, but only the first copy was set back. So every lit shader kept drawing the bare colour until the app was restarted. Toon, Cel and Hologram draw before that point, so they looked fine. Now every copy is set back, and every normal draw sets itself to normal.
+
 ## 0.98.20
 
 The 3D Paint brush rebuilt from the causes up (Kenn: "inconsistent brush sizes", "the alignment not matching perfectly", "painting on edges isn't working properly"). Every change below was measured on test models with real UV layouts (a box with its faces packed at four densities, a tube with a seam, a stretched side and two caps).

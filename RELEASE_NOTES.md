@@ -1,3 +1,7 @@
+## Gouache Studio 0.98.21
+
+- Fixed: on big textures (4096 and up), moving a Skin slider such as Scatter depth made Standard and the other lit shaders look flat and unlit.
+
 ## Gouache Studio 0.98.20
 
 - 3D Paint: the surface brush is the default. One brush size everywhere on the model, measured.
