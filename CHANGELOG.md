@@ -1,3 +1,11 @@
+## 0.98.22
+
+Painting speed on big textures, from Georgian's painting report (8192 × 4096, 1 fps while painting: 3.7 ms per brush dab, single dabs up to 1.2 s).
+
+- **Brush dabs are no longer drawn in tiles over the whole picture.** Since 0.98.10, drawing on a picture over 12.5 million pixels is split into 512-pixel tiles so no job is long enough to reset the graphics card. That rule also caught every brush dab: a 9-pixel dab on an 8192 × 4096 texture was drawn 128 times, with a forced flush after each. Dabs now draw just their own small square (big full-picture jobs are still tiled).
+- **A dab across a seam draws small boxes.** With the surface brush, a dab near a UV seam touches patches far apart on the texture; it drew one box spanning everything between them (the 0.4–1.2 s dabs). Each patch now gets its own box (21 times less area in the test).
+- **No more stalls from the memory check.** Every 5 seconds the graphics memory check read the driver's name and created a whole new graphics context to do it, a stall in the middle of painting (and one more context towards the browser's limit). The driver details are now read once.
+
 ## 0.98.21
 
 - **Fixed: the lit shaders turned flat ("unlit") after moving a Skin slider** (Georgian: Standard, Brushed metal, Velvet looked unlit once he moved Scatter depth; Toon still worked). With textures of 4096 × 4096 and up, grey maps are kept in a compact one-channel form, and the model is drawn by a second copy of its program. The Skin shader's soft-skin effect draws two extra passes (the light alone, the bare skin colour) and then sets the program back to normal, but only the first copy was set back. So every lit shader kept drawing the bare colour until the app was restarted. Toon, Cel and Hologram draw before that point, so they looked fine. Now every copy is set back, and every normal draw sets itself to normal.

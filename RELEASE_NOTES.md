@@ -1,3 +1,8 @@
+## Gouache Studio 0.98.22
+
+- Much faster painting on big textures (8K): brush dabs are no longer redrawn in tiles over the whole picture.
+- No more slow dabs near UV seams, and no more periodic stalls from the graphics memory check.
+
 ## Gouache Studio 0.98.21
 
 - Fixed: on big textures (4096 and up), moving a Skin slider such as Scatter depth made Standard and the other lit shaders look flat and unlit.

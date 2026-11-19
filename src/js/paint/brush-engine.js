@@ -181,12 +181,13 @@ function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
     else if(o.material?.surfaceDetail)surfaceDetailStamp(s,dst,U,copies,a);
     else if(s.dualBatch){s.dualBatch.u=U;for(const c of copies)s.dualBatch.data.push(c[0],c[1],r,ext,ang,a,fx,fy,...U.uDualOff);
       if(s.dualBatch.data.length>=10240){dualBatchFlush(s);dualBatchStart(s);}}
+    else if(sw&&sw.rects){for(const R of sw.rects)paintRegularDab(dst,Object.assign({},U,{uQC:[(R[0]+R[2])/2,(R[1]+R[3])/2],uQE:[(R[2]-R[0])/2,(R[3]-R[1])/2]}),copies[0],a,s.dabCol,s.dabTint,o.buildup||o.pFlow);}/* (0.98.22) one box per patch */
     else{const U2=s.space&&s.space.tilt?Object.assign({},U,s.space.tilt):U;for(const c of copies)paintRegularDab(dst,U2,c,a,s.dabCol,s.dabTint,o.buildup||o.pFlow);}
   }
   if(sw){const b=s.bb,R=sw.rect;b[0]=Math.min(b[0],R[0]);b[1]=Math.min(b[1],R[1]);b[2]=Math.max(b[2],R[2]);b[3]=Math.max(b[3],R[3]);}
   else for(const [cx,cy] of copies){const b=s.bb;b[0]=Math.min(b[0],cx-ext-1);b[1]=Math.min(b[1],cy-ext-1);b[2]=Math.max(b[2],cx+ext+1);b[3]=Math.max(b[3],cy+ext+1);}
   /* what changed since the last frame, so only that part of the picture is composited again */
-  if(s.fd!=='all'){if(sw)fdAdd(s,sw.rect.slice());else for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}}
+  if(s.fd!=='all'){if(sw)for(const R of sw.rects||[sw.rect])fdAdd(s,R.slice());else for(const [cx,cy] of copies){const e=ext+(o.tool==='smudge'?Math.hypot(dx,dy):0)+3;fdAdd(s,[cx-e,cy-e,cx+e,cy+e]);}}
 }
 /* The stroke texture only needs initialized pixels where this stroke can merge. Grow a cleared
    rectangle as dabs extend the stroke, clearing just its newly exposed strips instead of the
