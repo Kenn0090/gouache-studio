@@ -147,7 +147,7 @@ function stamp(x,y,p){
 }
 /* continue a stroke from a new place without painting the gap between (a stroke that left the cage and came back) */
 function refreshStrokeSample(s){if(!s||!s.sampleT||!s.o.sampleAll||s.o.mixBrush)return false;const now=performance.now();if(now-s.sampleAt<16)return false;const prev=s.sampleT;s.sampleT=compositeMap(doc.map);if(s.samplePrevT)release(s.samplePrevT);s.samplePrevT=prev;s.sampleAt=now;return true;}
-function strokeJump(x,y,p){const s=stroke;if(!s)return;refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
+function strokeJump(x,y,p){const s=stroke;if(!s)return;if(s.cv)s.cv={px:x,py:y,pp:p,mx:x,my:y,mp:p};/* (0.98.24) the smooth curve starts again here, not across the jump */refreshStrokeSample(s);s.sampleBlend=1;s.x=x;s.y=y;s.p=p;s.lsx=x;s.lsy=y;stamp(x,y,p);if(s.samplePrevT){release(s.samplePrevT);s.samplePrevT=null;}s.carry=spacingAt(p);requestRender(true);}
 function stampOne(x,y,r,a,ang,fx,fy,dx,dy,pressure){
   const s=stroke,o=s.o,W=s.SW||doc.w,H=s.SH||doc.h,tip=o.tip&&o.tip.tex?o.tip:null;
   const stitch=o.material?.stitch,stitchExtent=stitch&&(stitch.fray||stitch.variation)?1.85:1.4143;

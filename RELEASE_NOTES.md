@@ -1,5 +1,6 @@
 ## Gouache Studio 0.98.23
 
+- Fixed: during a hiccup or with stroke smoothing, paint could land on other parts of the model (across UV borders).
 - Fewer hitches on fast pen strokes on big 3D Paint textures.
 - The painting report breaks the brush time down further.
 

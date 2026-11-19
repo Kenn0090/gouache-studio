@@ -211,10 +211,26 @@ function meshDownUV(hit,e,surf){if(typeof bk!=='undefined'&&bk.busy)return true;
   o.uvRs=true;o.cageRs=k?meshBrushScale(r.height)/k:1;
   /* (0.98.20) the size in texture pixels comes from the brush's size on the model and the packing right here (surface-wrap.js) */
   const um0=typeof uvmBuild==='function'&&ui.mode==='p3d'&&!p3.udim?uvmBuild():null,um=um0&&!um0.overlap?um0:null;if(um){const c=uvmPos(q[0],q[1]),w=swWpt(q[0],q[1]);if(c&&w)o.cageRs=Math.max(.02,swBaseR(o,c,q[0],q[1])/w/((o.size||brush.size)/2));}o.sym=typeof uvmSym==='function'?uvmSym():null;if(ui.tool!=='material')o.extras=[];/* (0.96.6) mirror/radial now work with UV alignment; the material brush keeps its other channels */const p=simPressStart(pressureOf(e),e);
-  v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:q[0],y:q[1],t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};/* (0.98.20) the stroke knows from its first dab that it is on the surface (a single click was a plain flat stamp before) */o.surfStroke=surf?{right:swRight()}:null;o.uvClipStroke=!surf&&!!um;beginStroke(et.L,q[0],q[1],p,o);if(surf&&stroke)stroke.paintReplay=null;if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
+  v3.mstroke={id:e.pointerId,uv:true,hit,last:q,sx:q[0],sy:q[1],sp:p,rx:q[0],ry:q[1],rp:p,smoothAt:e.timeStamp,sim:{x:e.clientX,y:e.clientY,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};
+  if(um||surf)v3.mstroke.scr={sx:e.clientX,sy:e.clientY,sp:p,px:e.clientX,py:e.clientY,smoothAt:e.timeStamp};/* (0.98.24) the pen followed on screen *//* (0.98.20) the stroke knows from its first dab that it is on the surface (a single click was a plain flat stamp before) */o.surfStroke=surf?{right:swRight()}:null;o.uvClipStroke=!surf&&!!um;beginStroke(et.L,q[0],q[1],p,o);if(surf&&stroke)stroke.paintReplay=null;if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.97.8) Pressure without a pen on the model */return true;}
 /* the texture pixel under a point of the view, on the active texture set only */
 function meshUVAt(hit,e){const q=v3PickFast(hit,e);if(!q)return null;if(ui.mode==='p3d'&&v3.mesh?.setRanges&&typeof p3Range==='function'){const R=v3.mesh.setRanges[q.set],A=p3Range();if(R&&A&&R.start!==A.start)return null;}return [q.uv[0]*doc.w,q.uv[1]*doc.h];}
+/* (0.98.24, Kenn's video: hiccups sent strokes across UV borders, "since the smoother soft brush") with the surface brush the pen is followed
+   on the SCREEN, like Painter: smoothing and the lazy string work on screen positions (an average taken on the texture lands on whatever
+   island lies between), a long move is filled in with points along the screen line, each found on the model, and two points are joined
+   only when the texture between them is one piece of the model (swSegOk); otherwise the stroke carries on from the next one. */
+function meshSurfFeed(m,q,pr){if(!stroke)return;swAdapt(stroke,q[0],q[1]);const L=m.last,reach=Math.max(8,(stroke.o.size||brush.size)*(stroke.rs||1)*3);
+  if(!L||Math.hypot(q[0]-L[0],q[1]-L[1])>reach||!swSegOk(L[0],L[1],q[0],q[1])){m.lx=undefined;strokeJump(q[0],q[1],pr);}else addPoint(q[0],q[1],pr);
+  m.last=q;m.sx=q[0];m.sy=q[1];m.sp=pr;}
+function meshSurfTo(hit,m,x,y,pr){const S=m.scr,d=Math.hypot(x-S.px,y-S.py),r=hit.getBoundingClientRect(),rpx=Math.max(1,(stroke.o.size||brush.size)/2*meshBrushScale(r.height));
+  const n=Math.min(64,Math.max(1,Math.ceil(d/Math.max(1.5,rpx*.35))));for(let i=1;i<=n;i++){const t=i/n,X=S.px+(x-S.px)*t,Y=S.py+(y-S.py)*t,q=meshUVAt(hit,{clientX:X,clientY:Y});if(q)meshSurfFeed(m,q,pr);}
+  S.px=x;S.py=y;}
+function meshMoveSurf(hit,m,list,e){const S=m.scr;
+  for(const ev of list){let x=ev.clientX,y=ev.clientY;const pr=simPress(m,x,y,ev.timeStamp,pressureOf(ev,e));S.rx=x;S.ry=y;S.rp=pr;
+    if(brush.lazy>0&&!ev.shiftKey){const z=lazyStep(S,x,y,brush.lazy);if(!z)continue;x=z[0];y=z[1];}
+    strokeSmooth(S,x,y,pr,brush.smoothing,ev.timeStamp,ev.shiftKey);meshSurfTo(hit,m,S.sx,S.sy,S.sp);}}
 function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
+  if(m.scr&&(stroke.surf||stroke.uvClip)){meshMoveSurf(hit,m,evs.length?evs:[e],e);return;}
   for(const ev of (evs.length?evs:[e])){const q=meshUVAt(hit,ev);if(!q)continue;
     /* (0.97.8) Smoothing and Lazy mouse work with UV alignment too (they were skipped): the point is smoothed in texels, the lazy string is in brush pixels */
     let x=q[0],y=q[1];const pr=simPress(m,x,y,ev.timeStamp,pressureOf(ev,e));m.rx=x;m.ry=y;m.rp=pr;if(stroke.surf||stroke.uvClip)swAdapt(stroke,x,y);
@@ -224,7 +240,7 @@ function meshMoveUV(hit,e){const m=v3.mstroke;if(!m||!stroke)return;const evs=e.
     /* (0.98.20) crossed a seam with the surface brush: the SAME stroke carries on from the other island (each dab is measured on the model,
        so nothing is lost at the seam); restarting it put a stroke start (the pen's ink blob, a taper) in the middle of the line, and made
        two undo steps */
-    if(jump>reach&&(stroke.surf||stroke.uvClip)&&typeof strokeJump==='function'){m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;m.last=q;swAdapt(stroke,q[0],q[1]);strokeJump(q[0],q[1],pr);continue;}
+    if((stroke.surf||stroke.uvClip)&&typeof strokeJump==='function'&&(jump>reach||!swSegOk(m.last[0],m.last[1],m.sx,m.sy))){m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;m.last=q;swAdapt(stroke,q[0],q[1]);strokeJump(q[0],q[1],pr);continue;}
     if(jump>reach){/* crossed a seam: lift and start again on the other island */const o=stroke.o,L=stroke.L;const sf=!!(stroke&&stroke.surf),uc=!!(stroke&&stroke.uvClip),rs0=stroke.rs;endStroke(true);m.sx=q[0];m.sy=q[1];m.sp=pr;m.lx=undefined;o.cageRs=rs0;o.surfStroke=sf?{right:swRight()}:null;o.uvClipStroke=uc;beginStroke(L,q[0],q[1],pr,o);if(stroke){if(sf)stroke.paintReplay=null;swAdapt(stroke,q[0],q[1]);}m.last=q;continue;}
     addPoint(m.sx,m.sy,m.sp);m.last=[m.sx,m.sy];}}
 function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='bake'){toast('Wait for the bake to finish.');return true;}
@@ -241,7 +257,9 @@ function meshDown0(hit,e,opt){if(typeof bk!=='undefined'&&bk.busy&&ui.mode==='ba
   o.space=sp;o.cageRs=meshBrushScale(h);o.sym=null;const [x,y]=meshPt(hit,e),p=simPressStart(pressureOf(e),e),line=brushLineStart(et,x,y,p,e,'mesh'),rs=Math.max(1e-3,o.cageRs||1);v3.mstroke={id:e.pointerId,sx:x,sy:y,sp:p,rx:x,ry:y,smoothAt:e.timeStamp,line,rs,sim:{x:x/rs,y:y/rs,t:e.timeStamp,spd:0,travel:0,pen:e.pointerType==='pen'}};beginStroke(et.L,line.x,line.y,line.p,o);if(stroke)stroke.simOn=!v3.mstroke.sim.pen&&brush.simP==='taper';/* (0.96) Pressure without a pen works on the model too */if(line.joined){let qx=x,qy=y;if(e.shiftKey&&e.ctrlKey)[qx,qy]=brushLineAngle(line,x,y);addPoint(qx,qy,p);v3.mstroke.rx=qx;v3.mstroke.ry=qy;}return true;}
 function meshMove(hit,e){if(v3.shiftPend&&meshShiftMove(hit,e))return;const m=v3.mstroke;if(m&&m.uv&&e.pointerId===m.id){meshMoveUV(hit,e);return;}if(m&&m.liq&&e.pointerId===m.id){meshLiqMove(hit,e);return;}if(!m||e.pointerId!==m.id||!stroke)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[];
   for(const ev of (evs.length?evs:[e])){let [x,y]=meshPt(hit,ev);const p=simPress(m,x/m.rs,y/m.rs,ev.timeStamp,pressureOf(ev,e));if(m.line)[x,y]=brushLineSnap(m.line,x,y,ev.shiftKey,ev.ctrlKey);m.rx=x;m.ry=y;if(brush.lazy>0&&!ev.shiftKey){const q=lazyStep(m,x,y,brush.lazy);if(!q)continue;x=q[0];y=q[1];}strokeSmooth(m,x,y,p,brush.smoothing,ev.timeStamp,ev.shiftKey);addPoint(m.sx,m.sy,m.sp);}}
-function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;if(stroke){if(brush.smoothing>0&&m.rx!==undefined)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
+function meshUp(e){if(v3.shiftPend&&meshShiftUp(e))return;const m=v3.mstroke;if(!m||(e&&e.pointerId!==m.id))return;if(m.uv){v3.mstroke=null;
+    /* (0.98.24) a surface stroke ends where the pen did, followed on screen like the rest of it */if(stroke&&m.scr&&(stroke.surf||stroke.uvClip)){const S=m.scr;if(S.rx!==undefined&&(brush.smoothing>0||brush.lazy>0))meshSurfTo(m.hit,m,S.rx,S.ry,S.rp??m.sp);endStroke(true);return;}
+    if(stroke){if(brush.smoothing>0&&m.rx!==undefined)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}return;}if(m.liq){meshLiqUp();return;}v3.mstroke=null;if(stroke){if(brush.smoothing>0)addPoint(brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);brushLineRemember(m.line,brush.lazy>0?m.sx:m.rx,brush.lazy>0?m.sy:m.ry,m.sp);endStroke(true);}}
 /* (0.98.20) with the surface brush (Tangent | Wrap, and UV alignment, which now has the same size on the model) the outline is a ring
    drawn on the model itself (FS_3DRING): it follows the surface and shows exactly where the dab ends. Off the model: the flat circle. */
 function meshRingOn(){if(ui.mode!=='p3d'||!['brush','erase','dodge','burn','material'].includes(ui.tool)||p3.udim||v3.rt)return false;const s=v3s(),a=s.paintAlign||'wrap';
