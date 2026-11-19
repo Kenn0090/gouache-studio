@@ -7,8 +7,11 @@
    - A warning before graphics memory runs out (a full card is the usual cause of a black screen at 4096 px).
    - Help › Graphics card report: the card, memory and a short speed test, with a Copy button for testers. */
 const gpuHealth={lost:false,warned:false,vram:0};
-function gpuInfo(){const x=gl.getExtension('WEBGL_debug_renderer_info'),o={renderer:x?gl.getParameter(x.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),vendor:x?gl.getParameter(x.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR),version:gl.getParameter(gl.VERSION),maxTex:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxSamplers:gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),float:canFloat,
-    quality:prefs.quality||'high',pref:gpuPrefGet()};try{const c=document.createElement('canvas').getContext('webgl2');o.software=/swiftshader|llvmpipe|software|basic render/i.test(o.renderer);}catch(e){}return o;}
+/* (0.98.22) asked once: it read the driver's strings every 5 s (the memory check) and created a whole new WebGL context each time, a stall
+   in the middle of painting and one more context towards the browser's limit */
+let gpuInfoC=null;
+function gpuInfo(){if(gpuInfoC)return Object.assign({},gpuInfoC,{quality:prefs.quality||'high',pref:gpuPrefGet()});const x=gl.getExtension('WEBGL_debug_renderer_info'),o={renderer:x?gl.getParameter(x.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),vendor:x?gl.getParameter(x.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR),version:gl.getParameter(gl.VERSION),maxTex:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxSamplers:gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),float:canFloat,
+    quality:prefs.quality||'high',pref:gpuPrefGet()};o.software=/swiftshader|llvmpipe|software|basic render/i.test(o.renderer||'');gpuInfoC=Object.assign({},o);return o;}
 function gpuPrefGet(){try{return localStorage.getItem('gs.gpuPref')||'high-performance';}catch(e){return 'high-performance';}}
 function gpuLogRead(){try{return JSON.parse(localStorage.getItem('gs.gpuLog')||'[]');}catch(e){return [];}}
 function gpuLogAdd(kind){try{const G=gpuMemory(),l=gpuLogRead();l.push({t:Date.now(),kind,renderer:gpuInfo().renderer,doc:doc.w+'x'+doc.h+' '+doc.depth+'-bit',layers:allLayers().length,maps:doc.maps.length,mode:ui.mode,tracked:Math.round(G.bytes/1048576)+' MB',targets:G.targets});

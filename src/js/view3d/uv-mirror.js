@@ -6,7 +6,7 @@
 const uvm={key:null,G:0,H:0,P:null,cell:0,head:null,next:null,lo:null,n:0};
 const FS_UVMDOWN=`uniform sampler2D uSrc; uniform vec2 uScale; void main(){ o=texelFetch(uSrc,ivec2(floor(gl_FragCoord.xy*uScale)),0); }`;
 let P_UVMDOWN=null;
-function uvmBuild(){const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos)return null;const key=C.key+'|'+doc.w+'x'+doc.h;if(uvm.key===key&&uvm.P)return uvm;
+function uvmBuild(){const C=typeof fillPosMaps==='function'?fillPosMaps():null;if(!C||!C.pos)return null;const key=C.key+'|'+doc.w+'x'+doc.h;if(uvm.key===key&&uvm.P)return uvm;if(window.__uvmLog)window.__uvmLog.push([key,uvm.key,!!uvm.P]);
   const G=Math.min(doc.w,512),H=Math.max(1,Math.round(G*doc.h/doc.w));if(!P_UVMDOWN)P_UVMDOWN=program(FS_UVMDOWN);
   const t=makeTarget(G,H,32,false);let P;try{run(P_UVMDOWN,t,{uSrc:C.pos.tex,uScale:[doc.w/G,doc.h/H]});P=new Float32Array(G*H*4);gl.bindFramebuffer(gl.FRAMEBUFFER,t.fbo);gl.readPixels(0,0,G,H,gl.RGBA,gl.FLOAT,P);gl.bindFramebuffer(gl.FRAMEBUFFER,null);}finally{disposeTarget(t);}
   /* a spatial hash of the covered samples */

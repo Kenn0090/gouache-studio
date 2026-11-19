@@ -49,13 +49,20 @@ function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C
   const half=(s.o.size||brush.size)/2*(s.rs||1),Rw=swBaseR(s.o,c,x,y)*(r/Math.max(half,1e-3)),Rx=Rw*(ext/Math.max(r,1e-3));
   if(clipOnly){const R=Math.max(Rx,Rw*1.3);return {rect:null,u:{uSurf:{int:2},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf?s.surf.right:[1,0,0],uSW:R}};}
   const c0=[0,1,2].map(k=>Math.floor((c[k]-Rx-U.lo[k])/U.cell)),c1=[0,1,2].map(k=>Math.floor((c[k]+Rx-U.lo[k])/U.cell));
-  let x0=1e9,y0=1e9,x1=-1,y1=-1;const R2=Rx*Rx;
-  const take=q=>{const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)return;const X=(q%U.G+.5)/U.G*doc.w,Yp=(((q/U.G)|0)+.5)/U.H*doc.h;
+  let x0=1e9,y0=1e9,x1=-1,y1=-1;const R2=Rx*Rx,hits=[];
+  const take=q=>{const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)return;const X=(q%U.G+.5)/U.G*doc.w,Yp=(((q/U.G)|0)+.5)/U.H*doc.h;hits.push(X,Yp);
     if(X<x0)x0=X;if(X>x1)x1=X;if(Yp<y0)y0=Yp;if(Yp>y1)y1=Yp;};
   /* (0.98.20) a big brush reaches more cells than is worth visiting one by one (it gave up and fell back to a flat stamp): look at every sample instead */
   if((c1[0]-c0[0]+1)*(c1[1]-c0[1]+1)*(c1[2]-c0[2]+1)>20000){for(let q=0;q<U.G*U.H;q++)if(U.P[q*4+3]>=.5)take(q);}
   else for(let i=c0[0];i<=c1[0];i++)for(let j=c0[1];j<=c1[1];j++)for(let k=c0[2];k<=c1[2];k++)for(let q=U.head[U.hash(i,j,k)];q>=0;q=U.next[q])take(q);
   if(x1<0)return null;const pad=e*1.5+2;x0=Math.max(0,Math.floor(x0-pad));y0=Math.max(0,Math.floor(y0-pad));x1=Math.min(doc.w,Math.ceil(x1+pad));y1=Math.min(doc.h,Math.ceil(y1+pad));
   if(x1<=x0||y1<=y0)return null;
-  if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:[x0,y0,x1,y1]});
-  return {rect:[x0,y0,x1,y1],u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uSurfCull:swCull(),uQuad:{int:1},uQC:[(x0+x1)/2,(y0+y1)/2],uQE:[(x1-x0)/2,(y1-y0)/2]}};}
+  /* (0.98.22, Georgian: dabs of 0.4–1.2 s at 8K) a dab that reaches across a seam touches patches far apart on the texture: one box round all
+     of them covered the whole width between. Now each patch gets its own box (connected cells of the texture). */
+  let rects=null;{const C=Math.max(32,pad*2),key=new Map();for(let i=0;i<hits.length;i+=2)key.set(Math.floor(hits[i]/C)+','+Math.floor(hits[i+1]/C),[Math.floor(hits[i]/C),Math.floor(hits[i+1]/C)]);
+    if(key.size>1){const seen=new Set(),out=[];for(const [k,[cx,cy]] of key){if(seen.has(k))continue;let b=[cx,cy,cx,cy];const st=[[cx,cy]];seen.add(k);
+        while(st.length){const [a,bq]=st.pop();b=[Math.min(b[0],a),Math.min(b[1],bq),Math.max(b[2],a),Math.max(b[3],bq)];for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const k2=(a+i)+','+(bq+j);if(key.has(k2)&&!seen.has(k2)){seen.add(k2);st.push([a+i,bq+j]);}}}
+        out.push([Math.max(0,Math.floor(b[0]*C-pad)),Math.max(0,Math.floor(b[1]*C-pad)),Math.min(doc.w,Math.ceil((b[2]+1)*C+pad)),Math.min(doc.h,Math.ceil((b[3]+1)*C+pad))]);}
+      const area=r=>(r[2]-r[0])*(r[3]-r[1]);if(out.length>1&&out.length<=12&&out.reduce((s,r)=>s+area(r),0)<area([x0,y0,x1,y1])*.7)rects=out;}}
+  if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:[x0,y0,x1,y1],rects});
+  return {rect:[x0,y0,x1,y1],rects,u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uSurfCull:swCull(),uQuad:{int:1},uQC:[(x0+x1)/2,(y0+y1)/2],uQE:[(x1-x0)/2,(y1-y0)/2]}};}

@@ -107,8 +107,14 @@ let scissorNow=null;
 function scissorDo(r,fn){scissorNow=r;gl.enable(gl.SCISSOR_TEST);gl.scissor(Math.max(0,Math.floor(r[0])),Math.max(0,Math.floor(r[1])),Math.max(0,Math.ceil(r[2])),Math.max(0,Math.ceil(r[3])));try{return fn();}finally{scissorNow=null;gl.disable(gl.SCISSOR_TEST);}}
 let runTiling=false;
 const runStat={n:0,px:0,by:{}};
+/* the area a stamp-program draw covers (VS_STAMP: a square round uCenter, or the uQC/uQE box) */
+function runStampArea(u){if(!u)return null;if(u.uQuad&&u.uQuad.int===1&&u.uQE)return 4*Math.abs(u.uQE[0]*u.uQE[1]);if(u.uCenter&&typeof u.uExtent==='number')return 4*u.uExtent*u.uExtent;return null;}
 function run(prog,target,u,opts){runStat.n++;{const a=target?(scissorNow?Math.min(target.w*target.h,scissorNow[2]*scissorNow[3]):target.w*target.h):0;runStat.px+=a;const k=prog._n||'?';runStat.by[k]=(runStat.by[k]||0)+a;}/* (0.98.10, Georgian: the card crashed) big pictures are drawn in tiles whatever the program: no single GPU job runs long enough for Windows to reset the driver */
-  if(target&&(prog.tiled||target.w*target.h>12582912)&&!runTiling&&target.w*target.h>262144){runTiling=true;try{runTiled(prog,target,u,opts);}finally{runTiling=false;}return;}
+  /* (0.98.22, Georgian's painting report at 8192×4096: 3.7 ms per brush dab, 1 fps) a brush dab draws only its own small square: tiling the
+     whole 33-million-pixel picture for it drew every dab 128 times with a flush after each. Dabs (the stamp program) are tiled only when the
+     square they cover is itself that big. */
+  const stampR=target&&!prog.tiled&&(prog.vs===VS_STAMP||prog.isStamp)?runStampArea(u):null;
+  if(target&&(prog.tiled||target.w*target.h>12582912)&&!(stampR!=null&&stampR<=12582912)&&!runTiling&&target.w*target.h>262144){runTiling=true;try{runTiled(prog,target,u,opts);}finally{runTiling=false;}return;}
   let packedDst=null;const tinted=target&&target.packed&&opts&&['tintfirst','tintmax'].includes(opts.blend);
   if(tinted){let r=scissorNow||[0,0,target.w,target.h];if(!scissorNow&&u.uCenter&&u.uExtent){const [x,y]=u.uCenter,e=u.uExtent,x0=Math.max(0,Math.floor(x-e)),y0=Math.max(0,Math.floor(y-e));r=[x0,y0,Math.max(1,Math.min(target.w,Math.ceil(x+e))-x0),Math.max(1,Math.min(target.h,Math.ceil(y+e))-y0)];}
     packedDst=makeTarget(r[2],r[3],target.depth,false,true);const clipped=gl.isEnabled(gl.SCISSOR_TEST);if(clipped)gl.disable(gl.SCISSOR_TEST);try{blit(target,packedDst,...r,0,0);}finally{if(clipped)gl.enable(gl.SCISSOR_TEST);}
