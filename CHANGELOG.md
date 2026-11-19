@@ -1,3 +1,10 @@
+## 0.98.24
+
+From Kenn's 0.98.23 painting report.
+
+- **A warning when the graphics card is not in use.** Kenn's report showed "Microsoft Basic Render Driver": the browser part of the app could not use the graphics card (usually after a driver crash), so Windows drew everything with the processor, many times slower. The app now says so when it starts (close and reopen it; if it stays, restart the computer; if it keeps happening, update the graphics driver).
+- **Big brushes place their dabs much faster on the model.** With a 130 px brush each dab spent 1.5 ms finding the texels it can reach. The next dab is only a few percent further on, so the lookup is now made for a slightly bigger area and reused while the dabs stay inside it (85 % of dabs reuse it), and big lookups check every second sample. In the test, placing the dabs took about a seventh of the processor time.
+
 ## 0.98.23
 
 From Kenn's video and Georgian's 0.98.22 painting report (8192 × 4096: usually 143 refreshes a second now, with a few 0.2–0.47 s hitches on fast pen moves).

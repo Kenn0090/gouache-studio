@@ -54,14 +54,21 @@ function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C
   /* the dab's radius on the model: the brush's size there, times this dab's share of it (pressure, jitter) */
   const half=(s.o.size||brush.size)/2*(s.rs||1),Rw=swBaseR(s.o,c,x,y)*(r/Math.max(half,1e-3)),Rx=Rw*(ext/Math.max(r,1e-3));
   if(clipOnly){const R=Math.max(Rx,Rw*1.3);return {rect:null,u:{uSurf:{int:2},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf?s.surf.right:[1,0,0],uSW:R}};}
-  const c0=[0,1,2].map(k=>Math.floor((c[k]-Rx-U.lo[k])/U.cell)),c1=[0,1,2].map(k=>Math.floor((c[k]+Rx-U.lo[k])/U.cell));
-  let x0=1e9,y0=1e9,x1=-1,y1=-1;const R2=Rx*Rx,hits=[];
-  const take=q=>{const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)return;const X=(q%U.G+.5)/U.G*doc.w,Yp=(((q/U.G)|0)+.5)/U.H*doc.h;hits.push(X,Yp);
+  /* (0.98.24, Kenn's report: 1.5 ms of processor time per dab with a 130 px brush) the next dab is only a few percent of the brush further on:
+     the texels it can reach are looked up for a ball a third bigger and kept while the dabs stay inside it */
+  const mk=(rect,rects)=>({rect,rects,u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uSurfCull:swCull(),uQuad:{int:1},uQC:[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2],uQE:[(rect[2]-rect[0])/2,(rect[3]-rect[1])/2]}});
+  {const K=(s.swK||[]).find(K=>K.C===C&&Math.hypot(c[0]-K.c[0],c[1]-K.c[1],c[2]-K.c[2])+Rx<=K.R);if(K){if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:K.rect,rects:K.rects,cached:true});return mk(K.rect,K.rects);}}
+  const Rs=Rx*1.3;
+  const c0=[0,1,2].map(k=>Math.floor((c[k]-Rs-U.lo[k])/U.cell)),c1=[0,1,2].map(k=>Math.floor((c[k]+Rs-U.lo[k])/U.cell));
+  let x0=1e9,y0=1e9,x1=-1,y1=-1;const R2=Rs*Rs,hits=[];
+  /* (0.98.24) a big brush reaches thousands of samples: every second one each way is enough for the boxes (they get a pad of two samples) */
+  const thin=Rs>10*U.cell;
+  const take=q=>{if(thin&&((q&1)||(((q/U.G)|0)&1)))return;const dx=U.P[q*4]-c[0],dy=U.P[q*4+1]-c[1],dz=U.P[q*4+2]-c[2];if(dx*dx+dy*dy+dz*dz>R2)return;const X=(q%U.G+.5)/U.G*doc.w,Yp=(((q/U.G)|0)+.5)/U.H*doc.h;hits.push(X,Yp);
     if(X<x0)x0=X;if(X>x1)x1=X;if(Yp<y0)y0=Yp;if(Yp>y1)y1=Yp;};
   /* (0.98.20) a big brush reaches more cells than is worth visiting one by one (it gave up and fell back to a flat stamp): look at every sample instead */
-  if((c1[0]-c0[0]+1)*(c1[1]-c0[1]+1)*(c1[2]-c0[2]+1)>20000){for(let q=0;q<U.G*U.H;q++)if(U.P[q*4+3]>=.5)take(q);}
+  if((c1[0]-c0[0]+1)*(c1[1]-c0[1]+1)*(c1[2]-c0[2]+1)>20000){const st=thin?2:1;for(let yy=0;yy<U.H;yy+=st)for(let xx=0;xx<U.G;xx+=st){const q=yy*U.G+xx;if(U.P[q*4+3]>=.5)take(q);}}
   else for(let i=c0[0];i<=c1[0];i++)for(let j=c0[1];j<=c1[1];j++)for(let k=c0[2];k<=c1[2];k++)for(let q=U.head[U.hash(i,j,k)];q>=0;q=U.next[q])take(q);
-  if(x1<0)return null;const pad=e*1.5+2;x0=Math.max(0,Math.floor(x0-pad));y0=Math.max(0,Math.floor(y0-pad));x1=Math.min(doc.w,Math.ceil(x1+pad));y1=Math.min(doc.h,Math.ceil(y1+pad));
+  if(x1<0)return null;const pad=e*(thin?3:1.5)+2;x0=Math.max(0,Math.floor(x0-pad));y0=Math.max(0,Math.floor(y0-pad));x1=Math.min(doc.w,Math.ceil(x1+pad));y1=Math.min(doc.h,Math.ceil(y1+pad));
   if(x1<=x0||y1<=y0)return null;
   /* (0.98.22, Georgian: dabs of 0.4–1.2 s at 8K) a dab that reaches across a seam touches patches far apart on the texture: one box round all
      of them covered the whole width between. Now each patch gets its own box (connected cells of the texture). */
@@ -71,4 +78,5 @@ function swDab(s,x,y,r,ext,clipOnly){const U=uvm,C=fillPosMaps();if(!U||!U.P||!C
         out.push([Math.max(0,Math.floor(b[0]*C-pad)),Math.max(0,Math.floor(b[1]*C-pad)),Math.min(doc.w,Math.ceil((b[2]+1)*C+pad)),Math.min(doc.h,Math.ceil((b[3]+1)*C+pad))]);}
       const area=r=>(r[2]-r[0])*(r[3]-r[1]);if(out.length>1&&out.length<=12&&out.reduce((s,r)=>s+area(r),0)<area([x0,y0,x1,y1])*.7)rects=out;}}
   if(window.__swDebug)window.__swDebug.push({x,y,c,Rw,wpt,r,ext,rect:[x0,y0,x1,y1],rects});
-  return {rect:[x0,y0,x1,y1],rects,u:{uSurf:{int:1},uPosT:C.pos.tex,uNrmT:C.nrm.tex,uSC:c,uSR:s.surf.right,uSW:Rw,uSurfCull:swCull(),uQuad:{int:1},uQC:[(x0+x1)/2,(y0+y1)/2],uQE:[(x1-x0)/2,(y1-y0)/2]}};}
+  (s.swK||(s.swK=[])).unshift({c,R:Rs,rect:[x0,y0,x1,y1],rects,C});if(s.swK.length>4)s.swK.length=4;/* one per mirror copy */
+  return mk([x0,y0,x1,y1],rects);}

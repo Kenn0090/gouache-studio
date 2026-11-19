@@ -16,6 +16,10 @@ const {chromium}=require('playwright');const M=require('./models9820.cjs');const
  const r=await p.evaluate(()=>({runs:__gs.runStat.n-window.__rs0,dabs:window.__swDebug.length,max:Math.max(...window.__swDebug.map(d=>(d.rects||[d.rect]).reduce((s,q)=>s+(q[2]-q[0])*(q[3]-q[1]),0)))}));console.log(JSON.stringify(r));
  ok(r.dabs>50,'the stroke made dabs on the surface ('+r.dabs+')');ok(r.runs/r.dabs<12,'each dab is a handful of draws, not the whole picture in tiles ('+(r.runs/r.dabs).toFixed(1)+' per dab)');
  ok(r.max<40000,'the biggest dab (across the seam) covers small boxes, not the whole width ('+r.max+' px)');
+ /* (0.98.24, Kenn's report: 1.5 ms of processor time per dab with a 130 px brush) a big brush reuses the texels looked up for the dab before */
+ await p.evaluate(()=>{window.__swDebug=[];Object.assign(__gs.brush,{size:130});});{const a2=at(.4,.42),c2=at(.6,.42);await p.mouse.move(a2[0],a2[1]);await p.mouse.down();for(let k=1;k<=12;k++){await p.mouse.move(a2[0]+(c2[0]-a2[0])*k/12,a2[1]);await p.waitForTimeout(60);}await p.mouse.up();await p.waitForTimeout(1500);}
+ const big=await p.evaluate(()=>({n:window.__swDebug.length,cached:window.__swDebug.filter(d=>d.cached).length}));console.log('big brush',JSON.stringify(big));
+ ok(big.n>20&&big.cached/big.n>.6,'a big brush reuses the lookup for most dabs ('+big.cached+'/'+big.n+')');
  await b.close();console.log(fails?fails+' FAILED':'ALL PASS');process.exit(fails?1:0);
  console.log(JSON.stringify(await p.evaluate(()=>{const D=window.__swDebug,ar=D.map(d=>(d.rects||[d.rect]).reduce((s,r)=>s+(r[2]-r[0])*(r[3]-r[1]),0)).sort((a,b)=>a-b);return {dabs:D.length,median:ar[ar.length>>1],p90:ar[Math.floor(ar.length*.9)],max:ar[ar.length-1],split:D.filter(d=>d.rects).length,rTexels:+D[0].r.toFixed(1)};})));
  await b.close();})();

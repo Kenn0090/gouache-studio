@@ -12,6 +12,10 @@ const gpuHealth={lost:false,warned:false,vram:0};
 let gpuInfoC=null;
 function gpuInfo(){if(gpuInfoC)return Object.assign({},gpuInfoC,{quality:prefs.quality||'high',pref:gpuPrefGet()});const x=gl.getExtension('WEBGL_debug_renderer_info'),o={renderer:x?gl.getParameter(x.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),vendor:x?gl.getParameter(x.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR),version:gl.getParameter(gl.VERSION),maxTex:gl.getParameter(gl.MAX_TEXTURE_SIZE),maxSamplers:gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS),float:canFloat,
     quality:prefs.quality||'high',pref:gpuPrefGet()};o.software=/swiftshader|llvmpipe|software|basic render/i.test(o.renderer||'');gpuInfoC=Object.assign({},o);return o;}
+/* (0.98.24, Kenn's report: "Microsoft Basic Render Driver") when the browser part of the app cannot use the graphics card (after a driver
+   crash, or a driver it does not trust) Windows draws everything with the processor, many times slower. Say so once at start. */
+setTimeout(()=>{try{if(navigator.webdriver)return;const I=gpuInfo();if(!I.software)return;gpuLogAdd('software renderer: '+I.renderer);
+  toast('Gouache Studio is not using your graphics card right now ('+I.renderer+'), so everything will be very slow. Close and reopen the app; if it stays like this, restart the computer, and if it keeps happening, update the graphics driver.',30000);}catch(e){}},4000);
 function gpuPrefGet(){try{return localStorage.getItem('gs.gpuPref')||'high-performance';}catch(e){return 'high-performance';}}
 function gpuLogRead(){try{return JSON.parse(localStorage.getItem('gs.gpuLog')||'[]');}catch(e){return [];}}
 function gpuLogAdd(kind){try{const G=gpuMemory(),l=gpuLogRead();l.push({t:Date.now(),kind,renderer:gpuInfo().renderer,doc:doc.w+'x'+doc.h+' '+doc.depth+'-bit',layers:allLayers().length,maps:doc.maps.length,mode:ui.mode,tracked:Math.round(G.bytes/1048576)+' MB',targets:G.targets});

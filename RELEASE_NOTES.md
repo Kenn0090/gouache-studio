@@ -1,3 +1,8 @@
+## Gouache Studio 0.98.24
+
+- The app warns when it is not using your graphics card (everything would be very slow).
+- Big brushes paint faster on 3D models.
+
 ## Gouache Studio 0.98.23
 
 - Fixed: during a hiccup or with stroke smoothing, paint could land on other parts of the model (across UV borders).
