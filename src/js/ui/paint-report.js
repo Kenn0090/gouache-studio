@@ -23,6 +23,9 @@ function prHook(){if(pr.hooked)return;pr.hooked=true;const T=(f,g)=>{try{f();}ca
   T(()=>{beginStroke=prWrap(beginStroke,'starting a stroke');});
   T(()=>{endStroke=prWrap(endStroke,'finishing a stroke');});
   T(()=>{addPoint=prWrap(addPoint,'brush dabs');});
+  /* (0.98.23) inside the dabs: finding where each lands on the model (the processor) and drawing it (a wait here is the graphics card catching up) */
+  T(()=>{swDab=prWrap(swDab,'placing dabs on the surface');});
+  T(()=>{paintRegularDab=prWrap(paintRegularDab,'drawing dabs');});
   T(()=>{renderLayers=prWrap(renderLayers,'Layers panel');});
   T(()=>{renderHistory=prWrap(renderHistory,'History panel');});
   T(()=>{navPicture=prWrap(navPicture,'navigator picture');});

@@ -1,3 +1,8 @@
+## Gouache Studio 0.98.23
+
+- Fewer hitches on fast pen strokes on big 3D Paint textures.
+- The painting report breaks the brush time down further.
+
 ## Gouache Studio 0.98.22
 
 - Much faster painting on big textures (8K): brush dabs are no longer redrawn in tiles over the whole picture.
